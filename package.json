@@ -12,7 +12,7 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm run --parallel \"/^dev:/\"",
-    "dev:server": "tsx watch src/server/cli.ts --dev",
+    "dev:server": "tsx watch --tsconfig tsconfig.server.json src/server/cli.ts --dev",
     "dev:ui": "vite",
     "build": "vite build && tsdown",
     "start": "node dist/cli.js",

@@ -12,5 +12,10 @@
     "src/ui/**/*.tsx",
     "src/shared/**/*.ts",
     "vitest-env.d.ts"
+  ],
+  "references": [
+    {
+      "path": "./tsconfig.server.json"
+    }
   ]
 }

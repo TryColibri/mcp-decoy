@@ -119,7 +119,13 @@
         "fixStyle": "inline-type-imports"
       }
     ],
-    "typescript/no-deprecated": "warn"
+    "typescript/no-deprecated": "warn",
+    "vitest/expect-expect": [
+      "error",
+      {
+        "assertFunctionNames": ["expect", "expectProblem"]
+      }
+    ]
   },
   "overrides": [
     {

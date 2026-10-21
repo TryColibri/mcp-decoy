@@ -4,7 +4,17 @@
     "composite": true,
     "lib": ["ES2023"],
     "types": ["node"],
-    "tsBuildInfoFile": "./node_modules/.cache/tsc/server.tsbuildinfo"
+    "tsBuildInfoFile": "./node_modules/.cache/tsc/server.tsbuildinfo",
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": "./node_modules/.cache/tsc/server",
+    "rootDir": "."
   },
-  "include": ["src/server/**/*.ts", "src/shared/**/*.ts", "vitest-env.d.ts"]
+  "include": [
+    "src/server/**/*.ts",
+    "src/shared/**/*.ts",
+    "vitest-env.d.ts",
+    "package.json"
+  ]
 }
