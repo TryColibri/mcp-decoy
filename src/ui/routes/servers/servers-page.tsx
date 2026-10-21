@@ -1,0 +1,83 @@
+import { PlusIcon } from 'lucide-react';
+
+import { useInstance, useServers } from '@/ui/api';
+import { ButtonLink } from '@/ui/components/button';
+
+import { ServerTable } from './server-table';
+import { TunnelCard } from './tunnel-card';
+
+/** `/`: every mock server, with endpoints and live sessions. */
+export function ServersPage() {
+  const { data: servers, error } = useServers();
+  const { data: instance } = useInstance();
+
+  let content;
+  if (error !== undefined) {
+    content = (
+      <p role="alert" className="m-0 p-6 text-sm text-error">
+        Could not load servers: {error.message}
+      </p>
+    );
+  } else if (servers === undefined) {
+    content = <p className="m-0 p-6 text-sm text-ink-4">Loading servers…</p>;
+  } else if (servers.length === 0) {
+    content = <EmptyState />;
+  } else {
+    content = <ServerTable servers={servers} />;
+  }
+
+  return (
+    <main className="mx-auto box-border flex w-full max-w-7xl flex-1 flex-col gap-6 px-6 pt-8 pb-12">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-col gap-1.5">
+          <h1 className="m-0 text-[28px] font-bold tracking-tight">Servers</h1>
+          <p className="m-0 text-[15px] text-ink-3">
+            Each mock server is mounted on its own URL. Point your client at one
+            and watch the traffic in Logs.
+          </p>
+        </div>
+        <ButtonLink to="/servers/new" variant="primary">
+          <PlusIcon size={16} strokeWidth={2.2} aria-hidden="true" />
+          New server
+        </ButtonLink>
+      </div>
+
+      <div className="flex flex-wrap items-start gap-6">
+        <section
+          aria-label="Server list"
+          className="min-w-0 flex-[999_1_640px] overflow-hidden rounded-xl border border-line bg-surface"
+        >
+          {content}
+          <div className="border-t border-line-soft bg-subtle px-4 py-3.5 text-[13px] text-ink-4">
+            Servers are stored in{' '}
+            <span className="font-mono break-all text-ink">
+              {instance?.configFile ?? 'servers.json'}
+            </span>
+            . Changes apply live — no restart.
+          </div>
+        </section>
+
+        <aside className="flex min-w-0 flex-[1_1_340px] flex-col gap-4">
+          <TunnelCard port={instance?.mcp.port ?? 6280} />
+        </aside>
+      </div>
+    </main>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="flex flex-col items-start gap-3 px-6 py-10">
+      <h2 className="m-0 text-base font-semibold">No servers yet</h2>
+      <p className="m-0 max-w-prose text-sm leading-relaxed text-ink-3">
+        A server is a mock MCP endpoint with the tools you define. Create one,
+        add a tool, then point your MCP client at its URL. Every message shows
+        up live in its Logs tab.
+      </p>
+      <ButtonLink to="/servers/new" variant="primary">
+        <PlusIcon size={16} strokeWidth={2.2} aria-hidden="true" />
+        New server
+      </ButtonLink>
+    </div>
+  );
+}

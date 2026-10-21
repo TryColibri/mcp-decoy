@@ -1,0 +1,165 @@
+import useSWR, { type SWRConfiguration } from 'swr';
+
+import {
+  type FieldError,
+  type InstanceInfo,
+  type Problem,
+  problemSchema,
+  type ServerSummary,
+  type Session,
+  type Tool,
+} from '@/shared/api';
+import { createDecoyClient } from '@/shared/client';
+
+/** The typed API client. Same origin: Vite proxies `/api` in development. */
+export const client = createDecoyClient('');
+
+/** A failed API call, carrying the parsed problem details. */
+export class ApiError extends Error {
+  override name = 'ApiError';
+
+  /** The problem details returned by the API. */
+  readonly problem: Problem;
+
+  /** @param problem - The problem details returned by the API. */
+  constructor(problem: Problem) {
+    super(problem.detail);
+    this.problem = problem;
+  }
+
+  /** HTTP status code. */
+  get status(): number {
+    return this.problem.status;
+  }
+
+  /** Field-level errors, keyed by dotted path. */
+  get fieldErrors(): Partial<Record<string, string>> {
+    return Object.fromEntries(
+      (this.problem.errors ?? []).map((error: FieldError) => [
+        error.path,
+        error.message,
+      ]),
+    );
+  }
+}
+
+type JSONResponse<T> = {
+  ok: boolean;
+  status: number;
+  statusText: string;
+  json(): Promise<T>;
+};
+
+const toApiError = async (response: JSONResponse<unknown>) => {
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    body = undefined;
+  }
+  const parsed = problemSchema.safeParse(body);
+  return new ApiError(
+    parsed.success
+      ? parsed.data
+      : {
+          type: 'about:blank',
+          title: response.statusText,
+          status: response.status,
+          detail: `Request failed with status ${response.status}`,
+        },
+  );
+};
+
+/**
+ * Awaits a typed client call and returns its JSON body.
+ *
+ * @param request - A call on `client`.
+ * @throws {ApiError} When the response is not 2xx.
+ */
+export async function unwrap<T>(request: Promise<JSONResponse<T>>): Promise<T> {
+  const response = await request;
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+  return response.json();
+}
+
+/**
+ * Awaits a typed client call that answers 204.
+ *
+ * @param request - A call on `client`.
+ * @throws {ApiError} When the response is not 2xx.
+ */
+export async function unwrapEmpty(
+  request: Promise<JSONResponse<unknown>>,
+): Promise<void> {
+  const response = await request;
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+}
+
+/** SWR keys, so mutations can revalidate what they change. */
+export const keys = {
+  instance: 'instance',
+  servers: 'servers',
+  server: (server: string) => `servers/${server}`,
+  tools: (server: string) => `servers/${server}/tools`,
+  sessions: (server: string) => `servers/${server}/sessions`,
+  logs: (server: string) => `servers/${server}/logs`,
+} as const;
+
+/** Live session counts refresh this often. */
+const POLL_MS = 2000;
+
+/** `GET /api/v1`. */
+export function useInstance() {
+  return useSWR<InstanceInfo, ApiError>(keys.instance, async () =>
+    unwrap(client.index.$get()),
+  );
+}
+
+/** `GET /api/v1/servers`, polled for live session counts. */
+export function useServers() {
+  return useSWR<ServerSummary[], ApiError>(
+    keys.servers,
+    async () => (await unwrap(client.servers.$get())).items,
+    { refreshInterval: POLL_MS },
+  );
+}
+
+/** `GET /api/v1/servers/{server}`, polled for live session counts. */
+export function useServer(server: string) {
+  return useSWR<ServerSummary, ApiError>(
+    keys.server(server),
+    async () => unwrap(client.servers[':server'].$get({ param: { server } })),
+    { refreshInterval: POLL_MS, shouldRetryOnError: false },
+  );
+}
+
+/** `GET /api/v1/servers/{server}/tools`. */
+export function useTools(server: string) {
+  return useSWR<Tool[], ApiError>(
+    keys.tools(server),
+    async () =>
+      (
+        await unwrap(
+          client.servers[':server'].tools.$get({ param: { server } }),
+        )
+      ).items,
+  );
+}
+
+/** `GET /api/v1/servers/{server}/sessions`. */
+export function useSessions(server: string, config?: SWRConfiguration) {
+  return useSWR<Session[], ApiError>(
+    keys.sessions(server),
+    async () =>
+      (
+        await unwrap(
+          client.servers[':server'].sessions.$get({ param: { server } }),
+        )
+      ).items,
+    { refreshInterval: POLL_MS, ...config },
+  );
+}

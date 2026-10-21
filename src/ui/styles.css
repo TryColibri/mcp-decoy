@@ -1,0 +1,77 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Surfaces */
+  --color-page: #f7f7f5;
+  --color-surface: #ffffff;
+  --color-subtle: #fafaf8;
+  --color-muted: #f3f3f0;
+  --color-hover: #efefec;
+  --color-input: #fbfbfa;
+
+  /* Text */
+  --color-ink: #16181d;
+  --color-ink-2: #3f434a;
+  --color-ink-3: #4b4f57;
+  --color-ink-4: #5c6068;
+  --color-ink-faint: #9a9ea6;
+
+  /* Borders */
+  --color-line: #e4e4e0;
+  --color-line-soft: #ededea;
+  --color-control: #dcdcd7;
+
+  /* Code panels */
+  --color-code: #16181d;
+  --color-code-ink: #e8e8e3;
+  --color-code-dim: #8b9099;
+
+  /* Links and selection */
+  --color-link: #1d4ed8;
+  --color-link-hover: #1e3a8a;
+  --color-selected: #eef3fe;
+  --color-selected-line: #9db7f5;
+  --color-row-hover: #f5f7fb;
+
+  /* Directions */
+  --color-in: #1d4ed8;
+  --color-in-bg: #eaf0fd;
+  --color-in-tag: #1e3a8a;
+  --color-out: #9a3412;
+  --color-out-bg: #fdf1e4;
+
+  /* Status */
+  --color-success: #14532d;
+  --color-success-bg: #e7f5ec;
+  --color-live: #15803d;
+  --color-error: #991b1b;
+  --color-error-bg: #fdecec;
+  --color-error-line: #b91c1c;
+  --color-neutral-bg: #f0f0ed;
+}
+
+@layer base {
+  html,
+  body {
+    background: var(--color-page);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a {
+    color: var(--color-link);
+  }
+
+  a:hover {
+    color: var(--color-link-hover);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-link);
+    outline-offset: 2px;
+  }
+}

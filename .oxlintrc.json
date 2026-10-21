@@ -125,6 +125,22 @@
       {
         "assertFunctionNames": ["expect", "expectProblem"]
       }
+    ],
+    "jsx-a11y/control-has-associated-label": [
+      "error",
+      {
+        "ignoreElements": [
+          "audio",
+          "canvas",
+          "embed",
+          "input",
+          "textarea",
+          "tr",
+          "td",
+          "th",
+          "video"
+        ]
+      }
     ]
   },
   "overrides": [
@@ -191,7 +207,18 @@
           {
             "patterns": [
               {
-                "group": ["@/server", "@/server/**", "**/server/**"],
+                "group": [
+                  "@/server",
+                  "@/server/**",
+                  "../server",
+                  "../../server",
+                  "../../../server",
+                  "../../../../server",
+                  "../server/**",
+                  "../../server/**",
+                  "../../../server/**",
+                  "../../../../server/**"
+                ],
                 "message": "src/ui must not import src/server; use src/shared."
               }
             ]
@@ -208,12 +235,26 @@
             "patterns": [
               {
                 "group": [
-                  "@/ui",
-                  "@/ui/**",
-                  "**/ui/**",
                   "@/server",
                   "@/server/**",
-                  "**/server/**"
+                  "../server",
+                  "../../server",
+                  "../../../server",
+                  "../../../../server",
+                  "../server/**",
+                  "../../server/**",
+                  "../../../server/**",
+                  "../../../../server/**",
+                  "@/ui",
+                  "@/ui/**",
+                  "../ui",
+                  "../../ui",
+                  "../../../ui",
+                  "../../../../ui",
+                  "../ui/**",
+                  "../../ui/**",
+                  "../../../ui/**",
+                  "../../../../ui/**"
                 ],
                 "message": "src/shared must not import src/server or src/ui."
               }
@@ -230,11 +271,33 @@
           {
             "patterns": [
               {
-                "group": ["@/ui", "@/ui/**", "**/ui/**"],
+                "group": [
+                  "@/ui",
+                  "@/ui/**",
+                  "../ui",
+                  "../../ui",
+                  "../../../ui",
+                  "../../../../ui",
+                  "../ui/**",
+                  "../../ui/**",
+                  "../../../ui/**",
+                  "../../../../ui/**"
+                ],
                 "message": "src/shared must not import src/server or src/ui."
               },
               {
-                "group": ["@/server", "@/server/**", "**/server/**"],
+                "group": [
+                  "@/server",
+                  "@/server/**",
+                  "../server",
+                  "../../server",
+                  "../../../server",
+                  "../../../../server",
+                  "../server/**",
+                  "../../server/**",
+                  "../../../server/**",
+                  "../../../../server/**"
+                ],
                 "allowTypeImports": true,
                 "message": "src/shared/client may only import types from src/server/api."
               }
