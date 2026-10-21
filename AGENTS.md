@@ -100,6 +100,15 @@ npx decoy
   `127.0.0.1:<uiPort>` (DNS rebinding) and requires JSON plus a matching
   `Origin` (when present) on mutating requests (CSRF).
 - The MCP listener allows any origin (CORS) because it only serves mock data.
+- The CSRF check requires `Content-Type: application/json` on POST, PUT and
+  PATCH. DELETE has no body and always needs a CORS preflight cross-origin, so
+  only its `Origin` is checked; `curl -X DELETE` works without headers.
+- Sessions are stateful 2025-era Streamable HTTP (`initialize`,
+  `Mcp-Session-Id`). The MCP SDK v2 also implements the stateless 2026-07-28
+  revision; clients that probe it with `server/discover` get a 400 and fall back
+  to `initialize` (covered by `mcp-app.integration.test.ts`). The session ID is
+  generated before the `initialize` request is handed to the transport, so that
+  request is logged under the session it opens.
 - `<config dir>/runtime.json` advertises a running instance to future CLI
   subcommands and the TUI, and prevents two instances from sharing a config
   directory.

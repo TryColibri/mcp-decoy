@@ -25,3 +25,6 @@ npm-debug.log*
 
 # Claude
 .claude/worktrees/
+
+# Local preview config (machine-specific paths)
+.claude/launch.json
