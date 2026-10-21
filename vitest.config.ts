@@ -11,7 +11,7 @@ export default defineConfig({
     setupFiles: ['./vitest.setup.ts'],
     passWithNoTests: true,
     coverage: {
-      include: ['src/**'],
+      include: ['src/**/*.{ts,tsx}'],
     },
     typecheck: {
       tsconfig: './tsconfig.json',
