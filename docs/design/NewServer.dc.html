@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>decoy · New server</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F7F7F5}
+a{color:#1D4ED8}a:hover{color:#1E3A8A}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+.ctl{min-height:40px;padding:0 12px;border:1px solid #DCDCD7;border-radius:8px;background:#FFFFFF;font:500 14px Inter,sans-serif;color:#16181D;box-sizing:border-box;width:100%}
+.fld{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#3F434A}
+.hint{font-size:12px;font-weight:400;color:#5C6068}
+.card{background:#FFFFFF;border:1px solid #E4E4E0;border-radius:12px;padding:22px;display:flex;flex-direction:column;gap:18px}
+.h2{margin:0;font-size:16px;font-weight:600;color:#16181D}
+</style>
+</helmet>
+<div style="min-height: 900px; font-family: Inter, system-ui, sans-serif; color: #16181D; background: #F7F7F5; display: flex; flex-direction: column">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; padding: 12px 24px; background: #FFFFFF; border-bottom: 1px solid #E4E4E0">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16181D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="4"></circle><path d="M12 3v3M12 18v3M3 12h3M18 12h3"></path></svg>
+      <span style="font-weight: 700; font-size: 16px; letter-spacing: -0.01em">decoy</span>
+      <span class="mono" style="font-size: 12px; color: #5C6068">v0.1.0</span>
+    </div>
+    <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 13px; color: #3F434A">
+      <span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 50%; background: #15803D"></span>
+      <span>Listening on</span>
+      <span class="mono" style="color: #16181D">localhost:6280</span>
+    </div>
+  </header>
+
+  <div style="padding: 18px 24px; background: #FFFFFF; border-bottom: 1px solid #E4E4E0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px">
+    <a href="Main.dc.html" style="font-size: 14px; font-weight: 500; text-decoration: none; padding: 6px 0">Servers</a>
+    <span aria-hidden="true" style="color: #9A9EA6">/</span>
+    <h1 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.01em">New server</h1>
+  </div>
+
+  <form style="flex: 1; width: 100%; max-width: 760px; margin: 0 auto; box-sizing: border-box; padding: 28px 24px 48px; display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+
+    <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 20px">
+
+      <section class="card" aria-labelledby="sec-id">
+        <h2 id="sec-id" class="h2">Identity</h2>
+        <label class="fld">Name <span class="hint">Lowercase letters, digits and dashes. Becomes part of the URL.</span>
+          <input class="ctl mono" value="{{name}}" onInput="{{setName}}" style="border-color: {{nameBorder}}">
+        </label>
+        <sc-if value="{{taken}}" hint-placeholder-val="{{ false }}">
+          <span role="alert" style="margin-top: -10px; font-size: 13px; color: #991B1B">A server named “{{name}}” already exists.</span>
+        </sc-if>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 14px; border-radius: 8px; background: #F3F3F0">
+          <span style="font-size: 13px; color: #4B4F57">Endpoint</span>
+          <span class="mono" style="font-size: 13px; color: #16181D; overflow-wrap: anywhere">localhost:6280/s/{{slug}}/mcp</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+          <label class="fld">serverInfo.name
+            <input class="ctl mono" value="decoy/{{slug}}">
+          </label>
+          <label class="fld">serverInfo.version
+            <input class="ctl mono" value="0.1.0">
+          </label>
+        </div>
+        <label class="fld">Instructions <span class="hint">Optional. Returned to the client in the initialize result.</span>
+          <textarea class="ctl" rows="3" style="padding: 10px 12px; min-height: 80px; resize: vertical; font-weight: 400">Mock weather server. Data is fake.</textarea>
+        </label>
+      </section>
+
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+        <button type="button" disabled="{{taken}}" style="min-height: 44px; padding: 0 20px; border: 0; border-radius: 8px; background: {{ctaBg}}; color: #FFFFFF; font: 600 14px Inter, sans-serif; cursor: pointer">Create server</button>
+        <a href="Main.dc.html" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border: 1px solid #DCDCD7; border-radius: 8px; background: #FFFFFF; color: #16181D; font-size: 14px; font-weight: 500; text-decoration: none; box-sizing: border-box">Cancel</a>
+        <span style="font-size: 13px; color: #4B4F57">Starts with no tools. Add them next — it’s live as soon as it’s created.</span>
+      </div>
+    </div>
+
+  </form>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { name: 'weather-v2' };
+  }
+  renderVals() {
+    var self = this;
+    var st = this.state;
+    var slug = (st.name || '').toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+/, '') || 'my-server';
+    var taken = ['weather', 'empty', 'big-catalog', 'echo'].indexOf(slug) !== -1;
+
+    return {
+      name: st.name, slug: slug, taken: taken,
+      nameBorder: taken ? '#B91C1C' : '#DCDCD7',
+      ctaBg: taken ? '#9A9EA6' : '#16181D',
+      setName: function (e) { self.setState({ name: e.target.value }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

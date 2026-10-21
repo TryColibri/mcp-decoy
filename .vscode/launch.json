@@ -1,0 +1,27 @@
+{
+  "version": "0.2.0",
+  "compounds": [
+    {
+      "name": "decoy: debug full stack",
+      "configurations": ["decoy: debug server", "decoy: debug client"]
+    }
+  ],
+  "configurations": [
+    {
+      "name": "decoy: debug server",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["exec", "tsx", "src/server/cli.ts", "--dev"],
+      "console": "integratedTerminal",
+      "runtimeVersion": "24.15",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "decoy: debug client",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5173"
+    }
+  ]
+}

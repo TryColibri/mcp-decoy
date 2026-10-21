@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>decoy · Servers</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F7F7F5}
+a{color:#1D4ED8}a:hover{color:#1E3A8A}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+.th{text-align:left;font-size:12px;font-weight:600;color:#5C6068;text-transform:uppercase;letter-spacing:.04em;padding:10px 16px;border-bottom:1px solid #E4E4E0;white-space:nowrap}
+.td{padding:14px 16px;border-bottom:1px solid #EDEDEA;font-size:14px;vertical-align:middle;white-space:nowrap}
+.nav{padding:8px 12px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:500;color:#3F434A}
+.nav:hover{color:#16181D;background:#EFEFEC}
+</style>
+</helmet>
+<div style="min-height: 900px; font-family: Inter, system-ui, sans-serif; color: #16181D; background: #F7F7F5; display: flex; flex-direction: column">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; padding: 12px 24px; background: #FFFFFF; border-bottom: 1px solid #E4E4E0">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16181D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="4"></circle><path d="M12 3v3M12 18v3M3 12h3M18 12h3"></path></svg>
+      <span style="font-weight: 700; font-size: 16px; letter-spacing: -0.01em">decoy</span>
+      <span class="mono" style="font-size: 12px; color: #5C6068">v0.1.0</span>
+    </div>
+    <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 13px; color: #3F434A">
+      <span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 50%; background: #15803D"></span>
+      <span>Listening on</span>
+      <span class="mono" style="color: #16181D">localhost:6280</span>
+    </div>
+  </header>
+
+  <main style="flex: 1; width: 100%; max-width: 1280px; margin: 0 auto; box-sizing: border-box; padding: 32px 24px 48px; display: flex; flex-direction: column; gap: 24px">
+
+    <div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h1 style="margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.02em">Servers</h1>
+        <p style="margin: 0; font-size: 15px; color: #4B4F57">Each mock server is mounted on its own URL. Point your client at one and watch the traffic in Logs.</p>
+      </div>
+      <a href="NewServer.dc.html" style="display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px; border-radius: 8px; background: #16181D; color: #FFFFFF; font: 600 14px Inter, sans-serif; text-decoration: none; box-sizing: border-box">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+        New server
+      </a>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+
+      <section aria-label="Server list" style="flex: 999 1 640px; min-width: 0; background: #FFFFFF; border: 1px solid #E4E4E0; border-radius: 12px; overflow: hidden">
+        <div style="overflow-x: auto">
+          <table style="width: 100%; border-collapse: collapse">
+            <thead>
+              <tr>
+                <th class="th" scope="col">Name</th>
+                <th class="th" scope="col">Endpoint</th>
+                <th class="th" scope="col">Exposes</th>
+                <th class="th" scope="col">Sessions</th>
+                <th class="th" scope="col"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{servers}}" as="s" hint-placeholder-count="3">
+                <tr>
+                  <td class="td">
+                    <div style="display: flex; align-items: center; gap: 10px">
+                      <span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 50%; background: {{s.dot}}"></span>
+                      <a href="Logs.dc.html" style="font-weight: 600; color: #16181D">{{s.name}}</a>
+                    </div>
+                  </td>
+                  <td class="td">
+                    <div style="display: flex; align-items: center; gap: 8px">
+                      <span class="mono" style="font-size: 13px; color: #16181D; background: #F3F3F0; padding: 4px 8px; border-radius: 6px">{{s.url}}</span>
+                      <button type="button" aria-label="Copy endpoint URL" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #E4E4E0; border-radius: 6px; background: #FFFFFF; cursor: pointer; color: #3F434A">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg>
+                      </button>
+                    </div>
+                  </td>
+                  <td class="td" style="color: #3F434A">{{s.exposes}}</td>
+                  <td class="td">
+                    <span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 500; background: {{s.pillBg}}; color: {{s.pillFg}}">{{s.sessions}}</span>
+                  </td>
+                  <td class="td" style="text-align: right">
+                    <div style="display: inline-flex; gap: 8px">
+                      <a href="Logs.dc.html" style="font-size: 13px; font-weight: 500; text-decoration: none; padding: 8px 10px">Logs</a>
+                      <a href="Tools.dc.html" style="font-size: 13px; font-weight: 500; text-decoration: none; padding: 8px 10px">Tools</a>
+                    </div>
+                  </td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+        <div style="padding: 14px 16px; font-size: 13px; color: #5C6068; background: #FAFAF8; border-top: 1px solid #EDEDEA">
+          Servers are defined in <span class="mono" style="color: #16181D">decoy.config.json</span> or created here. Changes apply live — no restart.
+        </div>
+      </section>
+
+      <aside style="flex: 1 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+
+        <section style="background: #FFFFFF; border: 1px solid #E4E4E0; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+          <h2 style="margin: 0; font-size: 15px; font-weight: 600">Need HTTPS or a public URL?</h2>
+          <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #4B4F57">decoy runs locally over plain HTTP. Put a tunnel in front of it, then use the tunnel host in place of localhost.</p>
+          <div class="mono" style="font-size: 12px; line-height: 1.7; background: #16181D; color: #E8E8E3; border-radius: 8px; padding: 12px 14px; overflow-x: auto; white-space: nowrap">
+            <div><span style="color: #8B9099">$</span> cloudflared tunnel --url http://localhost:6280</div>
+            <div><span style="color: #8B9099">$</span> ngrok http 6280</div>
+          </div>
+        </section>
+
+      </aside>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var live = { dot: '#15803D', pillBg: '#E7F5EC', pillFg: '#14532D' };
+    var idle = { dot: '#9A9EA6', pillBg: '#F0F0ED', pillFg: '#4B4F57' };
+    return {
+      servers: [
+        Object.assign({ name: 'weather', url: 'localhost:6280/s/weather/mcp', exposes: '4 tools · 1 resource', sessions: '2 live' }, live),
+        Object.assign({ name: 'empty', url: 'localhost:6280/s/empty/mcp', exposes: 'No capabilities', sessions: '0' }, idle),
+        Object.assign({ name: 'big-catalog', url: 'localhost:6280/s/big-catalog/mcp', exposes: '120 tools', sessions: '1 live' }, live),
+        Object.assign({ name: 'echo', url: 'localhost:6280/s/echo/mcp', exposes: '1 tool', sessions: '0' }, idle)
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

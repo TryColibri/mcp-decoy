@@ -1,0 +1,29 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "singleQuote": true,
+  "printWidth": 80,
+  "sortPackageJson": true,
+  "sortImports": {
+    "ignoreCase": false,
+    "newlinesBetween": true,
+    "internalPattern": ["@/"],
+    "sortSideEffects": false
+  },
+  "ignorePatterns": [
+    ".claude/skills/",
+    ".claude/worktrees/",
+    ".agents/skills/",
+    "dist/",
+    "coverage/",
+    "docs/design/",
+    "pnpm-lock.yaml"
+  ],
+  "overrides": [
+    {
+      "files": ["**/*.md"],
+      "options": {
+        "proseWrap": "always"
+      }
+    }
+  ]
+}

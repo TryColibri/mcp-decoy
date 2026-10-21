@@ -1,0 +1,14 @@
+name: Setup
+description: Install pnpm and Node.js, then install dependencies from a warm store.
+
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v6
+    # Must come after pnpm: `cache: pnpm` shells out to `pnpm store path`.
+    - uses: actions/setup-node@v7
+      with:
+        node-version-file: .nvmrc
+        cache: pnpm
+    - shell: bash
+      run: pnpm install --frozen-lockfile --prefer-offline

@@ -1,0 +1,77 @@
+{
+  "name": "decoy",
+  "version": "0.1.0",
+  "description": "A configurable mock MCP server with a live web UI, for debugging MCP clients",
+  "license": "MIT",
+  "bin": {
+    "decoy": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm run --parallel \"/^dev:/\"",
+    "dev:server": "tsx watch src/server/cli.ts --dev",
+    "dev:ui": "vite",
+    "build": "vite build && tsdown",
+    "start": "node dist/cli.js",
+    "prepack": "pnpm build",
+    "format": "oxfmt --check",
+    "format:fix": "oxfmt",
+    "lint": "oxlint --max-warnings 0",
+    "lint:fix": "oxlint --fix --max-warnings 0",
+    "fix": "pnpm run format:fix && pnpm run lint:fix",
+    "typecheck": "tsc -b",
+    "test": "vitest run --typecheck",
+    "test:watch": "vitest --typecheck",
+    "test:coverage": "vitest run --coverage --typecheck"
+  },
+  "dependencies": {
+    "@bomb.sh/args": "0.3.1",
+    "@clack/prompts": "1.8.1",
+    "@hono/node-server": "2.1.5",
+    "@hono/zod-validator": "0.9.1",
+    "@modelcontextprotocol/server": "2.3.1",
+    "env-paths": "4.0.0",
+    "hono": "4.13.13",
+    "json-e": "4.8.4",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@base-ui/react": "1.9.0",
+    "@fontsource/inter": "5.3.0",
+    "@fontsource/jetbrains-mono": "5.3.0",
+    "@modelcontextprotocol/client": "2.3.1",
+    "@oxlint/plugins": "1.89.0",
+    "@tailwindcss/vite": "4.3.3",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.8",
+    "@types/node": "^24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "@vitest/coverage-v8": "5.0.5",
+    "chain-mock": "0.2.0",
+    "jsdom": "30.1.3",
+    "lucide-react": "1.60.0",
+    "oxfmt": "0.74.0",
+    "oxlint": "1.89.0",
+    "oxlint-tsgolint": "7.0.2004",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "react-router": "8.5.0",
+    "swr": "2.5.1",
+    "tailwindcss": "4.3.3",
+    "tsdown": "0.23.1",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vite": "8.3.4",
+    "vitest": "5.0.5"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@12.4.2"
+}
