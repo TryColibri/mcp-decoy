@@ -1,3 +1,7 @@
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import {
   Client,
   StreamableHTTPClientTransport,
@@ -538,6 +542,60 @@ describe('uiApp', () => {
         headers: viteOrigin,
       });
       expect(response.status).toBe(201);
+    });
+  });
+
+  describe('static SPA', () => {
+    let root: string;
+
+    beforeEach(async () => {
+      root = await mkdtemp(join(tmpdir(), 'decoy-ui-'));
+      await mkdir(join(root, 'ui', 'assets'), { recursive: true });
+      await writeFile(
+        join(root, 'ui', 'index.html'),
+        '<!doctype html><title>decoy</title>',
+      );
+      await writeFile(
+        join(root, 'ui', 'assets', 'app-abc123.js'),
+        'console.log(1)',
+      );
+      await writeFile(join(root, 'secret.txt'), 'secret');
+      app = createUIApp({
+        api: services.api,
+        port: () => PORT,
+        staticRoot: join(root, 'ui'),
+        dev: false,
+      });
+    });
+
+    afterEach(async () => {
+      await rm(root, { recursive: true, force: true });
+    });
+
+    it('serves hashed assets with immutable caching', async () => {
+      const response = await request('/assets/app-abc123.js');
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get('cache-control')).toContain('immutable');
+      await expect(response.text()).resolves.toBe('console.log(1)');
+    });
+
+    it('falls back to index.html for client-side routes', async () => {
+      const response = await request('/servers/weather/logs');
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-type')).toContain('text/html');
+      await expect(response.text()).resolves.toContain('<title>decoy</title>');
+    });
+
+    it('never serves files outside the root', async () => {
+      const response = await request('/%2e%2e/secret.txt');
+
+      await expect(response.text()).resolves.not.toContain('secret');
+    });
+
+    it('answers unknown API routes with problem+json, not index.html', async () => {
+      await expectProblem(await request('/api/v1/nope'), 404, 'not-found');
     });
   });
 });

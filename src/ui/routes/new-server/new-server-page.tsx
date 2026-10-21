@@ -121,18 +121,15 @@ export function NewServerPage() {
           </h2>
 
           <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor={ids.name}
-              className="text-[13px] font-semibold text-ink-2"
-            >
-              Name{' '}
+            <p className="m-0 text-[13px] font-semibold text-ink-2">
+              <label htmlFor={ids.name}>Name</label>{' '}
               <span
                 id={ids.nameHint}
                 className="text-xs font-normal text-ink-4"
               >
                 Lowercase letters, digits and dashes. Becomes part of the URL.
               </span>
-            </label>
+            </p>
             <input
               id={ids.name}
               className={`${control} font-mono ${
@@ -146,7 +143,11 @@ export function NewServerPage() {
               autoComplete="off"
               spellCheck={false}
               placeholder="weather"
-              aria-describedby={`${ids.nameHint} ${nameError === null ? '' : ids.nameError}`}
+              aria-describedby={
+                nameError === null
+                  ? ids.nameHint
+                  : `${ids.nameHint} ${ids.nameError}`
+              }
               aria-invalid={nameError !== null}
               required
             />
@@ -218,18 +219,15 @@ export function NewServerPage() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor={ids.instructions}
-              className="text-[13px] font-semibold text-ink-2"
-            >
-              Instructions{' '}
+            <p className="m-0 text-[13px] font-semibold text-ink-2">
+              <label htmlFor={ids.instructions}>Instructions</label>{' '}
               <span
                 id={ids.instructionsHint}
                 className="text-xs font-normal text-ink-4"
               >
                 Optional. Returned to the client in the initialize result.
               </span>
-            </label>
+            </p>
             <textarea
               id={ids.instructions}
               rows={3}
