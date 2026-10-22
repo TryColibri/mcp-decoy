@@ -18,7 +18,8 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     proxy: {
-      '/api': { target: 'http://localhost:6281', changeOrigin: true },
+      // Anchored: a bare '/api' would also catch the `/api.ts` module.
+      '^/api/': { target: 'http://localhost:6281', changeOrigin: true },
     },
   },
 });
