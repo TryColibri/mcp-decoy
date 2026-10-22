@@ -41,9 +41,10 @@ export type ToolEditorProps = {
 
 const fieldLabel = tw`flex flex-col gap-1.5 text-[13px] font-semibold text-ink-2`;
 const hint = tw`text-xs font-normal text-ink-4`;
-const textarea = tw`box-border w-full resize-y rounded-lg border bg-input px-3.5 py-3 leading-[1.6] text-ink`;
-const code = tw`${textarea} font-mono text-[12.5px]`;
-const prose = tw`${textarea} font-sans text-sm`;
+const textarea = tw`box-border w-full rounded-lg border bg-input px-3.5 py-3 leading-[1.6] text-ink`;
+/** Fixed-size, fills the height left over in its field. */
+const code = tw`${textarea} min-h-0 flex-1 resize-none font-mono text-[12.5px]`;
+const prose = tw`${textarea} resize-y font-sans text-sm`;
 /** Lets two fields side by side share their label row, so the inputs line up. */
 const aligned = tw`@4xl:row-span-2 @4xl:grid @4xl:grid-rows-subgrid`;
 const control = tw`box-border min-h-10 rounded-lg border bg-surface px-3 text-sm font-medium text-ink`;
@@ -169,8 +170,8 @@ export function ToolEditor({
 
   return (
     <div className="@container flex min-h-0 flex-1 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="flex flex-col gap-5 px-8 pt-7 pb-8">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <div className="flex flex-1 flex-col gap-5 px-8 pt-7 pb-8">
           <div className="flex flex-wrap items-center gap-3">
             <h2 className="m-0 font-mono text-[22px] font-medium break-all">
               {tool.name}
@@ -233,7 +234,7 @@ export function ToolEditor({
             />
           </Field>
 
-          <div className="grid grid-cols-1 gap-4 @4xl:grid-cols-2 @4xl:gap-y-1.5">
+          <div className="grid min-h-120 flex-1 grid-cols-1 gap-4 contain-size @4xl:min-h-80 @4xl:grid-cols-2 @4xl:grid-rows-[auto_minmax(0,1fr)] @4xl:gap-y-1.5">
             <Field
               id={ids.schema}
               className={aligned}
@@ -244,7 +245,6 @@ export function ToolEditor({
             >
               <textarea
                 id={ids.schema}
-                rows={16}
                 className={twMerge(code, borderOf(errors.inputSchema))}
                 value={form.inputSchema}
                 onChange={(event) => {
@@ -266,7 +266,6 @@ export function ToolEditor({
             >
               <textarea
                 id={ids.template}
-                rows={16}
                 className={twMerge(code, borderOf(errors.responseTemplate))}
                 value={form.responseTemplate}
                 onChange={(event) => {
@@ -379,7 +378,7 @@ function Field({
           </>
         )}
       </p>
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-1 flex-col gap-1.5">
         {children}
         {error !== undefined && (
           <span role="alert" className="text-[13px] font-normal text-error">
