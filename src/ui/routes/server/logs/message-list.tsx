@@ -69,9 +69,9 @@ export function MessageList({
       onScroll={onScroll}
       className="max-h-[calc(100dvh-235px)] min-h-80 overflow-auto"
     >
-      <div className="min-w-[560px]">
+      <div className="min-w-140">
         <div
-          className={`${grid} sticky top-0 z-10 min-h-[34px] border-b border-line-soft bg-subtle text-xs font-semibold tracking-wide text-ink-4 uppercase`}
+          className={`${grid} sticky top-0 z-10 min-h-8.5 border-b border-line-soft bg-subtle text-xs font-semibold tracking-wide text-ink-4 uppercase`}
         >
           <span>Time</span>
           <span>
@@ -158,7 +158,7 @@ export function DirectionBadge({ direction }: DirectionBadgeProps) {
   return (
     <span
       title={label}
-      className={`inline-flex size-[22px] items-center justify-center rounded-md font-bold ${
+      className={`inline-flex size-5.5 items-center justify-center rounded-md font-bold ${
         incoming ? 'bg-in-bg text-in' : 'bg-out-bg text-out'
       }`}
     >

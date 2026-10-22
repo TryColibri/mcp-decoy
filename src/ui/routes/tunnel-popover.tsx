@@ -26,7 +26,7 @@ export function TunnelPopover({ host, port }: TunnelPopoverProps) {
         <Popover.Positioner side="bottom" align="end" sideOffset={8}>
           <Popover.Popup
             aria-label="Tunnel the MCP port"
-            className="flex w-[480px] max-w-[calc(100vw-2rem)] flex-col gap-3 rounded-xl border border-line bg-surface p-5 shadow-xl"
+            className="flex w-120 max-w-[calc(100vw-2rem)] flex-col gap-3 rounded-xl border border-line bg-surface p-5 shadow-xl"
           >
             <Popover.Description className="m-0 text-[13px] leading-normal text-ink-3">
               decoy serves plain HTTP. Put a tunnel in front of the MCP port,

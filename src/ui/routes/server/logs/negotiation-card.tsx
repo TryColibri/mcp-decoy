@@ -63,7 +63,7 @@ export function NegotiationCard({
 
   if (negotiation === null) {
     return (
-      <section className="flex flex-col gap-2 rounded-xl border border-line bg-surface px-[18px] py-4">
+      <section className="flex flex-col gap-2 rounded-xl border border-line bg-surface px-4.5 py-4">
         {title}
         <p className="m-0 text-[13px] text-ink-3">
           The <span className="font-mono">initialize</span> exchange of this
@@ -86,7 +86,7 @@ export function NegotiationCard({
     );
 
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-line bg-surface px-[18px] py-4">
+    <section className="flex flex-col gap-3 rounded-xl border border-line bg-surface px-4.5 py-4">
       <div className="flex items-center justify-between gap-2">
         {title}
         {badge}
@@ -136,7 +136,7 @@ const tones: Record<BadgeProps['tone'], string> = {
 function Badge({ tone, children }: BadgeProps) {
   return (
     <span
-      className={`rounded-full px-2 py-[3px] text-xs font-semibold ${tones[tone]}`}
+      className={`rounded-full px-2 py-0.75 text-xs font-semibold ${tones[tone]}`}
     >
       {children}
     </span>

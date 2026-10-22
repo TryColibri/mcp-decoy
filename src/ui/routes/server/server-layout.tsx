@@ -49,7 +49,7 @@ export function ServerLayout() {
 
   return (
     <>
-      <div className="flex flex-col gap-2.5 border-b border-line bg-surface px-6 pt-[18px]">
+      <div className="flex flex-col gap-2.5 border-b border-line bg-surface px-6 pt-4.5">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <Link to="/" className="py-1.5 text-sm font-medium no-underline">
             Servers
@@ -131,7 +131,7 @@ function DeleteServerButton({ name }: DeleteServerButtonProps) {
       </AlertDialog.Trigger>
       <AlertDialog.Portal>
         <AlertDialog.Backdrop className="fixed inset-0 bg-ink/30" />
-        <AlertDialog.Popup className="fixed top-1/2 left-1/2 flex w-[420px] max-w-[calc(100vw-2rem)] -translate-1/2 flex-col gap-4 rounded-xl border border-line bg-surface p-6 shadow-xl">
+        <AlertDialog.Popup className="fixed top-1/2 left-1/2 flex w-105 max-w-[calc(100vw-2rem)] -translate-1/2 flex-col gap-4 rounded-xl border border-line bg-surface p-6 shadow-xl">
           <AlertDialog.Title className="m-0 text-base font-semibold">
             Delete “{name}”?
           </AlertDialog.Title>

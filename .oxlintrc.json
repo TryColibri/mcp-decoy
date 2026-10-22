@@ -25,7 +25,8 @@
       "version": "19.3.1"
     },
     "better-tailwindcss": {
-      "entryPoint": "src/ui/styles.css"
+      "entryPoint": "src/ui/styles.css",
+      "rootFontSize": 16
     }
   },
   "ignorePatterns": ["dist/", ".agents/", ".claude/", "coverage/", "docs/"],

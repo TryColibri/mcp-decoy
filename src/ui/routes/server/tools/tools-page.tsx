@@ -103,7 +103,7 @@ export function ToolsPage() {
         onSelect={select}
         onCreate={createTool}
       />
-      <main className="box-border flex max-w-[980px] min-w-0 flex-[999_1_640px] flex-col gap-5 px-8 pt-7 pb-8">
+      <main className="box-border flex max-w-245 min-w-0 flex-[999_1_640px] flex-col gap-5 px-8 pt-7 pb-8">
         {editor}
       </main>
     </div>

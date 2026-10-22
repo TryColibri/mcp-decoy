@@ -73,7 +73,7 @@ function MessageJSON({ entry, entries, onSelect }: MessageJSONProps) {
 
   return (
     <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-line bg-surface">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line-soft px-[18px] py-3.5">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line-soft px-4.5 py-3.5">
         <DirectionBadge direction={entry.direction} />
         <h2 className="m-0 font-mono text-sm font-medium">
           {entry.method ?? '(unknown)'}
@@ -100,7 +100,7 @@ function MessageJSON({ entry, entries, onSelect }: MessageJSONProps) {
           )}
         </div>
       </div>
-      <pre className="m-0 min-h-40 flex-1 overflow-auto bg-code px-[18px] py-4 font-mono text-[12.5px] leading-[1.6] whitespace-pre text-code-ink">
+      <pre className="m-0 min-h-40 flex-1 overflow-auto bg-code px-4.5 py-4 font-mono text-[12.5px] leading-[1.6] whitespace-pre text-code-ink">
         {json}
       </pre>
     </section>

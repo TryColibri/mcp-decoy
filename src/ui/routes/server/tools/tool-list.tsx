@@ -62,7 +62,7 @@ export function ToolList({
                 onSelect(tool.name);
               }}
               aria-pressed={active}
-              className={`flex min-h-[52px] w-full cursor-pointer flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-left font-sans ${
+              className={`flex min-h-13 w-full cursor-pointer flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-left font-sans ${
                 active
                   ? 'border-selected-line bg-selected'
                   : 'border-transparent bg-surface hover:bg-row-hover'
