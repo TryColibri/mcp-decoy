@@ -4,6 +4,7 @@ import {
   type CreateServerRequest,
   type ServerConfig,
   type ServerSummary,
+  type UpdateServerRequest,
 } from '@/shared/api';
 
 import { type ServerRepository } from './repository';
@@ -25,7 +26,7 @@ export type ServersServiceDeps = {
   now?: () => Date;
 };
 
-/** Creating, listing and deleting mock servers. */
+/** Creating, listing, updating and deleting mock servers. */
 export type ServersService = {
   /** Every server, in creation order. */
   list(): ServerSummary[];
@@ -50,6 +51,14 @@ export type ServersService = {
    * @throws {ConflictError} When the name is taken.
    */
   create(input: CreateServerRequest): Promise<ServerSummary>;
+  /**
+   * Updates any subset of a server's name, `serverInfo` and instructions.
+   * Renaming moves the server and announces it, which closes its sessions.
+   * Live sessions keep the identity they were opened with.
+   * @throws {NotFoundError} When it doesn't exist.
+   * @throws {ConflictError} When renaming onto an existing server.
+   */
+  update(name: string, patch: UpdateServerRequest): Promise<ServerSummary>;
   /**
    * Deletes a server and announces it, which closes its sessions.
    * @throws {NotFoundError} When it doesn't exist.
@@ -119,6 +128,42 @@ export function createServersService({
         return { servers: [...servers, server], result: server };
       });
       return summarize(created);
+    },
+
+    async update(name, { name: newName = name, serverInfo, instructions }) {
+      const updated = await repository.update((servers) => {
+        const current = servers.find((server) => server.name === name);
+        if (current === undefined) {
+          throw new NotFoundError(`No server named "${name}"`);
+        }
+        if (
+          newName !== name &&
+          servers.some((server) => server.name === newName)
+        ) {
+          throw new ConflictError(`A server named "${newName}" already exists`);
+        }
+        const { instructions: previous, ...rest } = current;
+        const kept = instructions ?? previous;
+        const server: ServerConfig = {
+          ...rest,
+          name: newName,
+          serverInfo: {
+            name: serverInfo?.name ?? current.serverInfo.name,
+            version: serverInfo?.version ?? current.serverInfo.version,
+          },
+          ...(kept === undefined || kept === '' ? {} : { instructions: kept }),
+        };
+        return {
+          servers: servers.map((candidate) =>
+            candidate === current ? server : candidate,
+          ),
+          result: server,
+        };
+      });
+      if (updated.name !== name) {
+        events.emit('serverRenamed', { from: name, to: updated.name });
+      }
+      return summarize(updated);
     },
 
     async delete(name) {

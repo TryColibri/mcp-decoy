@@ -120,7 +120,7 @@ export const serverListSchema: z.ZodType<ServerList> = z.strictObject({
 
 /** Request body of `POST /api/v1/servers`. */
 export type CreateServerRequest = {
-  /** URL slug of the new server. Cannot change later. */
+  /** URL slug of the new server. */
   name: string;
   /** Defaults to `{ name: "decoy/<name>", version: "0.1.0" }`, field by field. */
   serverInfo?: Partial<ServerInfo>;
@@ -130,9 +130,7 @@ export type CreateServerRequest = {
 
 export const createServerRequestSchema: z.ZodType<CreateServerRequest> =
   z.strictObject({
-    name: serverNameSchema.describe(
-      'URL slug of the new server. Cannot change later.',
-    ),
+    name: serverNameSchema.describe('URL slug of the new server.'),
     serverInfo: z
       .strictObject({
         name: z.string().min(1, 'Name is required').optional(),
@@ -147,5 +145,40 @@ export const createServerRequestSchema: z.ZodType<CreateServerRequest> =
       .optional()
       .describe(
         'Optional `instructions` in the `initialize` result. Empty means none.',
+      ),
+  });
+
+/** Request body of `PATCH /api/v1/servers/{server}`. Omitted fields keep their value. */
+export type UpdateServerRequest = {
+  /**
+   * New URL slug. Renaming moves the server: its endpoint URL changes, its
+   * live sessions are closed and its logs follow it.
+   */
+  name?: string;
+  /** New `serverInfo` fields, field by field. */
+  serverInfo?: Partial<ServerInfo>;
+  /** New `instructions` in the `initialize` result. Empty removes them. */
+  instructions?: string;
+};
+
+export const updateServerRequestSchema: z.ZodType<UpdateServerRequest> =
+  z.strictObject({
+    name: serverNameSchema
+      .optional()
+      .describe(
+        'New URL slug. Renaming moves the server: its endpoint URL changes, its live sessions are closed and its logs follow it.',
+      ),
+    serverInfo: z
+      .strictObject({
+        name: z.string().min(1, 'Name is required').optional(),
+        version: z.string().min(1, 'Version is required').optional(),
+      })
+      .optional()
+      .describe('New `serverInfo` fields, field by field.'),
+    instructions: z
+      .string()
+      .optional()
+      .describe(
+        'New `instructions` in the `initialize` result. Empty removes them.',
       ),
   });

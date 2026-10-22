@@ -87,6 +87,9 @@ export function createServices({
     sessionCount: (server) => sessions.count(server),
     mcpUrl: (server) => instance().mcp.urlTemplate.replace('{server}', server),
   });
+  events.on('serverRenamed', ({ from, to }) => {
+    store.rename(from, to);
+  });
   const logs = createLogsService({
     store,
     assertServerExists: (server) => {

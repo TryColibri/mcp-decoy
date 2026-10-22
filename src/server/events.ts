@@ -4,6 +4,8 @@ export type DecoyEvents = {
   toolsChanged: { server: string };
   /** `server` was deleted. */
   serverDeleted: { server: string };
+  /** The server named `from` is now named `to`. */
+  serverRenamed: { from: string; to: string };
 };
 
 type Listener<T> = (payload: T) => void;

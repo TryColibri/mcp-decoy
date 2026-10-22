@@ -96,6 +96,71 @@ describe('ServersService', () => {
     });
   });
 
+  describe('update', () => {
+    it('merges serverInfo field by field and keeps the rest', async () => {
+      await service.create({ name: 'weather', instructions: 'Hi' });
+
+      const updated = await service.update('weather', {
+        serverInfo: { version: '2.0.0' },
+      });
+
+      expect(updated).toMatchObject({
+        name: 'weather',
+        serverInfo: { name: 'decoy/weather', version: '2.0.0' },
+        instructions: 'Hi',
+        createdAt: NOW.toISOString(),
+      });
+      expect(mockEvents.emit).not.toHaveBeenCalled();
+    });
+
+    it('removes the instructions when given an empty string', async () => {
+      await service.create({ name: 'weather', instructions: 'Hi' });
+
+      const updated = await service.update('weather', { instructions: '' });
+
+      expect(updated.instructions).toBeUndefined();
+      expect(service.get('weather').instructions).toBeUndefined();
+    });
+
+    it('renames in place, keeps tools and emits serverRenamed', async () => {
+      await service.create({ name: 'first' });
+      await service.create({ name: 'weather' });
+
+      const updated = await service.update('weather', { name: 'forecast' });
+
+      expect(updated.name).toBe('forecast');
+      expect(updated.mcpUrl).toBe('http://localhost:6280/s/forecast/mcp');
+      expect(service.names()).toEqual(['first', 'forecast']);
+      expect(mockEvents.emit).toHaveBeenCalledExactlyOnceWith('serverRenamed', {
+        from: 'weather',
+        to: 'forecast',
+      });
+    });
+
+    it('is not a rename when the name is unchanged', async () => {
+      await service.create({ name: 'weather' });
+
+      await service.update('weather', { name: 'weather' });
+
+      expect(mockEvents.emit).not.toHaveBeenCalled();
+    });
+
+    it('throws ConflictError when renaming onto an existing server', async () => {
+      await service.create({ name: 'a' });
+      await service.create({ name: 'b' });
+
+      await expect(service.update('a', { name: 'b' })).rejects.toThrow(
+        ConflictError,
+      );
+      expect(service.names()).toEqual(['a', 'b']);
+      expect(mockEvents.emit).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundError for an unknown server', async () => {
+      await expect(service.update('nope', {})).rejects.toThrow(NotFoundError);
+    });
+  });
+
   describe('delete', () => {
     it('removes the server and emits serverDeleted', async () => {
       await service.create({ name: 'weather' });

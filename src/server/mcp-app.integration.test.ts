@@ -301,6 +301,25 @@ describe('mcpApp', () => {
     });
   });
 
+  describe('renaming a server', () => {
+    it('closes its sessions and moves its logs to the new name', async () => {
+      const { services } = harness;
+      const { client } = await connect(harness, 'weather');
+      const logged = services.logs.all('weather').length;
+
+      await services.servers.update('weather', { name: 'forecast' });
+
+      expect(services.sessions.count('weather')).toBe(0);
+      await expect(client.listTools()).rejects.toThrow(/Unknown server/);
+      expect(services.logs.all('forecast').length).toBeGreaterThanOrEqual(
+        logged,
+      );
+      expect(services.logs.all('forecast').at(0)?.server).toBe('forecast');
+      const fresh = await connect(harness, 'forecast');
+      await expect(fresh.client.listTools()).resolves.toBeDefined();
+    });
+  });
+
   describe('version negotiation', () => {
     it('falls back to initialize for clients that probe the 2026 era', async () => {
       const client = new Client(

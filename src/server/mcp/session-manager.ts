@@ -71,7 +71,7 @@ type LiveSession = {
 
 /**
  * Creates the session manager and subscribes it to `toolsChanged` (sends
- * `notifications/tools/list_changed`) and `serverDeleted` (closes sessions).
+ * `notifications/tools/list_changed`) and `serverDeleted` and `serverRenamed` (close sessions).
  *
  * @param deps - Server lookups, capture and event bus.
  */
@@ -108,6 +108,12 @@ export function createSessionManager({
 
   events.on('serverDeleted', ({ server }) => {
     for (const session of sessionsOf(server)) {
+      void closeSession(session);
+    }
+  });
+
+  events.on('serverRenamed', ({ from }) => {
+    for (const session of sessionsOf(from)) {
       void closeSession(session);
     }
   });

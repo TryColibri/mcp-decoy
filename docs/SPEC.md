@@ -294,24 +294,25 @@ something, it's an API feature.
 
 ### 7.2 Endpoints
 
-| Method & path                                         | Purpose                                                                                                                             |
-| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /api/v1`                                         | Instance info: version, MCP port and host, UI port, config file path, MCP URL template, link to the servers collection.             |
-| `GET /api/v1/servers`                                 | List servers, each with `toolCount`, `publishedToolCount`, `sessionCount` and `mcpUrl`.                                             |
-| `POST /api/v1/servers`                                | Create `{ name, serverInfo?, instructions? }` → 201 + `Location`.                                                                   |
-| `GET /api/v1/servers/{server}`                        | One server (same summary fields).                                                                                                   |
-| `DELETE /api/v1/servers/{server}`                     | Delete it and close its sessions → 204.                                                                                             |
-| `GET /api/v1/servers/{server}/tools`                  | List tools, drafts included.                                                                                                        |
-| `POST /api/v1/servers/{server}/tools`                 | Create a tool; omitted fields take defaults; `published` defaults to `false` → 201 + `Location`.                                    |
-| `GET /api/v1/servers/{server}/tools/{tool}`           | One tool.                                                                                                                           |
-| `PATCH /api/v1/servers/{server}/tools/{tool}`         | Partial update of any field, including `published: true/false` (publishing is a state change on the resource, not an RPC endpoint). |
-| `DELETE /api/v1/servers/{server}/tools/{tool}`        | Delete → 204.                                                                                                                       |
-| `GET /api/v1/servers/{server}/sessions`               | Live MCP sessions: `id`, `clientInfo`, `protocolVersion`, client capabilities, `connectedAt`, `lastSeenAt`.                         |
-| `DELETE /api/v1/servers/{server}/sessions/{session}`  | Close a session server-side → 204. Its client gets 404 on its next request and should re-initialize.                                |
-| `GET /api/v1/servers/{server}/logs?q=&cursor=&limit=` | Log entries, newest first, paginated.                                                                                               |
-| `DELETE /api/v1/servers/{server}/logs`                | Clear → 204.                                                                                                                        |
-| `GET /api/v1/servers/{server}/logs/stream?after=`     | Live SSE stream (§ 9.4).                                                                                                            |
-| `GET /api/v1/servers/{server}/logs/export`            | All entries as NDJSON (`application/x-ndjson`), with `Content-Disposition: attachment`.                                             |
+| Method & path                                         | Purpose                                                                                                                                  |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1`                                         | Instance info: version, MCP port and host, UI port, config file path, MCP URL template, link to the servers collection.                  |
+| `GET /api/v1/servers`                                 | List servers, each with `toolCount`, `publishedToolCount`, `sessionCount` and `mcpUrl`.                                                  |
+| `POST /api/v1/servers`                                | Create `{ name, serverInfo?, instructions? }` → 201 + `Location`.                                                                        |
+| `GET /api/v1/servers/{server}`                        | One server (same summary fields).                                                                                                        |
+| `PATCH /api/v1/servers/{server}`                      | Partial update of `name`, `serverInfo` and `instructions`. A new `name` moves the server: `Location` header, sessions closed, logs kept. |
+| `DELETE /api/v1/servers/{server}`                     | Delete it and close its sessions → 204.                                                                                                  |
+| `GET /api/v1/servers/{server}/tools`                  | List tools, drafts included.                                                                                                             |
+| `POST /api/v1/servers/{server}/tools`                 | Create a tool; omitted fields take defaults; `published` defaults to `false` → 201 + `Location`.                                         |
+| `GET /api/v1/servers/{server}/tools/{tool}`           | One tool.                                                                                                                                |
+| `PATCH /api/v1/servers/{server}/tools/{tool}`         | Partial update of any field, including `published: true/false` (publishing is a state change on the resource, not an RPC endpoint).      |
+| `DELETE /api/v1/servers/{server}/tools/{tool}`        | Delete → 204.                                                                                                                            |
+| `GET /api/v1/servers/{server}/sessions`               | Live MCP sessions: `id`, `clientInfo`, `protocolVersion`, client capabilities, `connectedAt`, `lastSeenAt`.                              |
+| `DELETE /api/v1/servers/{server}/sessions/{session}`  | Close a session server-side → 204. Its client gets 404 on its next request and should re-initialize.                                     |
+| `GET /api/v1/servers/{server}/logs?q=&cursor=&limit=` | Log entries, newest first, paginated.                                                                                                    |
+| `DELETE /api/v1/servers/{server}/logs`                | Clear → 204.                                                                                                                             |
+| `GET /api/v1/servers/{server}/logs/stream?after=`     | Live SSE stream (§ 9.4).                                                                                                                 |
+| `GET /api/v1/servers/{server}/logs/export`            | All entries as NDJSON (`application/x-ndjson`), with `Content-Disposition: attachment`.                                                  |
 
 Live session counts in the SPA come from SWR polling (`refreshInterval: 2000`)
 on the servers and server resources. That's good enough locally; don't add

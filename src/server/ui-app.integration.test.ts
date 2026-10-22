@@ -154,6 +154,75 @@ describe('uiApp', () => {
       );
     });
 
+    it('updates a server and moves it when renamed', async () => {
+      await request('/api/v1/servers', {
+        method: 'POST',
+        json: { name: 'weather' },
+      });
+
+      const edited = await request('/api/v1/servers/weather', {
+        method: 'PATCH',
+        json: { serverInfo: { version: '2.0.0' }, instructions: 'Fake data.' },
+      });
+      expect(edited.status).toBe(200);
+      expect(edited.headers.get('location')).toBeNull();
+      expect(serverSummarySchema.parse(await edited.json())).toMatchObject({
+        name: 'weather',
+        serverInfo: { name: 'decoy/weather', version: '2.0.0' },
+        instructions: 'Fake data.',
+      });
+
+      const renamed = await request('/api/v1/servers/weather', {
+        method: 'PATCH',
+        json: { name: 'forecast' },
+      });
+      expect(renamed.status).toBe(200);
+      expect(renamed.headers.get('location')).toBe('/api/v1/servers/forecast');
+      expect(serverSummarySchema.parse(await renamed.json()).mcpUrl).toBe(
+        'http://localhost:6280/s/forecast/mcp',
+      );
+      await expectProblem(
+        await request('/api/v1/servers/weather'),
+        404,
+        'not-found',
+      );
+    });
+
+    it('answers 409 when renaming onto an existing server', async () => {
+      await request('/api/v1/servers', { method: 'POST', json: { name: 'a' } });
+      await request('/api/v1/servers', { method: 'POST', json: { name: 'b' } });
+
+      await expectProblem(
+        await request('/api/v1/servers/a', {
+          method: 'PATCH',
+          json: { name: 'b' },
+        }),
+        409,
+        'conflict',
+      );
+    });
+
+    it('answers 422 for an invalid update and 404 for an unknown server', async () => {
+      await request('/api/v1/servers', { method: 'POST', json: { name: 'a' } });
+
+      await expectProblem(
+        await request('/api/v1/servers/a', {
+          method: 'PATCH',
+          json: { name: 'Not A Slug' },
+        }),
+        422,
+        'validation',
+      );
+      await expectProblem(
+        await request('/api/v1/servers/nope', {
+          method: 'PATCH',
+          json: {},
+        }),
+        404,
+        'not-found',
+      );
+    });
+
     it('answers 409 for a duplicate name', async () => {
       await request('/api/v1/servers', { method: 'POST', json: { name: 'a' } });
 

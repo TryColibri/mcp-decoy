@@ -35,6 +35,8 @@ export type LogStore = {
   query(query: LogQuery): LogEntry[];
   /** Drops every entry of `server`. */
   clear(server: string): void;
+  /** Reassigns every entry of `from` to `to`, keeping ids and order. */
+  rename(from: string, to: string): void;
   /** Calls `listener` for new entries and clears of `server`. Returns a function that unsubscribes. */
   subscribe(server: string, listener: (event: LogEvent) => void): () => void;
 };
@@ -109,6 +111,15 @@ export function createRingBufferLogStore(limit: number): LogStore {
       start = 0;
       size = kept.length;
       notify(server, { type: 'cleared' });
+    },
+
+    rename(from, to) {
+      for (let index = 0; index < size; index++) {
+        const entry = at(index);
+        if (entry?.server === from) {
+          buffer[(start + index) % limit] = { ...entry, server: to };
+        }
+      }
     },
 
     subscribe(server, listener) {

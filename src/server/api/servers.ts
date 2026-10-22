@@ -6,6 +6,7 @@ import {
   createServerRequestSchema,
   serverListSchema,
   serverSummarySchema,
+  updateServerRequestSchema,
 } from '@/shared/api';
 
 import { validationHook } from './problems';
@@ -34,6 +35,18 @@ export function createServersRoutes(servers: ServersService) {
         serverSummarySchema.parse(servers.get(c.req.param('server'))),
         200,
       ),
+    )
+    .patch(
+      '/:server',
+      zValidator('json', updateServerRequestSchema, validationHook),
+      async (c) => {
+        const name = c.req.param('server');
+        const updated = await servers.update(name, c.req.valid('json'));
+        if (updated.name !== name) {
+          c.header('Location', `/api/v1/servers/${updated.name}`);
+        }
+        return c.json(serverSummarySchema.parse(updated), 200);
+      },
     )
     .delete('/:server', async (c) => {
       await servers.delete(c.req.param('server'));

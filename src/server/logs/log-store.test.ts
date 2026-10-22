@@ -120,6 +120,25 @@ describe('createRingBufferLogStore', () => {
     });
   });
 
+  describe('rename', () => {
+    it('moves the entries of a server and keeps their ids', () => {
+      store.append(entry('a', 'one'));
+      store.append(entry('b', 'two'));
+      store.append(entry('a', 'three'));
+
+      store.rename('a', 'c');
+
+      expect(store.query({ server: 'a', limit: 10 })).toEqual([]);
+      expect(
+        store.query({ server: 'c', limit: 10 }).map((e) => [e.id, e.server]),
+      ).toEqual([
+        [3, 'c'],
+        [1, 'c'],
+      ]);
+      expect(store.query({ server: 'b', limit: 10 })).toHaveLength(1);
+    });
+  });
+
   describe('subscribe', () => {
     it('delivers new entries of the server until unsubscribed', () => {
       const listener = vi.fn();
