@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { Link } from 'react-router';
 import { twMerge } from 'tailwind-merge';
 
 import { type ServerSummary } from '@/shared/api';
+import { EditServerDialog } from '@/ui/components/edit-server-dialog';
 import { EndpointPill } from '@/ui/components/endpoint-pill';
 import { SessionsPill, StatusDot } from '@/ui/components/sessions-pill';
 import { tw } from '@/ui/tw';
@@ -17,6 +19,9 @@ const td = tw`border-b border-line-soft px-4 py-3.5 align-middle text-sm whitesp
 
 /** The servers table: name, endpoint, exposed tools, sessions, links. */
 export function ServerTable({ servers }: ServerTableProps) {
+  const [editing, setEditing] = useState<string | null>(null);
+  const editedServer = servers.find((server) => server.name === editing);
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse">
@@ -41,19 +46,35 @@ export function ServerTable({ servers }: ServerTableProps) {
         </thead>
         <tbody>
           {servers.map((server) => (
-            <ServerRow key={server.name} server={server} />
+            <ServerRow
+              key={server.name}
+              server={server}
+              onEdit={() => {
+                setEditing(server.name);
+              }}
+            />
           ))}
         </tbody>
       </table>
+      {editedServer !== undefined && (
+        <EditServerDialog
+          key={editedServer.name}
+          server={editedServer}
+          onClose={() => {
+            setEditing(null);
+          }}
+        />
+      )}
     </div>
   );
 }
 
 type ServerRowProps = {
   server: ServerSummary;
+  onEdit: () => void;
 };
 
-function ServerRow({ server }: ServerRowProps) {
+function ServerRow({ server, onEdit }: ServerRowProps) {
   const base = `/servers/${server.name}`;
   return (
     <tr>
@@ -86,6 +107,14 @@ function ServerRow({ server }: ServerRowProps) {
           >
             Tools
           </Link>
+          <button
+            type="button"
+            onClick={onEdit}
+            aria-label={`Edit ${server.name}`}
+            className="cursor-pointer border-0 bg-transparent px-2.5 py-2 font-sans text-[13px] font-medium text-link hover:text-link-hover"
+          >
+            Edit
+          </button>
         </div>
       </td>
     </tr>

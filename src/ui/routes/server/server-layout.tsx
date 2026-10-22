@@ -1,10 +1,11 @@
 import { AlertDialog } from '@base-ui/react/alert-dialog';
-import { TrashIcon } from '@phosphor-icons/react';
+import { PencilSimpleIcon, TrashIcon } from '@phosphor-icons/react';
 import { useState } from 'react';
 import {
   Link,
   NavLink,
   Outlet,
+  useLocation,
   useNavigate,
   useOutletContext,
   useParams,
@@ -15,6 +16,7 @@ import { twMerge } from 'tailwind-merge';
 import { type ServerSummary } from '@/shared/api';
 import { client, keys, unwrapEmpty, useServer } from '@/ui/api';
 import { Button, ButtonLink, buttonClasses } from '@/ui/components/button';
+import { EditServerDialog } from '@/ui/components/edit-server-dialog';
 import { EndpointPill } from '@/ui/components/endpoint-pill';
 import { SessionsPill } from '@/ui/components/sessions-pill';
 
@@ -29,7 +31,7 @@ export function useServerContext(): ServerOutletContext {
   return useOutletContext<ServerOutletContext>();
 }
 
-/** `/servers/:server/*`: header, delete action and the Logs | Tools tabs. */
+/** `/servers/:server/*`: header, edit and delete actions and the Logs | Tools tabs. */
 export function ServerLayout() {
   const { server: name = '' } = useParams();
   const { data: server, error } = useServer(name);
@@ -63,7 +65,8 @@ export function ServerLayout() {
           </h1>
           <EndpointPill url={server.mcpUrl} />
           <SessionsPill count={server.sessionCount} long />
-          <div className="ml-auto">
+          <div className="ml-auto flex gap-3">
+            <EditServerButton server={server} />
             <DeleteServerButton name={server.name} />
           </div>
         </div>
@@ -97,6 +100,51 @@ function Tab({ to, children }: TabProps) {
     >
       {children}
     </NavLink>
+  );
+}
+
+type EditServerButtonProps = {
+  server: ServerSummary;
+};
+
+function EditServerButton({ server }: EditServerButtonProps) {
+  const navigate = useNavigate();
+  const { pathname, search } = useLocation();
+  const [editing, setEditing] = useState(false);
+
+  // A rename moves every tab of the server to the new URL.
+  const follow = (updated: ServerSummary, previousName: string) => {
+    if (updated.name !== previousName) {
+      const prefix = `/servers/${previousName}`;
+      void navigate(
+        `/servers/${updated.name}${pathname.slice(prefix.length)}${search}`,
+        { replace: true },
+      );
+    }
+  };
+
+  return (
+    <>
+      <Button
+        variant="secondary"
+        size="small"
+        onClick={() => {
+          setEditing(true);
+        }}
+      >
+        <PencilSimpleIcon size={14} aria-hidden="true" />
+        Edit server
+      </Button>
+      {editing && (
+        <EditServerDialog
+          server={server}
+          onSaved={follow}
+          onClose={() => {
+            setEditing(false);
+          }}
+        />
+      )}
+    </>
   );
 }
 
