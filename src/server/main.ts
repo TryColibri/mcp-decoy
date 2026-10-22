@@ -31,7 +31,10 @@ export type StartOptions = {
   uiPort: number;
   /** Bind address of the MCP listener. The UI listener always binds 127.0.0.1. */
   host: string;
-  /** Config directory; defaults to the platform config directory. */
+  /**
+   * Config directory; defaults to `<repo>/.decoy` in dev mode, else
+   * `$XDG_CONFIG_HOME/decoy` or `~/.config/decoy`.
+   */
   configDir?: string;
   /** Maximum number of log entries kept in memory, across servers. */
   logLimit: number;
@@ -95,7 +98,7 @@ export async function start({
     console.error(error);
   },
 }: StartOptions): Promise<Instance> {
-  const paths = await resolveConfigPaths(configDir);
+  const paths = await resolveConfigPaths({ override: configDir, dev });
   await assertNotRunning(paths.runtimeFile);
   const initial = await loadServersFile(paths.serversFile);
 
@@ -145,7 +148,7 @@ export async function start({
 
   const mcpURLTemplate = `http://${displayHostOf(host)}:${actualMCPPort}/s/{server}/mcp`;
   const uiUrl = `http://localhost:${actualUIPort}`;
-  const apiUrl = `http://127.0.0.1:${actualUIPort}/api/v1`;
+  const apiUrl = `${uiUrl}/api/v1`;
   const info: InstanceInfo = {
     version: VERSION,
     mcp: { host, port: actualMCPPort, urlTemplate: mcpURLTemplate },
@@ -158,7 +161,7 @@ export async function start({
   await writeRuntimeFile(paths.runtimeFile, {
     pid: process.pid,
     version: VERSION,
-    apiUrl,
+    apiUrl: `http://127.0.0.1:${actualUIPort}/api/v1`,
     mcpUrlTemplate: mcpURLTemplate,
     startedAt: new Date().toISOString(),
   });
