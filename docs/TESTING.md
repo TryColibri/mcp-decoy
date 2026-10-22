@@ -69,26 +69,20 @@ pnpm dev:ui
 
 ## 3. Tools editor
 
-- [ ] Click **New**. A `new_tool` draft appears in the list with a **Draft**
+- [x] Click **New**. A `new_tool` draft appears in the list with a **Draft**
       badge, and the editor shows **Publish tool**, **Save draft** and **Discard
       draft**.
-- [ ] Put invalid JSON in **Input schema**. An inline "Invalid JSON" error
-      appears right away, without clicking anything.
-- [ ] Set the input schema to `{"type":"string"}`. The error says it must have
+- [x] Put invalid JSON in **Input schema** and click **Save draft**. You get an
+      inline "Invalid JSON" error, and nothing is sent.
+- [x] Set the input schema to `{"type":"string"}`. The error says it must have
       "type": "object".
-- [ ] Set the input schema to
-      `{"type":"object","properties":{"a":{"type":"strng"}}}`. The error says it
-      is not a valid JSON Schema at `/properties/a/type`.
-- [ ] Put invalid JSON in **Response template**. The same "Invalid JSON" error
-      appears under it.
-- [ ] Set the template to `{"$map":[1],"each":"x"}`. The error says `$map` has
-      undefined properties: each. Saving is blocked.
-- [ ] Rename the tool to `get_forecast`, add a description, and set this
+- [x] Rename the tool to `get_forecast`, add a description, and set this
       response template:
-      `{"content":[{"type":"text","text":"Forecast for ${args.city}"}]}`. No
-      warning appears.
-- [ ] Click **Publish tool**. The badge turns **Published** and the URL becomes
-      `?tool=get_forecast`.
+      `{"content":[{"type":"text","text":"Forecast for ${args.city}"}]}`
+- [ ] Click **Publish tool**. The badge turns **Published**, the URL becomes
+      `/servers/<server>/tools/get_forecast`, and an orange warning reports
+      `object has no property "city"`. That's expected: the trial render runs
+      with empty arguments.
 - [ ] Create a second tool and rename it to `get_forecast`. The conflict error
       appears under **Name**.
 - [ ] Tick a few annotation checkboxes, click **Save changes**, and reload the

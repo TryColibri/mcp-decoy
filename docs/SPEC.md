@@ -582,14 +582,14 @@ focus states; text contrast of at least 4.5:1.
 
 Routes:
 
-| Path                     | Screen                                |
-| ------------------------ | ------------------------------------- |
-| `/`                      | Servers                               |
-| `/servers/new`           | New server                            |
-| `/servers/:server`       | redirect → `logs`                     |
-| `/servers/:server/logs`  | Logs                                  |
-| `/servers/:server/tools` | Tools (`?tool=<name>` selects a tool) |
-| `*`                      | Not found                             |
+| Path                            | Screen                                                                        |
+| ------------------------------- | ----------------------------------------------------------------------------- |
+| `/`                             | Servers                                                                       |
+| `/servers/new`                  | New server                                                                    |
+| `/servers/:server`              | redirect → `logs`                                                             |
+| `/servers/:server/logs`         | Logs                                                                          |
+| `/servers/:server/tools/:tool?` | Tools (`:tool` selects a tool; none redirects to the first, unknown is a 404) |
+| `*`                             | Not found                                                                     |
 
 Screens:
 

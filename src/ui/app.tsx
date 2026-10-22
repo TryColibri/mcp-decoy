@@ -21,7 +21,7 @@ export function App() {
             <Route path="servers/:server" element={<ServerLayout />}>
               <Route index element={<Navigate to="logs" replace />} />
               <Route path="logs" element={<LogsPage />} />
-              <Route path="tools" element={<ToolsPage />} />
+              <Route path="tools/:tool?" element={<ToolsPage />} />
             </Route>
             <Route path="*" element={<NotFoundPage />} />
           </Route>
