@@ -65,16 +65,7 @@ export function ToolsPage() {
   if (tools === undefined) {
     editor = <p className="m-0 text-sm text-ink-4">Loading tools…</p>;
   } else if (selected === undefined) {
-    editor = (
-      <div className="flex flex-col items-start gap-2">
-        <h2 className="m-0 text-base font-semibold">No tools yet</h2>
-        <p className="m-0 max-w-prose text-sm/relaxed text-ink-3">
-          Create a tool with <strong>New</strong>. It starts as a draft: clients
-          only see it once you publish it, and connected sessions are notified
-          right away.
-        </p>
-      </div>
-    );
+    editor = null;
   } else {
     editor = (
       <ToolEditor

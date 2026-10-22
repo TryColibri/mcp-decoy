@@ -51,6 +51,24 @@ export function ToolList({
           {createError}
         </p>
       )}
+      {tools.length === 0 && (
+        <div className="flex flex-col items-start gap-2 px-1">
+          <h3 className="m-0 text-base font-semibold">No tools yet</h3>
+          <p className="m-0 text-sm/relaxed text-ink-3">
+            A new tool starts as a draft: clients only see it once you publish
+            it, and connected sessions are notified right away.
+          </p>
+          <button
+            type="button"
+            onClick={onCreate}
+            disabled={creating}
+            className="inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-md border border-control bg-surface px-2.5 text-[13px] font-semibold text-ink hover:bg-hover disabled:cursor-wait"
+          >
+            <PlusIcon size={14} strokeWidth={2.2} aria-hidden="true" />
+            New tool
+          </button>
+        </div>
+      )}
       <div className="flex flex-col gap-1">
         {tools.map((tool) => {
           const active = tool.name === selected;
