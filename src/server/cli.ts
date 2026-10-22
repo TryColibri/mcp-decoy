@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { styleText } from 'node:util';
 
-import { intro, log, note, outro } from '@clack/prompts';
+import { intro, log, outro } from '@clack/prompts';
 
 import { CLIUsageError, parseCLI, USAGE } from '@/server/cli-options';
 import { InvalidConfigFileError } from '@/server/config';
@@ -85,10 +85,6 @@ const run = async () => {
     instance.servers.length === 0
       ? 'Servers   none yet — create one in the UI'
       : `Servers   ${instance.servers.map((server) => server.name).join(', ')}`,
-  );
-  note(
-    `cloudflared tunnel --url http://localhost:${info.mcp.port}\nngrok http ${info.mcp.port}`,
-    'Need HTTPS or a public URL? Tunnel the MCP port only',
   );
   log.message(styleText('dim', 'Press Ctrl+C to stop.'));
 
