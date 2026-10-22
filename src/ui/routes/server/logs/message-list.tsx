@@ -123,7 +123,7 @@ function MessageRow({ entry, selected, onSelect }: MessageRowProps) {
           {entry.method ?? '(unknown)'}
         </span>
         <span
-          className={`flex-none rounded px-1.5 py-0.5 text-[11px] font-semibold ${tagStyles[tag]}`}
+          className={`flex-none rounded-sm px-1.5 py-0.5 text-[11px] font-semibold ${tagStyles[tag]}`}
         >
           {tag}
         </span>

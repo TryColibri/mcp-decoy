@@ -52,6 +52,7 @@
     "@vitejs/plugin-react": "6.1.2",
     "@vitest/coverage-v8": "5.0.5",
     "chain-mock": "0.2.0",
+    "eslint-plugin-better-tailwindcss": "4.10.0",
     "jsdom": "30.1.3",
     "lucide-react": "1.60.0",
     "npm-run-all2": "9.0.3",

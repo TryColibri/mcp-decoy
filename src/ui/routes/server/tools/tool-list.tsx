@@ -73,7 +73,7 @@ export function ToolList({
                   {tool.name}
                 </span>
                 {!tool.published && (
-                  <span className="ml-auto rounded bg-out-bg px-1.5 py-0.5 text-[11px] font-semibold text-out">
+                  <span className="ml-auto rounded-sm bg-out-bg px-1.5 py-0.5 text-[11px] font-semibold text-out">
                     Draft
                   </span>
                 )}
@@ -85,7 +85,7 @@ export function ToolList({
           );
         })}
       </div>
-      <div className="mt-auto rounded-lg bg-muted p-3 text-xs leading-normal text-ink-2">
+      <div className="mt-auto rounded-lg bg-muted p-3 text-xs/normal text-ink-2">
         Server capability <span className="font-mono">tools.listChanged</span>{' '}
         is <strong>on</strong>. Clients get{' '}
         <span className="font-mono">notifications/tools/list_changed</span>{' '}

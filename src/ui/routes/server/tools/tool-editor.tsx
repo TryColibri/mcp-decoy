@@ -283,7 +283,7 @@ export function ToolEditor({
               onCheckedChange={(checked) => {
                 update('annotations', { ...form.annotations, [key]: checked });
               }}
-              className="flex size-4 items-center justify-center rounded border border-control bg-surface data-checked:border-ink data-checked:bg-ink"
+              className="flex size-4 items-center justify-center rounded-sm border border-control bg-surface data-checked:border-ink data-checked:bg-ink"
             >
               <Checkbox.Indicator className="flex text-white data-unchecked:hidden">
                 <CheckIcon size={12} strokeWidth={3} aria-hidden="true" />
@@ -399,7 +399,7 @@ function ConfirmButton({
       </AlertDialog.Trigger>
       <AlertDialog.Portal>
         <AlertDialog.Backdrop className="fixed inset-0 bg-ink/30" />
-        <AlertDialog.Popup className="fixed top-1/2 left-1/2 flex w-[420px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-xl border border-line bg-surface p-6 shadow-xl">
+        <AlertDialog.Popup className="fixed top-1/2 left-1/2 flex w-[420px] max-w-[calc(100vw-2rem)] -translate-1/2 flex-col gap-4 rounded-xl border border-line bg-surface p-6 shadow-xl">
           <AlertDialog.Title className="m-0 text-base font-semibold">
             {title}
           </AlertDialog.Title>

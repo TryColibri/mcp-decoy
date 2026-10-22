@@ -62,7 +62,7 @@ function EmptyState() {
   return (
     <div className="flex flex-col items-start gap-3 px-6 py-10">
       <h2 className="m-0 text-base font-semibold">No servers yet</h2>
-      <p className="m-0 max-w-prose text-sm leading-relaxed text-ink-3">
+      <p className="m-0 max-w-prose text-sm/relaxed text-ink-3">
         A server is a mock MCP endpoint with the tools you define. Create one,
         add a tool, then point your MCP client at its URL. Every message shows
         up live in its Logs tab.

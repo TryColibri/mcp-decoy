@@ -232,12 +232,10 @@ function EmptyMessages({ server, searching }: EmptyMessagesProps) {
   return (
     <div className="flex flex-col gap-2 p-6">
       <h2 className="m-0 text-[15px] font-semibold">Waiting for traffic</h2>
-      <p className="m-0 max-w-prose text-sm leading-relaxed text-ink-3">
+      <p className="m-0 max-w-prose text-sm/relaxed text-ink-3">
         Point your MCP client at{' '}
-        <span className="font-mono [overflow-wrap:anywhere] text-ink">
-          {server}
-        </span>
-        . Every message in and out shows up here as it happens.
+        <span className="font-mono wrap-anywhere text-ink">{server}</span>.
+        Every message in and out shows up here as it happens.
       </p>
     </div>
   );

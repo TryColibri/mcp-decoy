@@ -10,7 +10,7 @@
     "import",
     "vitest"
   ],
-  "jsPlugins": ["./oxlint-plugin.ts"],
+  "jsPlugins": ["./oxlint-plugin.ts", "eslint-plugin-better-tailwindcss"],
   "categories": {
     "correctness": "error"
   },
@@ -23,6 +23,9 @@
   "settings": {
     "react": {
       "version": "19.3.1"
+    },
+    "better-tailwindcss": {
+      "entryPoint": "src/ui/styles.css"
     }
   },
   "ignorePatterns": ["dist/", ".agents/", ".claude/", "coverage/", "docs/"],
@@ -50,6 +53,12 @@
     "no-duplicate-imports": "error",
     "no-redeclare": "off",
     "loderunner/no-chained-arrow": "error",
+    "better-tailwindcss/enforce-canonical-classes": "error",
+    "better-tailwindcss/no-deprecated-classes": "error",
+    "better-tailwindcss/no-duplicate-classes": "error",
+    "better-tailwindcss/no-unnecessary-whitespace": "error",
+    "better-tailwindcss/no-conflicting-classes": "error",
+    "better-tailwindcss/no-unknown-classes": "error",
     "react/display-name": "error",
     "react/jsx-no-comment-textnodes": "error",
     "react/jsx-no-target-blank": "error",
