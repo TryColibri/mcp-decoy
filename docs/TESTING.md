@@ -23,7 +23,7 @@ nvm use
 pnpm install
 ```
 
-- [x] Run the automated checks once (format, lint, types, tests). Expect 123
+- [x] Run the automated checks once (format, lint, types, tests). Expect 179
       passing tests:
 
 ```bash
@@ -158,7 +158,47 @@ for i in $(seq 1 260); do curl -s -X POST localhost:6280/s/weather/mcp -H 'conte
 - [ ] Servers and tools are still there after the restart (they're read back
       from `servers.json`).
 
-## 7. Delete a server
+## 7. Edit a server
+
+Do this with the Inspector still connected to `weather`, and a second server
+named `echo` created (see section 2).
+
+- [ ] On Servers, each row has an **Edit** link. It opens a dialog titled “Edit
+      “weather””, filled with the server's name, `serverInfo.name`,
+      `serverInfo.version` and instructions. **Save changes** is disabled until
+      you change something.
+- [ ] **Cancel**, **Escape** and a click on the backdrop all close the dialog
+      without saving.
+- [ ] Change only `serverInfo.version` to `2.0.0` and save. The dialog closes
+      and `servers.json` has the new version. Nothing else changed, and the
+      Inspector stays connected.
+- [ ] Clear `serverInfo.version` and save. The error "Version is required"
+      appears under that field, and the dialog stays open.
+- [ ] Clear the instructions and save. `servers.json` no longer has an
+      `instructions` key for `weather`.
+- [ ] Type `echo` as the name. "A server named “echo” already exists." appears
+      and **Save changes** is disabled. Typing `Bad Name` shows the slug error.
+- [ ] Type `forecast` as the name. The endpoint preview follows and a note says
+      renaming closes live sessions. Save.
+- [ ] On Servers, the row now reads `forecast`, with the new endpoint.
+- [ ] The Inspector's next request fails with a 404 (the old URL answers
+      "Unknown server"). Reconnecting to the new URL works.
+- [ ] Open `forecast` from the table. The Logs tab still holds the earlier
+      messages, and the Tools tab still has your tools.
+- [ ] On the server page, click **Edit server** in the header. The same dialog
+      opens. Rename it back to `weather` from the Tools tab. The URL becomes
+      `/servers/weather/tools` and you stay on the Tools tab.
+- [ ] With an unsaved change in the tool editor, rename the server. Check what
+      happens: the unsaved-changes prompt should appear before you leave.
+- [ ] The `PATCH` endpoint works from `curl`, and a rename sends a `Location`
+      header:
+
+```bash
+curl -i -X PATCH http://localhost:6281/api/v1/servers/weather \
+  -H 'content-type: application/json' -d '{"name":"forecast"}'
+```
+
+## 8. Delete a server
 
 - [ ] With the Inspector connected, click **Delete server** and confirm in the
       dialog. You land on Servers.
@@ -167,7 +207,7 @@ for i in $(seq 1 260); do curl -s -X POST localhost:6280/s/weather/mcp -H 'conte
       page appears with a link back to Servers.
 - [ ] Open a nonsense URL such as `/foo`. The "Page not found" page appears.
 
-## 8. Config file
+## 9. Config file
 
 - [ ] Look at `/tmp/decoy-dev/servers.json`. It holds the servers and tools you
       created, with nothing sensitive in it.
@@ -185,7 +225,7 @@ pnpm exec tsx --tsconfig tsconfig.server.json src/server/cli.ts --config-dir /tm
       start decoy again. It refuses to start and names the file and the
       offending field.
 
-## 9. CLI flags
+## 10. CLI flags
 
 - [ ] `--help` prints usage and `--version` prints `0.1.0`:
 
@@ -203,7 +243,7 @@ pnpm exec tsx --tsconfig tsconfig.server.json src/server/cli.ts --mcp-port 0 --l
 - [ ] With decoy running, starting another copy on the same MCP port fails fast
       and names `--mcp-port`.
 
-## 10. Security checks (with the server running)
+## 11. Security checks (with the server running)
 
 - [ ] A foreign `Host` gets a 403:
 
@@ -229,7 +269,7 @@ curl -i -X POST localhost:6281/api/v1/servers -H 'content-type: application/json
 curl -i localhost:6281/api/v1/nope
 ```
 
-## 11. Release build
+## 12. Release build
 
 Stop the dev processes first, because the release build uses the same ports.
 
