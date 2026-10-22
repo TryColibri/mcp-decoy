@@ -1,6 +1,7 @@
 import { type SubmitEvent, useId, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useSWRConfig } from 'swr';
+import { twMerge } from 'tailwind-merge';
 
 import { serverNameSchema } from '@/shared/api';
 import {
@@ -15,7 +16,7 @@ import { Button, ButtonLink } from '@/ui/components/button';
 import { CopyButton } from '@/ui/components/copy-button';
 import { tw } from '@/ui/tw';
 
-const control = tw`box-border min-h-10 w-full rounded-lg border bg-surface px-3 text-sm font-medium text-ink`;
+const control = tw`box-border min-h-10 w-full rounded-lg border bg-surface px-3 font-mono text-sm font-medium text-ink`;
 
 /** `/servers/new`: create a mock server. */
 export function NewServerPage() {
@@ -132,9 +133,10 @@ export function NewServerPage() {
             </p>
             <input
               id={ids.name}
-              className={`${control} font-mono ${
-                nameError === null ? 'border-control' : 'border-error-line'
-              }`}
+              className={twMerge(
+                control,
+                nameError === null ? 'border-control' : 'border-error-line',
+              )}
               value={name}
               onChange={(event) => {
                 setName(event.target.value);
@@ -186,7 +188,7 @@ export function NewServerPage() {
               </label>
               <input
                 id={ids.infoName}
-                className={`${control} border-control font-mono`}
+                className={twMerge(control, 'border-control')}
                 value={infoName}
                 onChange={(event) => {
                   setInfoName(event.target.value);
@@ -210,7 +212,7 @@ export function NewServerPage() {
               </label>
               <input
                 id={ids.infoVersion}
-                className={`${control} border-control font-mono`}
+                className={twMerge(control, 'border-control')}
                 value={version}
                 onChange={(event) => {
                   setVersion(event.target.value);

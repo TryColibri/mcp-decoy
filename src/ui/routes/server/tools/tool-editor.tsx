@@ -41,7 +41,9 @@ export type ToolEditorProps = {
 
 const fieldLabel = tw`flex flex-col gap-1.5 text-[13px] font-semibold text-ink-2`;
 const hint = tw`text-xs font-normal text-ink-4`;
-const code = tw`box-border w-full resize-y rounded-lg border bg-input px-3.5 py-3 font-mono text-[12.5px] leading-[1.6] text-ink`;
+const textarea = tw`box-border w-full resize-y rounded-lg border bg-input px-3.5 py-3 leading-[1.6] text-ink`;
+const code = tw`${textarea} font-mono text-[12.5px]`;
+const prose = tw`${textarea} font-sans text-sm`;
 /** Lets two fields side by side share their label row, so the inputs line up. */
 const aligned = tw`@4xl:row-span-2 @4xl:grid @4xl:grid-rows-subgrid`;
 const control = tw`box-border min-h-10 rounded-lg border bg-surface px-3 text-sm font-medium text-ink`;
@@ -174,11 +176,12 @@ export function ToolEditor({
               {tool.name}
             </h2>
             <span
-              className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+              className={twMerge(
+                'rounded-full px-2 py-0.5 text-xs font-semibold',
                 tool.published
                   ? 'bg-success-bg text-success'
-                  : 'bg-out-bg text-out'
-              }`}
+                  : 'bg-out-bg text-out',
+              )}
             >
               {tool.published ? 'Published' : 'Draft · not published'}
             </span>
@@ -188,7 +191,7 @@ export function ToolEditor({
             <Field id={ids.name} label="Name" error={errors.name}>
               <input
                 id={ids.name}
-                className={`${control} font-mono ${borderOf(errors.name)}`}
+                className={twMerge(control, 'font-mono', borderOf(errors.name))}
                 value={form.name}
                 onChange={(event) => {
                   update('name', event.target.value);
@@ -205,7 +208,7 @@ export function ToolEditor({
             >
               <input
                 id={ids.title}
-                className={`${control} ${borderOf(errors.title)}`}
+                className={twMerge(control, borderOf(errors.title))}
                 value={form.title}
                 onChange={(event) => {
                   update('title', event.target.value);
@@ -222,7 +225,7 @@ export function ToolEditor({
             <textarea
               id={ids.description}
               rows={2}
-              className={`${code} font-sans text-sm ${borderOf(errors.description)}`}
+              className={twMerge(prose, borderOf(errors.description))}
               value={form.description}
               onChange={(event) => {
                 update('description', event.target.value);
@@ -242,7 +245,7 @@ export function ToolEditor({
               <textarea
                 id={ids.schema}
                 rows={16}
-                className={`${code} ${borderOf(errors.inputSchema)}`}
+                className={twMerge(code, borderOf(errors.inputSchema))}
                 value={form.inputSchema}
                 onChange={(event) => {
                   update('inputSchema', event.target.value);
@@ -264,7 +267,7 @@ export function ToolEditor({
               <textarea
                 id={ids.template}
                 rows={16}
-                className={`${code} ${borderOf(errors.responseTemplate)}`}
+                className={twMerge(code, borderOf(errors.responseTemplate))}
                 value={form.responseTemplate}
                 onChange={(event) => {
                   update('responseTemplate', event.target.value);

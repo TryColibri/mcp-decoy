@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef } from 'react';
+import { twMerge } from 'tailwind-merge';
 
 import { type LogEntry } from '@/shared/api';
 import { tw } from '@/ui/tw';
@@ -71,7 +72,10 @@ export function MessageList({
     >
       <div className="min-w-140">
         <div
-          className={`${grid} sticky top-0 z-10 min-h-8.5 border-b border-line-soft bg-subtle text-xs font-semibold tracking-wide text-ink-4 uppercase`}
+          className={twMerge(
+            grid,
+            'sticky top-0 z-10 min-h-8.5 border-b border-line-soft bg-subtle text-xs font-semibold tracking-wide text-ink-4 uppercase',
+          )}
         >
           <span>Time</span>
           <span>
@@ -110,11 +114,13 @@ function MessageRow({ entry, selected, onSelect }: MessageRowProps) {
       onClick={() => {
         onSelect(entry.id);
       }}
-      className={`${grid} min-h-10 cursor-pointer border-0 border-b border-solid border-line-soft text-left font-sans text-[13px] text-ink ${
+      className={twMerge(
+        grid,
+        'min-h-10 cursor-pointer border-0 border-b border-solid border-line-soft text-left font-sans text-[13px] text-ink',
         selected
           ? 'bg-selected shadow-[inset_3px_0_0_var(--color-link)]'
-          : 'bg-surface hover:bg-row-hover'
-      }`}
+          : 'bg-surface hover:bg-row-hover',
+      )}
     >
       <span className="font-mono text-ink-4">{formatTime(entry.at)}</span>
       <DirectionBadge direction={entry.direction} />
@@ -123,7 +129,10 @@ function MessageRow({ entry, selected, onSelect }: MessageRowProps) {
           {entry.method ?? '(unknown)'}
         </span>
         <span
-          className={`flex-none rounded-sm px-1.5 py-0.5 text-[11px] font-semibold ${tagStyles[tag]}`}
+          className={twMerge(
+            'flex-none rounded-sm px-1.5 py-0.5 text-[11px] font-semibold',
+            tagStyles[tag],
+          )}
         >
           {tag}
         </span>
@@ -158,9 +167,10 @@ export function DirectionBadge({ direction }: DirectionBadgeProps) {
   return (
     <span
       title={label}
-      className={`inline-flex size-5.5 items-center justify-center rounded-md font-bold ${
-        incoming ? 'bg-in-bg text-in' : 'bg-out-bg text-out'
-      }`}
+      className={twMerge(
+        'inline-flex size-5.5 items-center justify-center rounded-md font-bold',
+        incoming ? 'bg-in-bg text-in' : 'bg-out-bg text-out',
+      )}
     >
       <span aria-hidden="true">{incoming ? '→' : '←'}</span>
       <span className="sr-only">{label}</span>

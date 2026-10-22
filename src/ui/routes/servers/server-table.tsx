@@ -1,4 +1,5 @@
 import { Link } from 'react-router';
+import { twMerge } from 'tailwind-merge';
 
 import { type ServerSummary } from '@/shared/api';
 import { EndpointPill } from '@/ui/components/endpoint-pill';
@@ -67,11 +68,11 @@ function ServerRow({ server }: ServerRowProps) {
       <td className={td}>
         <EndpointPill url={server.mcpUrl} />
       </td>
-      <td className={`${td} text-ink-2`}>{describeTools(server)}</td>
+      <td className={twMerge(td, 'text-ink-2')}>{describeTools(server)}</td>
       <td className={td}>
         <SessionsPill count={server.sessionCount} />
       </td>
-      <td className={`${td} text-right`}>
+      <td className={twMerge(td, 'text-right')}>
         <div className="inline-flex gap-2">
           <Link
             to={`${base}/logs`}

@@ -1,3 +1,5 @@
+import { twMerge } from 'tailwind-merge';
+
 import { type LogEntry } from '@/shared/api';
 import { useSessions } from '@/ui/api';
 import { tw } from '@/ui/tw';
@@ -137,7 +139,10 @@ const tones: Record<BadgeProps['tone'], string> = {
 function Badge({ tone, children }: BadgeProps) {
   return (
     <span
-      className={tw`rounded-full px-2 py-0.75 text-xs font-semibold ${tones[tone]}`}
+      className={twMerge(
+        'rounded-full px-2 py-0.75 text-xs font-semibold',
+        tones[tone],
+      )}
     >
       {children}
     </span>
