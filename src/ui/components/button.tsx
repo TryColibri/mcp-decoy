@@ -1,5 +1,6 @@
 import { type ComponentProps } from 'react';
 import { Link } from 'react-router';
+import { twMerge } from 'tailwind-merge';
 
 /** Visual weight of a button. */
 export type ButtonVariant = 'primary' | 'secondary' | 'danger';
@@ -46,18 +47,21 @@ export type ButtonProps = ComponentProps<'button'> & {
   size?: ButtonSize;
 };
 
-/** A `<button>` styled as a decoy button. Defaults to `type="button"`. */
+/**
+ * A `<button>` styled as a decoy button. Defaults to `type="button"`.
+ * `className` is merged over the button styles; `ref` is the `<button>`.
+ */
 export function Button({
   variant,
   size,
-  className = '',
+  className,
   type = 'button',
   ...props
 }: ButtonProps) {
   return (
     <button
       type={type}
-      className={`${buttonClasses(variant, size)} ${className}`}
+      className={twMerge(buttonClasses(variant, size), className)}
       {...props}
     />
   );
@@ -71,16 +75,19 @@ export type ButtonLinkProps = ComponentProps<typeof Link> & {
   size?: ButtonSize;
 };
 
-/** A router `<Link>` styled as a decoy button. */
+/**
+ * A router `<Link>` styled as a decoy button. `className` is merged over the
+ * button styles; `ref` is the `<a>`.
+ */
 export function ButtonLink({
   variant,
   size,
-  className = '',
+  className,
   ...props
 }: ButtonLinkProps) {
   return (
     <Link
-      className={`${buttonClasses(variant, size)} ${className}`}
+      className={twMerge(buttonClasses(variant, size), className)}
       {...props}
     />
   );

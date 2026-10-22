@@ -410,6 +410,16 @@ Data-driven props are still fine where the content is intrinsically structured
 would push every caller into hand-rolling the same item markup, which is the
 duplication this rule exists to prevent.
 
+## Reusable components
+
+Every reusable component (anything in `src/ui/components/`) must:
+
+- accept `className` and merge it into the top-level element's classes with
+  `twMerge` (from `tailwind-merge`), the caller's classes last so they win;
+- accept `ref` and forward it to the top-level element. React 19 passes `ref` as
+  a regular prop, so extend `ComponentProps<'tag'>` and spread the rest onto the
+  element; no `forwardRef`.
+
 ## Type narrowing
 
 Do not cast with `as`. Use type predicates (`value is Foo`) or type assertion

@@ -1,16 +1,28 @@
 import { CheckIcon, CopyIcon } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { type ComponentProps, useEffect, useState } from 'react';
+import { twMerge } from 'tailwind-merge';
 
 /** Props of `CopyButton`. */
-export type CopyButtonProps = {
+export type CopyButtonProps = Omit<
+  ComponentProps<'button'>,
+  'children' | 'onClick'
+> & {
   /** Text put on the clipboard. */
   text: string;
   /** Accessible name, e.g. "Copy endpoint URL". */
   label: string;
 };
 
-/** A square icon button that copies `text` and briefly shows a check mark. */
-export function CopyButton({ text, label }: CopyButtonProps) {
+/**
+ * A square icon button that copies `text` and briefly shows a check mark.
+ * `className` is merged over the button styles; `ref` is the `<button>`.
+ */
+export function CopyButton({
+  text,
+  label,
+  className,
+  ...props
+}: CopyButtonProps) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -33,10 +45,14 @@ export function CopyButton({ text, label }: CopyButtonProps) {
   return (
     <button
       type="button"
+      {...props}
       aria-label={copied ? 'Copied' : label}
       title={copied ? 'Copied' : label}
       onClick={copy}
-      className="inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md border border-line bg-surface text-ink-2 hover:bg-hover"
+      className={twMerge(
+        'inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md border border-line bg-surface text-ink-2 hover:bg-hover',
+        className,
+      )}
     >
       {copied ? (
         <CheckIcon size={14} aria-hidden="true" className="text-live" />
