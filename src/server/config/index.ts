@@ -1,5 +1,9 @@
 export { writeFileAtomic } from './atomic-write';
-export { type ConfigPaths, resolveConfigPaths } from './config-dir';
+export {
+  type ConfigPaths,
+  type ResolveConfigPathsOptions,
+  resolveConfigPaths,
+} from './config-dir';
 export {
   createServersFileWriter,
   InvalidConfigFileError,

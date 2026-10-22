@@ -61,7 +61,7 @@ Options:
   --ui-port <port>     Port of the UI and API listener (default ${DEFAULT_UI_PORT})
   --host <address>     Bind address of the MCP listener (default ${DEFAULT_HOST})
                        The UI listener always binds 127.0.0.1.
-  --config-dir <path>  Where servers.json is stored (default: platform config dir)
+  --config-dir <path>  Where servers.json is stored (default: $XDG_CONFIG_HOME/decoy or ~/.config/decoy)
   --log-limit <n>      Messages kept in memory, across servers (default ${DEFAULT_LOG_LIMIT}, min 100)
   -h, --help           Show this help
   -v, --version        Show the version`;

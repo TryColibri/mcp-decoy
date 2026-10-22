@@ -433,9 +433,10 @@ Example with interpolation:
 
 ### 8.4 Persistence (`src/server/config/`)
 
-- The default directory comes from `env-paths`
-  (`envPaths('decoy', { suffix: '' }).config`), which gives `~/.config/decoy` on
-  Linux and the platform equivalents elsewhere. `--config-dir` overrides it.
+- The default directory is `$XDG_CONFIG_HOME/decoy`, or `~/.config/decoy` when
+  `XDG_CONFIG_HOME` is unset or not absolute, on every platform (not the system
+  preferences directory). In dev mode (`--dev`) it is `.decoy/` at the
+  repository root, which is gitignored. `--config-dir` overrides both.
 - One file, `servers.json`: `{ "version": 1, "servers": [ServerConfig, …] }`,
   validated with Zod on load. If it's missing, start with no servers. If it's
   invalid, refuse to start and print the Zod issues and the file path.
@@ -702,7 +703,7 @@ uses relative `/api` URLs, so the code is the same in both.
 - `package.json`: `"bin": { "decoy": "dist/cli.js" }`, `"files": ["dist"]`, and
   `"prepack": "pnpm build"`.
 - **Dependencies**: only server runtime packages go in `dependencies` (hono,
-  @hono/node-server, @hono/zod-validator, the MCP SDK, json-e, zod, env-paths,
+  @hono/node-server, @hono/zod-validator, the MCP SDK, json-e, zod,
   @bomb.sh/args, @clack/prompts). React, React Router, SWR, Base UI, Tailwind,
   Vite, fonts and icons are `devDependencies`, because they're compiled into
   `dist/ui`. That keeps `npx decoy` quick to install.
@@ -807,6 +808,5 @@ These came from quick checks during design and may have changed:
   framework mode by accident.
 - **Base UI**: the current package name and component APIs (`@base-ui/react` in
   the reference).
-- **env-paths**: an ESM-only default export.
 - **TypeScript 7**: support for `tsc -b` and project references; oxlint's
   type-aware mode with split tsconfigs.

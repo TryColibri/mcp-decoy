@@ -41,15 +41,15 @@ with Ctrl+C.
 
 ### Flags
 
-| Flag                  | Default             | Meaning                                                      |
-| --------------------- | ------------------- | ------------------------------------------------------------ |
-| `--mcp-port <port>`   | `6280`              | Port of the MCP listener.                                    |
-| `--ui-port <port>`    | `6281`              | Port of the UI and REST API listener.                        |
-| `--host <address>`    | `127.0.0.1`         | Bind address of the MCP listener only.                       |
-| `--config-dir <path>` | platform config dir | Where `servers.json` (and `runtime.json`) are stored.        |
-| `--log-limit <n>`     | `10000`             | Messages kept in memory, across all servers. At least `100`. |
-| `-h`, `--help`        |                     | Show usage.                                                  |
-| `-v`, `--version`     |                     | Show the version.                                            |
+| Flag                  | Default           | Meaning                                                      |
+| --------------------- | ----------------- | ------------------------------------------------------------ |
+| `--mcp-port <port>`   | `6280`            | Port of the MCP listener.                                    |
+| `--ui-port <port>`    | `6281`            | Port of the UI and REST API listener.                        |
+| `--host <address>`    | `127.0.0.1`       | Bind address of the MCP listener only.                       |
+| `--config-dir <path>` | `~/.config/decoy` | Where `servers.json` (and `runtime.json`) are stored.        |
+| `--log-limit <n>`     | `10000`           | Messages kept in memory, across all servers. At least `100`. |
+| `-h`, `--help`        |                   | Show usage.                                                  |
+| `-v`, `--version`     |                   | Show the version.                                            |
 
 The UI listener always binds `127.0.0.1` and rejects requests whose `Host` isn't
 `localhost:<ui-port>` or `127.0.0.1:<ui-port>`. It has no authentication.
@@ -59,11 +59,8 @@ The UI listener always binds `127.0.0.1` and rejects requests whose `Host` isn't
 Servers and tools are saved to `servers.json` in the config directory after
 every change:
 
-| Platform | Default config directory                  |
-| -------- | ----------------------------------------- |
-| Linux    | `~/.config/decoy` (or `$XDG_CONFIG_HOME`) |
-| macOS    | `~/Library/Preferences/decoy`             |
-| Windows  | `%APPDATA%\decoy\Config`                  |
+The default config directory is `$XDG_CONFIG_HOME/decoy`, or `~/.config/decoy`
+when `XDG_CONFIG_HOME` is unset. This is the same on Linux, macOS and Windows.
 
 The UI shows the exact path. Logs are kept in memory only and are dropped on
 exit.
@@ -163,9 +160,9 @@ pnpm dev
 
 `pnpm dev` runs the server with `tsx watch` (MCP on 6280, API on 6281) and Vite
 on <http://localhost:5173>, which proxies `/api/` to the server, side by side.
-Note that it uses your default config directory. To pass flags such as
-`--config-dir`, run `pnpm dev:server --config-dir <dir>` and `pnpm dev:ui` in
-separate terminals.
+The server stores its config in `.decoy/` at the repository root, which is
+gitignored. To pass flags such as `--config-dir`, run
+`pnpm dev:server --config-dir <dir>` and `pnpm dev:ui` in separate terminals.
 
 | Script           | What it does                                        |
 | ---------------- | --------------------------------------------------- |

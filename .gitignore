@@ -8,6 +8,9 @@
 /dist
 *.tgz
 
+# dev mode config directory (servers.json, runtime.json)
+/.decoy
+
 # misc
 .DS_Store
 *.pem

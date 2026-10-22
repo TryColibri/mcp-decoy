@@ -19,7 +19,7 @@ decisions are settled.
 | MCP library     | Official TypeScript SDK v2 (`@modelcontextprotocol/server`), **low-level `Server`**, `WebStandardStreamableHTTPServerTransport` |
 | Transport       | Streamable HTTP only, stateful (`Mcp-Session-Id`), one SDK `Server` + one transport per session                                 |
 | Capabilities    | Every mock server advertises only `tools: { listChanged: true }`                                                                |
-| Persistence     | `servers.json` in the config directory (`env-paths`, `--config-dir`). Logs in memory only                                       |
+| Persistence     | `servers.json` in the config directory (XDG: `~/.config/decoy`, `--config-dir`). Logs in memory only                            |
 | Tool responses  | Always a **json-e** template, wrapped in `src/server/templates/`                                                                |
 | API             | Public REST API under `/api/v1`, Zod schemas in `src/shared/api/` as the contract, `@hono/zod-validator`, RFC 9457 errors       |
 | API client      | Hono's typed client (`hc`) in `src/shared/client/`                                                                              |
