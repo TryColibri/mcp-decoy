@@ -551,9 +551,9 @@ Stack: React 19 SPA built by Vite. React Router as a client-side library.
 `useSWR` for every read, with one shared fetcher built on the shared typed
 client that throws an `ApiError` carrying the parsed problem details. Forms map
 `errors[].path` onto fields. Base UI for interactive primitives. Tailwind v4
-through `@tailwindcss/vite`. Fonts are bundled with `@fontsource/inter` and
-`@fontsource/jetbrains-mono` so the tool works offline (no Google Fonts at
-runtime). Icons: one outline set, for example `lucide-react`.
+through `@tailwindcss/vite`. Fonts are bundled with `@fontsource/geist` and
+`@fontsource/geist-mono` so the tool works offline (no Google Fonts at runtime).
+Icons: one outline set, for example `lucide-react`.
 
 Visual system (from the mockups). Define these as Tailwind v4 `@theme` tokens in
 `styles.css` and use them through utility classes:
