@@ -78,12 +78,9 @@ elsewhere, put a tunnel in front of the **MCP port only**:
 cloudflared tunnel --url http://localhost:6280
 ```
 
-```bash
-ngrok http 6280
-```
-
 Then use the tunnel's host in place of `localhost:6280`. Never tunnel the UI
-port: it has no authentication.
+port: it has no authentication. The UI shows the same command behind the **Need
+a public URL?** link in its header.
 
 ## Response templates
 

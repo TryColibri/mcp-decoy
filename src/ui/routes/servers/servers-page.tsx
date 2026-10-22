@@ -4,7 +4,6 @@ import { useInstance, useServers } from '@/ui/api';
 import { ButtonLink } from '@/ui/components/button';
 
 import { ServerTable } from './server-table';
-import { TunnelCard } from './tunnel-card';
 
 /** `/`: every mock server, with endpoints and live sessions. */
 export function ServersPage() {
@@ -42,25 +41,19 @@ export function ServersPage() {
         </ButtonLink>
       </div>
 
-      <div className="flex flex-wrap items-start gap-6">
-        <section
-          aria-label="Server list"
-          className="min-w-0 flex-[999_1_640px] overflow-hidden rounded-xl border border-line bg-surface"
-        >
-          {content}
-          <div className="border-t border-line-soft bg-subtle px-4 py-3.5 text-[13px] text-ink-4">
-            Servers are stored in{' '}
-            <span className="font-mono break-all text-ink">
-              {instance?.configFile ?? 'servers.json'}
-            </span>
-            . Changes apply live — no restart.
-          </div>
-        </section>
-
-        <aside className="flex min-w-0 flex-[1_1_340px] flex-col gap-4">
-          <TunnelCard port={instance?.mcp.port ?? 6280} />
-        </aside>
-      </div>
+      <section
+        aria-label="Server list"
+        className="min-w-0 overflow-hidden rounded-xl border border-line bg-surface"
+      >
+        {content}
+        <div className="border-t border-line-soft bg-subtle px-4 py-3.5 text-[13px] text-ink-4">
+          Servers are stored in{' '}
+          <span className="font-mono break-all text-ink">
+            {instance?.configFile ?? 'servers.json'}
+          </span>
+          . Changes apply live — no restart.
+        </div>
+      </section>
     </main>
   );
 }

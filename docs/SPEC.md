@@ -591,15 +591,16 @@ Routes:
 Screens:
 
 1. **Global header** on every page: logo mark, "decoy", version, and on the
-   right "Listening on localhost:6280" with a green dot (from `GET /api/v1`). No
-   top-level nav; Servers is the only top-level page.
+   right "Listening on localhost:6280" with a green dot (from `GET /api/v1`),
+   preceded by a dotted-underline "Need a public URL?" link. It opens a popover
+   with the single `cloudflared tunnel --url http://localhost:6280` command
+   (copy button) for the **MCP port**, and a warning never to tunnel the UI
+   port. No top-level nav; Servers is the only top-level page.
 2. **Servers** (`/`): title, "Each mock server is mounted on its own URL…", and
    a **New server** button. Below that, a table with columns: name (links to the
    server), endpoint (mono, with a copy button), exposes ("N tools"), live
    sessions (pill), and Logs and Tools links. Footer note: "Servers are stored
-   in <config path>. Changes apply live — no restart." A side card, "Need HTTPS
-   or a public URL?", shows the `cloudflared tunnel --url http://localhost:6280`
-   and `ngrok http 6280` commands for the **MCP port**. Empty state: a short
+   in <config path>. Changes apply live — no restart." Empty state: a short
    explanation and a New server button.
 3. **Server layout** (`/servers/:server/*`): breadcrumb "Servers / <name>", the
    endpoint URL with a copy button, a "N live sessions" pill, a **Delete

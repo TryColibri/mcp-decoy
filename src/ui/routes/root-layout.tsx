@@ -3,6 +3,8 @@ import { Link, Outlet } from 'react-router';
 import { useInstance } from '@/ui/api';
 import { StatusDot } from '@/ui/components/sessions-pill';
 
+import { TunnelPopover } from './tunnel-popover';
+
 /** Every page: the global header above the routed content. */
 export function RootLayout() {
   return (
@@ -16,16 +18,22 @@ export function RootLayout() {
 function GlobalHeader() {
   const { data: instance, error } = useInstance();
 
+  const mcpHost =
+    instance?.mcp.host === '127.0.0.1' || instance?.mcp.host === '0.0.0.0'
+      ? 'localhost'
+      : instance?.mcp.host;
+
   const listening =
-    instance === undefined ? null : (
+    instance === undefined || mcpHost === undefined ? null : (
       <>
+        <TunnelPopover host={mcpHost} port={instance.mcp.port} />
+        <span aria-hidden="true" className="mx-2 text-ink-faint">
+          ·
+        </span>
         <StatusDot live />
         <span>Listening on</span>
         <span className="font-mono text-ink">
-          {instance.mcp.host === '127.0.0.1' || instance.mcp.host === '0.0.0.0'
-            ? 'localhost'
-            : instance.mcp.host}
-          :{instance.mcp.port}
+          {mcpHost}:{instance.mcp.port}
         </span>
       </>
     );
