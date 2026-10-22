@@ -27,25 +27,25 @@ export function LogsPage() {
   const { data: allResults, error: searchError } = useSWR<LogEntry[], ApiError>(
     searchAll === null ? null : [keys.logs(server.name), 'search', searchAll],
     async () =>
-      [
-        ...(
-          await unwrap(
-            client.servers[':server'].logs.$get({
-              param: { server: server.name },
-              query: { q: searchAll ?? '', limit: '1000' },
-            }),
-          )
-        ).items,
-      ].reverse(),
+      (
+        await unwrap(
+          client.servers[':server'].logs.$get({
+            param: { server: server.name },
+            query: { q: searchAll ?? '', limit: '1000' },
+          }),
+        )
+      ).items,
   );
 
   const visible = useMemo(() => {
     if (searchAll !== null) {
       return allResults ?? [];
     }
-    return query === ''
-      ? stream.entries
-      : stream.entries.filter((entry) => matchesSearch(entry, query));
+    const matching =
+      query === ''
+        ? stream.entries
+        : stream.entries.filter((entry) => matchesSearch(entry, query));
+    return matching.toReversed();
   }, [allResults, query, searchAll, stream.entries]);
 
   const selected =
@@ -118,7 +118,6 @@ export function LogsPage() {
         entries={visible}
         selectedId={selectedId}
         onSelect={setSelectedId}
-        follow={searchAll === null}
       />
     );
   }

@@ -622,7 +622,7 @@ Screens:
    name and version, client capabilities, server capabilities), derived from
    that session's `initialize` pair in the loaded entries. Below it, the
    selected message's pretty-printed JSON with Copy JSON and "Go to response" /
-   "Go to request" buttons. Auto-scroll when already at the bottom. Show a
+   "Go to request" buttons. Newest first, so new rows appear at the top. Show a
    "reconnecting…" state when the `EventSource` drops.
 5. **Tools**: a list on the left with the tool count, a **New** button, tool
    rows (mono name, description, a "Draft" badge when unpublished) and a note

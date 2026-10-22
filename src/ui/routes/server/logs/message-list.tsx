@@ -1,4 +1,3 @@
-import { useLayoutEffect, useRef } from 'react';
 import { twMerge } from 'tailwind-merge';
 
 import { type LogEntry } from '@/shared/api';
@@ -14,14 +13,12 @@ import {
 
 /** Props of `MessageList`. */
 export type MessageListProps = {
-  /** Entries to show, oldest first. */
+  /** Entries to show, newest first. */
   entries: LogEntry[];
   /** Id of the selected entry. */
   selectedId: number | null;
   /** Called with the id of a clicked row. */
   onSelect: (id: number) => void;
-  /** Keep the newest row in view when already scrolled to the bottom. */
-  follow: boolean;
 };
 
 const grid = tw`grid w-full grid-cols-[104px_28px_minmax(0,1fr)_56px_64px_84px] items-center gap-2 px-4`;
@@ -34,42 +31,17 @@ const tagStyles: Record<LogTag, string> = {
   invalid: tw`bg-error-bg text-error`,
 };
 
-/** How close to the bottom counts as "at the bottom", in pixels. */
-const BOTTOM_SLACK = 24;
-
-/** The message table: one button per entry. */
+/**
+ * The message table: one button per entry, newest first. New rows appear at
+ * the top; the browser keeps the position of a list scrolled further down.
+ */
 export function MessageList({
   entries,
   selectedId,
   onSelect,
-  follow,
 }: MessageListProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const atBottomRef = useRef(true);
-
-  const onScroll = () => {
-    const element = scrollRef.current;
-    if (element !== null) {
-      atBottomRef.current =
-        element.scrollHeight - element.scrollTop - element.clientHeight <=
-        BOTTOM_SLACK;
-    }
-  };
-
-  const lastId = entries.at(-1)?.id;
-  useLayoutEffect(() => {
-    const element = scrollRef.current;
-    if (follow && atBottomRef.current && element !== null) {
-      element.scrollTop = element.scrollHeight;
-    }
-  }, [follow, lastId]);
-
   return (
-    <div
-      ref={scrollRef}
-      onScroll={onScroll}
-      className="max-h-[calc(100dvh-235px)] min-h-80 overflow-auto"
-    >
+    <div className="max-h-[calc(100dvh-235px)] min-h-80 overflow-auto">
       <div className="min-w-140">
         <div
           className={twMerge(

@@ -133,8 +133,8 @@ npx @modelcontextprotocol/inspector
 - [ ] Click **Pause**, then make a few calls from the Inspector. The list stays
       frozen and the button reads "Resume · N new". Click it and exactly those
       entries appear, with no duplicates.
-- [ ] Scroll to the bottom and make calls: the list follows new rows. Scroll up
-      and make calls: your position stays put.
+- [ ] The newest message is at the top. Make calls: new rows appear at the top.
+      Scroll down and make calls: your position stays put.
 - [ ] **Export JSONL** downloads `decoy-weather-logs.jsonl`, with one JSON entry
       per line.
 - [ ] **Clear** empties the list, including in a second browser tab that's open
