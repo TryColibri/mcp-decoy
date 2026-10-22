@@ -73,8 +73,9 @@ const run = async () => {
   }
 
   const { info } = instance;
-  const uiUrl = command.dev ? 'http://localhost:5173 (Vite)' : instance.uiUrl;
-  log.success(`UI        ${styleText('cyan', uiUrl)}`);
+  if (!command.dev) {
+    log.success(`UI        ${styleText('cyan', instance.uiUrl)}`);
+  }
   log.info(`API       ${styleText('cyan', instance.apiUrl)}`);
   log.info(
     `MCP       ${styleText('cyan', info.mcp.urlTemplate.replace('{server}', '<server>'))}`,
