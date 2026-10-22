@@ -162,8 +162,10 @@ pnpm dev
 ```
 
 `pnpm dev` runs the server with `tsx watch` (MCP on 6280, API on 6281) and Vite
-on <http://localhost:5173>, which proxies `/api` to the server. Note that it
-uses your default config directory.
+on <http://localhost:5173>, which proxies `/api/` to the server, side by side.
+Note that it uses your default config directory. To pass flags such as
+`--config-dir`, run `pnpm dev:server --config-dir <dir>` and `pnpm dev:ui` in
+separate terminals.
 
 | Script           | What it does                                        |
 | ---------------- | --------------------------------------------------- |
