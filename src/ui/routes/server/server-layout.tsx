@@ -10,6 +10,7 @@ import {
   useParams,
 } from 'react-router';
 import { useSWRConfig } from 'swr';
+import { twMerge } from 'tailwind-merge';
 
 import { type ServerSummary } from '@/shared/api';
 import { client, keys, unwrapEmpty, useServer } from '@/ui/api';
@@ -86,11 +87,12 @@ function Tab({ to, children }: TabProps) {
     <NavLink
       to={to}
       className={({ isActive }) =>
-        `inline-flex min-h-[42px] items-center border-b-2 px-1 text-sm font-medium no-underline ${
+        twMerge(
+          'inline-flex min-h-10.5 items-center border-b-2 px-1 text-sm font-medium no-underline',
           isActive
             ? 'border-ink text-ink hover:text-ink'
-            : 'border-transparent text-ink-3 hover:text-ink'
-        }`
+            : 'border-transparent text-ink-3 hover:text-ink',
+        )
       }
     >
       {children}
