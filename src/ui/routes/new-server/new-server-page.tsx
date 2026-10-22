@@ -142,7 +142,7 @@ export function NewServerPage() {
               }}
               autoComplete="off"
               spellCheck={false}
-              placeholder="weather"
+              placeholder="my-server"
               aria-describedby={
                 nameError === null
                   ? ids.nameHint

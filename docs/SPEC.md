@@ -634,11 +634,12 @@ Screens:
    font is fine for JSON in v1; no code editor.
 6. **New server** (`/servers/new`): a single centered card with name (live slug
    preview of the endpoint, inline "already exists" error checked against the
-   SWR servers list, Create disabled when invalid), `serverInfo.name` (defaults
-   to `decoy/<name>`), `serverInfo.version` (defaults to `0.1.0`), and an
-   optional instructions textarea. Then **Create server** and Cancel. On
-   success, navigate to the new server's Tools tab. No protocol or capability
-   options.
+   SWR servers list, Create disabled when invalid), optional `serverInfo.name`
+   (placeholder `decoy/<name>`) and `serverInfo.version` (placeholder `0.1.0`),
+   and an optional instructions textarea. Empty `serverInfo` fields are omitted
+   from the request, so the server applies the defaults. Then **Create server**
+   and Cancel. On success, navigate to the new server's Tools tab. No protocol
+   or capability options.
 
 ---
 
