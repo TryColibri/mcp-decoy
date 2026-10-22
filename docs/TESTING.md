@@ -60,11 +60,11 @@ pnpm dev:ui
       **Create server** is disabled.
 - [x] Type `weather` instead. The endpoint preview and `serverInfo.name`
       (`decoy/weather`) follow what you type.
-- [ ] Add some instructions and click **Create server**. You land on the
+- [x] Add some instructions and click **Create server**. You land on the
       server's **Tools** tab.
-- [ ] Go back to New server and type `weather` again. "A server named “weather”
+- [x] Go back to New server and type `weather` again. "A server named “weather”
       already exists." appears and **Create server** is disabled.
-- [ ] On Servers, the table row shows the endpoint, the copy button (check that
+- [x] On Servers, the table row shows the endpoint, the copy button (check that
       it copies the full `http://…` URL), "No tools" and a grey "0" pill.
 
 ## 3. Tools editor
