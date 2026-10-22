@@ -1,4 +1,4 @@
-import { CheckIcon, CopyIcon } from 'lucide-react';
+import { CheckIcon, CopyIcon } from '@phosphor-icons/react';
 import { type ComponentProps, useEffect, useState } from 'react';
 import { twMerge } from 'tailwind-merge';
 

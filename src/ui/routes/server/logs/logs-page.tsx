@@ -1,4 +1,4 @@
-import { PauseIcon, PlayIcon } from 'lucide-react';
+import { PauseIcon, PlayIcon } from '@phosphor-icons/react';
 import { useDeferredValue, useId, useMemo, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 

@@ -1,5 +1,5 @@
 import { AlertDialog } from '@base-ui/react/alert-dialog';
-import { Trash2Icon } from 'lucide-react';
+import { TrashIcon } from '@phosphor-icons/react';
 import { useState } from 'react';
 import {
   Link,
@@ -128,7 +128,7 @@ function DeleteServerButton({ name }: DeleteServerButtonProps) {
   return (
     <AlertDialog.Root>
       <AlertDialog.Trigger className={buttonClasses('danger', 'small')}>
-        <Trash2Icon size={14} aria-hidden="true" />
+        <TrashIcon size={14} aria-hidden="true" />
         Delete server
       </AlertDialog.Trigger>
       <AlertDialog.Portal>

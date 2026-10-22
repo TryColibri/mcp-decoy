@@ -28,7 +28,7 @@ decisions are settled.
 | SPA data        | **`useSWR`** for reads; mutations with the typed client followed by SWR `mutate`                                                |
 | Styling         | Tailwind CSS v4 (`@tailwindcss/vite`) utility classes, `@theme` tokens in `src/ui/styles.css`                                   |
 | UI primitives   | **Base UI** (`@base-ui/react`) for dialogs, tooltips, checkboxes, …                                                             |
-| Icons and fonts | `lucide-react`; `@fontsource/inter` and `@fontsource/jetbrains-mono` (bundled, works offline)                                   |
+| Icons and fonts | `@phosphor-icons/react`; `@fontsource/inter` and `@fontsource/jetbrains-mono` (bundled, works offline)                          |
 | CLI             | Bombshell: `@bomb.sh/args` for flags, `@clack/prompts` for terminal output                                                      |
 | Bundling        | `vite build` → `dist/ui/`, `tsdown` → `dist/cli.js`                                                                             |
 | Package manager | pnpm — always use `pnpm add`/`pnpm remove`, never edit dependencies in `package.json` directly. Exact versions                  |

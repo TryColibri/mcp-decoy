@@ -2,11 +2,11 @@ import { AlertDialog } from '@base-ui/react/alert-dialog';
 import { Checkbox } from '@base-ui/react/checkbox';
 import {
   CheckIcon,
-  EyeOffIcon,
-  SaveIcon,
-  Trash2Icon,
-  UploadIcon,
-} from 'lucide-react';
+  EyeSlashIcon,
+  FloppyDiskIcon,
+  TrashIcon,
+  UploadSimpleIcon,
+} from '@phosphor-icons/react';
 import { type ReactNode, useId, useState } from 'react';
 import { twMerge } from 'tailwind-merge';
 
@@ -125,11 +125,11 @@ export function ToolEditor({
   const actions = tool.published ? (
     <>
       <Button variant="primary" disabled={busy} onClick={() => save(true)}>
-        <SaveIcon size={16} aria-hidden="true" />
+        <FloppyDiskIcon size={16} aria-hidden="true" />
         Save changes
       </Button>
       <Button disabled={busy} onClick={() => save(false)}>
-        <EyeOffIcon size={16} aria-hidden="true" />
+        <EyeSlashIcon size={16} aria-hidden="true" />
         Unpublish
       </Button>
       <ConfirmButton
@@ -139,18 +139,18 @@ export function ToolEditor({
         disabled={busy}
         onConfirm={remove}
       >
-        <Trash2Icon size={16} aria-hidden="true" />
+        <TrashIcon size={16} aria-hidden="true" />
         Delete tool
       </ConfirmButton>
     </>
   ) : (
     <>
       <Button variant="primary" disabled={busy} onClick={() => save(true)}>
-        <UploadIcon size={16} aria-hidden="true" />
+        <UploadSimpleIcon size={16} aria-hidden="true" />
         Publish tool
       </Button>
       <Button disabled={busy} onClick={() => save(false)}>
-        <SaveIcon size={16} aria-hidden="true" />
+        <FloppyDiskIcon size={16} aria-hidden="true" />
         Save draft
       </Button>
       <ConfirmButton
@@ -160,7 +160,7 @@ export function ToolEditor({
         disabled={busy}
         onConfirm={remove}
       >
-        <Trash2Icon size={16} aria-hidden="true" />
+        <TrashIcon size={16} aria-hidden="true" />
         Discard draft
       </ConfirmButton>
     </>
@@ -314,7 +314,7 @@ export function ToolEditor({
                   className="flex size-4 items-center justify-center rounded-sm border border-control bg-surface data-checked:border-ink data-checked:bg-ink"
                 >
                   <Checkbox.Indicator className="flex text-white data-unchecked:hidden">
-                    <CheckIcon size={12} strokeWidth={3} aria-hidden="true" />
+                    <CheckIcon size={12} weight="bold" aria-hidden="true" />
                   </Checkbox.Indicator>
                 </Checkbox.Root>
                 <span className="font-mono text-[13px]">{key}</span>

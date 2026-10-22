@@ -1,4 +1,4 @@
-import { PlusIcon } from 'lucide-react';
+import { PlusIcon } from '@phosphor-icons/react';
 
 import { type Tool } from '@/shared/api';
 
@@ -42,7 +42,7 @@ export function ToolList({
           disabled={creating}
           className="inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-md border border-control bg-surface px-2.5 text-[13px] font-semibold text-ink hover:bg-hover disabled:cursor-wait"
         >
-          <PlusIcon size={14} strokeWidth={2.2} aria-hidden="true" />
+          <PlusIcon size={14} weight="bold" aria-hidden="true" />
           New
         </button>
       </div>
@@ -64,7 +64,7 @@ export function ToolList({
             disabled={creating}
             className="inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-md border border-control bg-surface px-2.5 text-[13px] font-semibold text-ink hover:bg-hover disabled:cursor-wait"
           >
-            <PlusIcon size={14} strokeWidth={2.2} aria-hidden="true" />
+            <PlusIcon size={14} weight="bold" aria-hidden="true" />
             New tool
           </button>
         </div>
