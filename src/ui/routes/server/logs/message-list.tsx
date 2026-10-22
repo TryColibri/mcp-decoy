@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from 'react';
 
 import { type LogEntry } from '@/shared/api';
+import { tw } from '@/ui/tw';
 
 import {
   formatTime,
@@ -22,15 +23,14 @@ export type MessageListProps = {
   follow: boolean;
 };
 
-const grid =
-  'grid w-full grid-cols-[104px_28px_minmax(0,1fr)_56px_64px_84px] items-center gap-2 px-4';
+const grid = tw`grid w-full grid-cols-[104px_28px_minmax(0,1fr)_56px_64px_84px] items-center gap-2 px-4`;
 
 const tagStyles: Record<LogTag, string> = {
-  request: 'bg-in-bg text-in-tag',
-  result: 'bg-success-bg text-success',
-  notify: 'bg-neutral-bg text-ink-2',
-  error: 'bg-error-bg text-error',
-  invalid: 'bg-error-bg text-error',
+  request: tw`bg-in-bg text-in-tag`,
+  result: tw`bg-success-bg text-success`,
+  notify: tw`bg-neutral-bg text-ink-2`,
+  error: tw`bg-error-bg text-error`,
+  invalid: tw`bg-error-bg text-error`,
 };
 
 /** How close to the bottom counts as "at the bottom", in pixels. */

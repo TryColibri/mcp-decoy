@@ -1,5 +1,6 @@
 {
   "typescript.tsdk": "node_modules/typescript/lib",
+  "tailwindCSS.classFunctions": ["twMerge", "tw"],
   "editor.codeActionsOnSave": {
     "source.fixAll.oxc": "always"
   },
@@ -7,6 +8,9 @@
     "editor.defaultFormatter": "oxc.oxc-vscode"
   },
   "[typescript]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "[typescriptreact]": {
     "editor.defaultFormatter": "oxc.oxc-vscode"
   },
   "[json]": {

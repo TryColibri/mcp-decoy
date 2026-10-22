@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { type ServerSummary } from '@/shared/api';
 import { EndpointPill } from '@/ui/components/endpoint-pill';
 import { SessionsPill, StatusDot } from '@/ui/components/sessions-pill';
+import { tw } from '@/ui/tw';
 
 /** Props of `ServerTable`. */
 export type ServerTableProps = {
@@ -10,10 +11,8 @@ export type ServerTableProps = {
   servers: ServerSummary[];
 };
 
-const th =
-  'border-b border-line px-4 py-2.5 text-left text-xs font-semibold tracking-wide whitespace-nowrap text-ink-4 uppercase';
-const td =
-  'border-b border-line-soft px-4 py-3.5 align-middle text-sm whitespace-nowrap';
+const th = tw`border-b border-line px-4 py-2.5 text-left text-xs font-semibold tracking-wide whitespace-nowrap text-ink-4 uppercase`;
+const td = tw`border-b border-line-soft px-4 py-3.5 align-middle text-sm whitespace-nowrap`;
 
 /** The servers table: name, endpoint, exposed tools, sessions, links. */
 export function ServerTable({ servers }: ServerTableProps) {

@@ -26,7 +26,8 @@
     },
     "better-tailwindcss": {
       "entryPoint": "src/ui/styles.css",
-      "rootFontSize": 16
+      "rootFontSize": 16,
+      "tags": ["tw"]
     }
   },
   "ignorePatterns": ["dist/", ".agents/", ".claude/", "coverage/", "docs/"],

@@ -13,9 +13,9 @@ import {
 } from '@/ui/api';
 import { Button, ButtonLink } from '@/ui/components/button';
 import { CopyButton } from '@/ui/components/copy-button';
+import { tw } from '@/ui/tw';
 
-const control =
-  'box-border min-h-10 w-full rounded-lg border bg-surface px-3 text-sm font-medium text-ink';
+const control = tw`box-border min-h-10 w-full rounded-lg border bg-surface px-3 text-sm font-medium text-ink`;
 
 /** `/servers/new`: create a mock server. */
 export function NewServerPage() {

@@ -1,5 +1,6 @@
 import { type LogEntry } from '@/shared/api';
 import { useSessions } from '@/ui/api';
+import { tw } from '@/ui/tw';
 
 import {
   describeCapabilities,
@@ -128,15 +129,15 @@ type BadgeProps = {
 };
 
 const tones: Record<BadgeProps['tone'], string> = {
-  success: 'bg-success-bg text-success',
-  warning: 'bg-out-bg text-out',
-  error: 'bg-error-bg text-error',
+  success: tw`bg-success-bg text-success`,
+  warning: tw`bg-out-bg text-out`,
+  error: tw`bg-error-bg text-error`,
 };
 
 function Badge({ tone, children }: BadgeProps) {
   return (
     <span
-      className={`rounded-full px-2 py-0.75 text-xs font-semibold ${tones[tone]}`}
+      className={tw`rounded-full px-2 py-0.75 text-xs font-semibold ${tones[tone]}`}
     >
       {children}
     </span>

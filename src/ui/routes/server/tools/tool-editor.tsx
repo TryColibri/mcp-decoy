@@ -17,6 +17,7 @@ import {
 } from '@/shared/api';
 import { ApiError, client, unwrap, unwrapEmpty } from '@/ui/api';
 import { Button, buttonClasses } from '@/ui/components/button';
+import { tw } from '@/ui/tw';
 
 import {
   parseToolForm,
@@ -38,14 +39,12 @@ export type ToolEditorProps = {
   onDeleted: () => Promise<void>;
 };
 
-const fieldLabel = 'flex flex-col gap-1.5 text-[13px] font-semibold text-ink-2';
-const hint = 'text-xs font-normal text-ink-4';
-const code =
-  'box-border w-full resize-y rounded-lg border bg-input px-3.5 py-3 font-mono text-[12.5px] leading-[1.6] text-ink';
+const fieldLabel = tw`flex flex-col gap-1.5 text-[13px] font-semibold text-ink-2`;
+const hint = tw`text-xs font-normal text-ink-4`;
+const code = tw`box-border w-full resize-y rounded-lg border bg-input px-3.5 py-3 font-mono text-[12.5px] leading-[1.6] text-ink`;
 /** Lets two fields side by side share their label row, so the inputs line up. */
-const aligned = '@4xl:row-span-2 @4xl:grid @4xl:grid-rows-subgrid';
-const control =
-  'box-border min-h-10 rounded-lg border bg-surface px-3 text-sm font-medium text-ink';
+const aligned = tw`@4xl:row-span-2 @4xl:grid @4xl:grid-rows-subgrid`;
+const control = tw`box-border min-h-10 rounded-lg border bg-surface px-3 text-sm font-medium text-ink`;
 
 const ANNOTATIONS: Array<keyof ToolAnnotations> = [
   'readOnlyHint',

@@ -5,7 +5,7 @@
   "sortPackageJson": true,
   "sortTailwindcss": {
     "stylesheet": "./src/ui/styles.css",
-    "functions": ["twMerge"]
+    "functions": ["twMerge", "tw"]
   },
   "sortImports": {
     "ignoreCase": false,

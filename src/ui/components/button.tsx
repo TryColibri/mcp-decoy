@@ -2,27 +2,25 @@ import { type ComponentProps } from 'react';
 import { Link } from 'react-router';
 import { twMerge } from 'tailwind-merge';
 
+import { tw } from '@/ui/tw';
+
 /** Visual weight of a button. */
 export type ButtonVariant = 'primary' | 'secondary' | 'danger';
 
 /** Size of a button: `large` is the 44px call to action, `small` fits toolbars. */
 export type ButtonSize = 'large' | 'small';
 
-const base =
-  'inline-flex items-center justify-center gap-2 rounded-lg font-sans whitespace-nowrap no-underline transition-colors cursor-pointer disabled:cursor-not-allowed';
+const base = tw`inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg font-sans whitespace-nowrap no-underline transition-colors disabled:cursor-not-allowed`;
 
 const variants: Record<ButtonVariant, string> = {
-  primary:
-    'border-0 bg-ink text-white font-semibold hover:bg-[#2a2d34] hover:text-white disabled:bg-ink-faint',
-  secondary:
-    'border border-control bg-surface text-ink font-medium hover:bg-hover hover:text-ink disabled:text-ink-faint',
-  danger:
-    'border border-control bg-surface text-error font-medium hover:bg-error-bg hover:text-error disabled:text-ink-faint',
+  primary: tw`border-0 bg-ink font-semibold text-white hover:bg-[#2a2d34] hover:text-white disabled:bg-ink-faint`,
+  secondary: tw`border border-control bg-surface font-medium text-ink hover:bg-hover hover:text-ink disabled:text-ink-faint`,
+  danger: tw`border border-control bg-surface font-medium text-error hover:bg-error-bg hover:text-error disabled:text-ink-faint`,
 };
 
 const sizes: Record<ButtonSize, string> = {
-  large: 'min-h-11 px-5 text-sm',
-  small: 'min-h-9 px-3 text-[13px]',
+  large: tw`min-h-11 px-5 text-sm`,
+  small: tw`min-h-9 px-3 text-[13px]`,
 };
 
 /**
@@ -36,7 +34,7 @@ export function buttonClasses(
   variant: ButtonVariant = 'secondary',
   size: ButtonSize = 'large',
 ): string {
-  return `${base} ${variants[variant]} ${sizes[size]}`;
+  return tw`${base} ${variants[variant]} ${sizes[size]}`;
 }
 
 /** Props of `Button`. */
