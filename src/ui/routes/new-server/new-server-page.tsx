@@ -97,7 +97,7 @@ export function NewServerPage() {
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line bg-surface px-6 py-[18px]">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line bg-surface px-6 py-4.5">
         <Link to="/" className="py-1.5 text-sm font-medium no-underline">
           Servers
         </Link>
