@@ -41,14 +41,18 @@ export function TunnelPopover({ host, port }: TunnelPopoverProps) {
               , then use the tunnel host in place of {host}. Never tunnel the UI
               port.
             </Popover.Description>
-            <div className="flex items-center gap-2">
-              <div className="min-w-0 flex-1 overflow-x-auto rounded-lg bg-code px-3.5 py-3 font-mono text-xs whitespace-nowrap text-code-ink">
+            <div className="flex items-start gap-2 rounded-lg bg-code py-1.5 pr-1.5 pl-3.5">
+              <div className="min-w-0 flex-1 overflow-x-auto py-1.5 font-mono text-xs whitespace-nowrap text-code-ink">
                 <span className="text-code-dim" aria-hidden="true">
                   ${' '}
                 </span>
                 {command}
               </div>
-              <CopyButton text={command} label="Copy tunnel command" />
+              <CopyButton
+                text={command}
+                label="Copy tunnel command"
+                className="size-7 text-code-dim hover:bg-white/10 hover:text-code-ink"
+              />
             </div>
           </Popover.Popup>
         </Popover.Positioner>

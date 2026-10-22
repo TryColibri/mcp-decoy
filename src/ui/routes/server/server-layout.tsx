@@ -14,8 +14,7 @@ import { useSWRConfig } from 'swr';
 import { type ServerSummary } from '@/shared/api';
 import { client, keys, unwrapEmpty, useServer } from '@/ui/api';
 import { Button, ButtonLink, buttonClasses } from '@/ui/components/button';
-import { CopyButton } from '@/ui/components/copy-button';
-import { displayEndpoint } from '@/ui/components/endpoint';
+import { EndpointPill } from '@/ui/components/endpoint-pill';
 import { SessionsPill } from '@/ui/components/sessions-pill';
 
 /** What the server layout hands to its tabs. */
@@ -61,10 +60,7 @@ export function ServerLayout() {
           <h1 className="m-0 text-xl font-bold tracking-tight">
             {server.name}
           </h1>
-          <span className="rounded-md bg-muted px-2 py-1 font-mono text-[13px]">
-            {displayEndpoint(server.mcpUrl)}
-          </span>
-          <CopyButton text={server.mcpUrl} label="Copy endpoint URL" />
+          <EndpointPill url={server.mcpUrl} />
           <SessionsPill count={server.sessionCount} long />
           <div className="ml-auto">
             <DeleteServerButton name={server.name} />

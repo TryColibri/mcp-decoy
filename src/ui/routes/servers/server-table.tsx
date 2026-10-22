@@ -1,8 +1,7 @@
 import { Link } from 'react-router';
 
 import { type ServerSummary } from '@/shared/api';
-import { CopyButton } from '@/ui/components/copy-button';
-import { displayEndpoint } from '@/ui/components/endpoint';
+import { EndpointPill } from '@/ui/components/endpoint-pill';
 import { SessionsPill, StatusDot } from '@/ui/components/sessions-pill';
 
 /** Props of `ServerTable`. */
@@ -67,12 +66,7 @@ function ServerRow({ server }: ServerRowProps) {
         </div>
       </td>
       <td className={td}>
-        <div className="flex items-center gap-2">
-          <span className="rounded-md bg-muted px-2 py-1 font-mono text-[13px] text-ink">
-            {displayEndpoint(server.mcpUrl)}
-          </span>
-          <CopyButton text={server.mcpUrl} label="Copy endpoint URL" />
-        </div>
+        <EndpointPill url={server.mcpUrl} />
       </td>
       <td className={`${td} text-ink-2`}>{describeTools(server)}</td>
       <td className={td}>

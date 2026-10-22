@@ -14,8 +14,6 @@ import {
 import { Button, ButtonLink } from '@/ui/components/button';
 import { CopyButton } from '@/ui/components/copy-button';
 
-const DEFAULT_VERSION = '0.1.0';
-
 const control =
   'box-border min-h-10 w-full rounded-lg border bg-surface px-3 text-sm font-medium text-ink';
 
@@ -36,8 +34,8 @@ export function NewServerPage() {
   };
 
   const [name, setName] = useState('');
-  const [infoName, setInfoName] = useState<string | null>(null);
-  const [version, setVersion] = useState(DEFAULT_VERSION);
+  const [infoName, setInfoName] = useState('');
+  const [version, setVersion] = useState('');
   const [instructions, setInstructions] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [serverErrors, setServerErrors] = useState<
@@ -56,9 +54,7 @@ export function NewServerPage() {
         : parsed.success
           ? (serverErrors.name ?? null)
           : (parsed.error.issues.at(0)?.message ?? 'Invalid name');
-  const effectiveInfoName = infoName ?? `decoy/${slug}`;
-  const valid =
-    parsed.success && !taken && effectiveInfoName !== '' && version !== '';
+  const valid = parsed.success && !taken;
 
   const endpoint =
     instance === undefined
@@ -73,11 +69,15 @@ export function NewServerPage() {
     setSubmitting(true);
     setFormError(null);
     try {
+      const serverInfo = {
+        ...(infoName.trim() === '' ? {} : { name: infoName }),
+        ...(version.trim() === '' ? {} : { version }),
+      };
       await unwrap(
         client.servers.$post({
           json: {
             name,
-            serverInfo: { name: effectiveInfoName, version },
+            ...(Object.keys(serverInfo).length === 0 ? {} : { serverInfo }),
             ...(instructions.trim() === '' ? {} : { instructions }),
           },
         }),
@@ -162,12 +162,18 @@ export function NewServerPage() {
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 rounded-lg bg-muted px-3.5 py-3">
-            <span className="text-[13px] text-ink-3">Endpoint</span>
-            <span className="font-mono text-[13px] wrap-anywhere text-ink">
-              {endpoint}
-            </span>
-            <CopyButton text={endpoint} label="Copy endpoint URL" />
+          <div className="flex items-start gap-2 rounded-lg bg-muted py-1.5 pr-1.5 pl-3.5">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 py-1">
+              <span className="text-[13px] text-ink-3">Endpoint</span>
+              <span className="font-mono text-[13px] wrap-anywhere text-ink">
+                {endpoint}
+              </span>
+            </div>
+            <CopyButton
+              text={endpoint}
+              label="Copy endpoint URL"
+              className="size-7"
+            />
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -181,12 +187,13 @@ export function NewServerPage() {
               <input
                 id={ids.infoName}
                 className={`${control} border-control font-mono`}
-                value={effectiveInfoName}
+                value={infoName}
                 onChange={(event) => {
                   setInfoName(event.target.value);
                 }}
+                placeholder={`decoy/${slug}`}
+                autoComplete="off"
                 spellCheck={false}
-                aria-invalid={effectiveInfoName === ''}
               />
               {serverErrors['serverInfo.name'] !== undefined && (
                 <span role="alert" className="text-[13px] text-error">
@@ -208,8 +215,9 @@ export function NewServerPage() {
                 onChange={(event) => {
                   setVersion(event.target.value);
                 }}
+                placeholder="0.1.0"
+                autoComplete="off"
                 spellCheck={false}
-                aria-invalid={version === ''}
               />
               {serverErrors['serverInfo.version'] !== undefined && (
                 <span role="alert" className="text-[13px] text-error">
