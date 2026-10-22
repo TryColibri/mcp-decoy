@@ -8,9 +8,11 @@ import { TunnelPopover } from './tunnel-popover';
 /** Every page: the global header above the routed content. */
 export function RootLayout() {
   return (
-    <div className="flex min-h-dvh flex-col bg-page text-ink">
+    <div className="flex h-dvh flex-col bg-page text-ink">
       <GlobalHeader />
-      <Outlet />
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <Outlet />
+      </div>
     </div>
   );
 }

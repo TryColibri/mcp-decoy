@@ -30,7 +30,7 @@ export function ToolList({
   return (
     <aside
       aria-label="Tools on this server"
-      className="box-border flex max-w-full flex-[1_1_300px] flex-col gap-3.5 border-r border-line bg-surface px-4 py-5"
+      className="box-border flex w-full flex-col gap-3.5 border-r border-line bg-surface px-4 py-5 md:w-75 md:shrink-0 md:overflow-y-auto"
     >
       <div className="flex items-center justify-between">
         <h2 className="m-0 text-xs font-semibold tracking-wide text-ink-4 uppercase">

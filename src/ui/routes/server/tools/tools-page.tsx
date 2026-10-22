@@ -63,7 +63,7 @@ export function ToolsPage() {
 
   let editor;
   if (tools === undefined) {
-    editor = <p className="m-0 text-sm text-ink-4">Loading tools…</p>;
+    editor = <p className="m-0 p-8 text-sm text-ink-4">Loading tools…</p>;
   } else if (selected === undefined) {
     editor = null;
   } else {
@@ -85,7 +85,7 @@ export function ToolsPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-wrap items-stretch">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto md:flex-row md:overflow-hidden">
       <ToolList
         tools={tools ?? []}
         selected={selected?.name ?? null}
@@ -94,9 +94,7 @@ export function ToolsPage() {
         onSelect={select}
         onCreate={createTool}
       />
-      <main className="box-border flex max-w-245 min-w-0 flex-[999_1_640px] flex-col gap-5 px-8 pt-7 pb-8">
-        {editor}
-      </main>
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col">{editor}</main>
     </div>
   );
 }

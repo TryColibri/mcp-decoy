@@ -1,7 +1,14 @@
 import { AlertDialog } from '@base-ui/react/alert-dialog';
 import { Checkbox } from '@base-ui/react/checkbox';
-import { CheckIcon } from 'lucide-react';
+import {
+  CheckIcon,
+  EyeOffIcon,
+  SaveIcon,
+  Trash2Icon,
+  UploadIcon,
+} from 'lucide-react';
 import { type ReactNode, useId, useState } from 'react';
+import { twMerge } from 'tailwind-merge';
 
 import {
   type ServerSummary,
@@ -35,6 +42,8 @@ const fieldLabel = 'flex flex-col gap-1.5 text-[13px] font-semibold text-ink-2';
 const hint = 'text-xs font-normal text-ink-4';
 const code =
   'box-border w-full resize-y rounded-lg border bg-input px-3.5 py-3 font-mono text-[12.5px] leading-[1.6] text-ink';
+/** Lets two fields side by side share their label row, so the inputs line up. */
+const aligned = '@4xl:row-span-2 @4xl:grid @4xl:grid-rows-subgrid';
 const control =
   'box-border min-h-10 rounded-lg border bg-surface px-3 text-sm font-medium text-ink';
 
@@ -116,205 +125,228 @@ export function ToolEditor({
   const actions = tool.published ? (
     <>
       <Button variant="primary" disabled={busy} onClick={() => save(true)}>
+        <SaveIcon size={16} aria-hidden="true" />
         Save changes
       </Button>
       <Button disabled={busy} onClick={() => save(false)}>
+        <EyeOffIcon size={16} aria-hidden="true" />
         Unpublish
       </Button>
       <ConfirmButton
-        label="Delete tool"
         title={`Delete “${tool.name}”?`}
         description="Clients stop seeing it right away. This can’t be undone."
         confirm="Delete tool"
         disabled={busy}
         onConfirm={remove}
-      />
+      >
+        <Trash2Icon size={16} aria-hidden="true" />
+        Delete tool
+      </ConfirmButton>
     </>
   ) : (
     <>
       <Button variant="primary" disabled={busy} onClick={() => save(true)}>
+        <UploadIcon size={16} aria-hidden="true" />
         Publish tool
       </Button>
       <Button disabled={busy} onClick={() => save(false)}>
+        <SaveIcon size={16} aria-hidden="true" />
         Save draft
       </Button>
       <ConfirmButton
-        label="Discard draft"
         title={`Discard “${tool.name}”?`}
         description="The draft is deleted. Clients never saw it."
         confirm="Discard draft"
         disabled={busy}
         onConfirm={remove}
-      />
+      >
+        <Trash2Icon size={16} aria-hidden="true" />
+        Discard draft
+      </ConfirmButton>
     </>
   );
 
   return (
-    <>
-      <div className="flex flex-wrap items-center gap-3">
-        <h2 className="m-0 font-mono text-[22px] font-medium break-all">
-          {tool.name}
-        </h2>
-        <span
-          className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-            tool.published ? 'bg-success-bg text-success' : 'bg-out-bg text-out'
-          }`}
-        >
-          {tool.published ? 'Published' : 'Draft · not published'}
-        </span>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Field id={ids.name} label="Name" error={errors.name}>
-          <input
-            id={ids.name}
-            className={`${control} font-mono ${borderOf(errors.name)}`}
-            value={form.name}
-            onChange={(event) => {
-              update('name', event.target.value);
-            }}
-            spellCheck={false}
-            aria-invalid={errors.name !== undefined}
-          />
-        </Field>
-        <Field
-          id={ids.title}
-          label="Title"
-          hint="optional, shown to users"
-          error={errors.title}
-        >
-          <input
-            id={ids.title}
-            className={`${control} ${borderOf(errors.title)}`}
-            value={form.title}
-            onChange={(event) => {
-              update('title', event.target.value);
-            }}
-          />
-        </Field>
-      </div>
-
-      <Field
-        id={ids.description}
-        label="Description"
-        error={errors.description}
-      >
-        <textarea
-          id={ids.description}
-          rows={2}
-          className={`${code} font-sans text-sm ${borderOf(errors.description)}`}
-          value={form.description}
-          onChange={(event) => {
-            update('description', event.target.value);
-          }}
-        />
-      </Field>
-
-      <Field
-        id={ids.schema}
-        label="Input schema"
-        hint="JSON Schema with “type”: “object”. Not enforced on calls."
-        hintId={ids.schemaHint}
-        error={errors.inputSchema}
-      >
-        <textarea
-          id={ids.schema}
-          rows={9}
-          className={`${code} ${borderOf(errors.inputSchema)}`}
-          value={form.inputSchema}
-          onChange={(event) => {
-            update('inputSchema', event.target.value);
-          }}
-          spellCheck={false}
-          aria-describedby={ids.schemaHint}
-          aria-invalid={errors.inputSchema !== undefined}
-        />
-      </Field>
-
-      <Field
-        id={ids.template}
-        label="Response template"
-        hint={<TemplateHint />}
-        hintId={ids.templateHint}
-        error={errors.responseTemplate}
-      >
-        <textarea
-          id={ids.template}
-          rows={8}
-          className={`${code} ${borderOf(errors.responseTemplate)}`}
-          value={form.responseTemplate}
-          onChange={(event) => {
-            update('responseTemplate', event.target.value);
-          }}
-          spellCheck={false}
-          aria-describedby={ids.templateHint}
-          aria-invalid={errors.responseTemplate !== undefined}
-        />
-        {tool.warnings.length > 0 && (
-          <div
-            aria-live="polite"
-            className="flex flex-col gap-1 rounded-lg bg-out-bg px-3 py-2 text-xs font-normal text-out"
-          >
-            <span className="font-semibold">
-              Trial render with empty args (last save):
-            </span>
-            {tool.warnings.map((warning) => (
-              <span
-                key={`${warning.path}:${warning.message}`}
-                className="font-mono"
-              >
-                {warning.path === '' ? '' : `${warning.path}: `}
-                {warning.message}
-              </span>
-            ))}
-          </div>
-        )}
-      </Field>
-
-      <fieldset className="m-0 flex flex-wrap gap-x-6 gap-y-2 border-0 p-0 text-sm text-ink-2">
-        <legend className="sr-only">Annotations</legend>
-        {ANNOTATIONS.map((key) => (
-          <label
-            key={key}
-            className="inline-flex min-h-8 cursor-pointer items-center gap-2"
-          >
-            <Checkbox.Root
-              checked={form.annotations[key]}
-              onCheckedChange={(checked) => {
-                update('annotations', { ...form.annotations, [key]: checked });
-              }}
-              className="flex size-4 items-center justify-center rounded-sm border border-control bg-surface data-checked:border-ink data-checked:bg-ink"
+    <div className="@container flex min-h-0 flex-1 flex-col">
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="flex flex-col gap-5 px-8 pt-7 pb-8">
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="m-0 font-mono text-[22px] font-medium break-all">
+              {tool.name}
+            </h2>
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                tool.published
+                  ? 'bg-success-bg text-success'
+                  : 'bg-out-bg text-out'
+              }`}
             >
-              <Checkbox.Indicator className="flex text-white data-unchecked:hidden">
-                <CheckIcon size={12} strokeWidth={3} aria-hidden="true" />
-              </Checkbox.Indicator>
-            </Checkbox.Root>
-            <span className="font-mono text-[13px]">{key}</span>
-          </label>
-        ))}
-      </fieldset>
+              {tool.published ? 'Published' : 'Draft · not published'}
+            </span>
+          </div>
 
-      {errors.form !== undefined && (
-        <p role="alert" className="m-0 text-[13px] text-error">
-          {errors.form}
-        </p>
-      )}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Field id={ids.name} label="Name" error={errors.name}>
+              <input
+                id={ids.name}
+                className={`${control} font-mono ${borderOf(errors.name)}`}
+                value={form.name}
+                onChange={(event) => {
+                  update('name', event.target.value);
+                }}
+                spellCheck={false}
+                aria-invalid={errors.name !== undefined}
+              />
+            </Field>
+            <Field
+              id={ids.title}
+              label="Title"
+              hint="optional, shown to users"
+              error={errors.title}
+            >
+              <input
+                id={ids.title}
+                className={`${control} ${borderOf(errors.title)}`}
+                value={form.title}
+                onChange={(event) => {
+                  update('title', event.target.value);
+                }}
+              />
+            </Field>
+          </div>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-t border-line pt-4">
-        {actions}
-        <span className="text-[13px] text-ink-3">
-          Live, no restart · notifies{' '}
-          <strong>
-            {sessions} {sessions === 1 ? 'session' : 'sessions'}
-          </strong>{' '}
-          on <span className="font-mono">{server.name}</span>
-        </span>
+          <Field
+            id={ids.description}
+            label="Description"
+            error={errors.description}
+          >
+            <textarea
+              id={ids.description}
+              rows={2}
+              className={`${code} font-sans text-sm ${borderOf(errors.description)}`}
+              value={form.description}
+              onChange={(event) => {
+                update('description', event.target.value);
+              }}
+            />
+          </Field>
+
+          <div className="grid grid-cols-1 gap-4 @4xl:grid-cols-2 @4xl:gap-y-1.5">
+            <Field
+              id={ids.schema}
+              className={aligned}
+              label="Input schema"
+              hint="JSON Schema with “type”: “object”. Not enforced on calls."
+              hintId={ids.schemaHint}
+              error={errors.inputSchema}
+            >
+              <textarea
+                id={ids.schema}
+                rows={16}
+                className={`${code} ${borderOf(errors.inputSchema)}`}
+                value={form.inputSchema}
+                onChange={(event) => {
+                  update('inputSchema', event.target.value);
+                }}
+                spellCheck={false}
+                aria-describedby={ids.schemaHint}
+                aria-invalid={errors.inputSchema !== undefined}
+              />
+            </Field>
+
+            <Field
+              id={ids.template}
+              className={aligned}
+              label="Response template"
+              hint={<TemplateHint />}
+              hintId={ids.templateHint}
+              error={errors.responseTemplate}
+            >
+              <textarea
+                id={ids.template}
+                rows={16}
+                className={`${code} ${borderOf(errors.responseTemplate)}`}
+                value={form.responseTemplate}
+                onChange={(event) => {
+                  update('responseTemplate', event.target.value);
+                }}
+                spellCheck={false}
+                aria-describedby={ids.templateHint}
+                aria-invalid={errors.responseTemplate !== undefined}
+              />
+              {tool.warnings.length > 0 && (
+                <div
+                  aria-live="polite"
+                  className="flex flex-col gap-1 rounded-lg bg-out-bg px-3 py-2 text-xs font-normal text-out"
+                >
+                  <span className="font-semibold">
+                    Trial render with empty args (last save):
+                  </span>
+                  {tool.warnings.map((warning) => (
+                    <span
+                      key={`${warning.path}:${warning.message}`}
+                      className="font-mono"
+                    >
+                      {warning.path === '' ? '' : `${warning.path}: `}
+                      {warning.message}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </Field>
+          </div>
+
+          <fieldset className="m-0 flex flex-wrap gap-x-6 gap-y-2 border-0 p-0 text-sm text-ink-2">
+            <legend className="sr-only">Annotations</legend>
+            {ANNOTATIONS.map((key) => (
+              <label
+                key={key}
+                className="inline-flex min-h-8 cursor-pointer items-center gap-2"
+              >
+                <Checkbox.Root
+                  checked={form.annotations[key]}
+                  onCheckedChange={(checked) => {
+                    update('annotations', {
+                      ...form.annotations,
+                      [key]: checked,
+                    });
+                  }}
+                  className="flex size-4 items-center justify-center rounded-sm border border-control bg-surface data-checked:border-ink data-checked:bg-ink"
+                >
+                  <Checkbox.Indicator className="flex text-white data-unchecked:hidden">
+                    <CheckIcon size={12} strokeWidth={3} aria-hidden="true" />
+                  </Checkbox.Indicator>
+                </Checkbox.Root>
+                <span className="font-mono text-[13px]">{key}</span>
+              </label>
+            ))}
+          </fieldset>
+        </div>
       </div>
-    </>
+
+      <footer className="flex shrink-0 flex-col gap-2 border-t border-line bg-surface px-8 py-3">
+        {errors.form !== undefined && (
+          <p role="alert" className="m-0 text-[13px] text-error">
+            {errors.form}
+          </p>
+        )}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+          {actions}
+          <span className="text-[13px] text-ink-3">
+            Live, no restart · notifies{' '}
+            <strong>
+              {sessions} {sessions === 1 ? 'session' : 'sessions'}
+            </strong>{' '}
+            on <span className="font-mono">{server.name}</span>
+          </span>
+        </div>
+      </footer>
+    </div>
   );
 }
 
 type FieldProps = {
+  className?: string;
   id: string;
   label: string;
   hint?: ReactNode;
@@ -324,6 +356,7 @@ type FieldProps = {
 };
 
 function Field({
+  className,
   id,
   label,
   hint: hintContent,
@@ -332,7 +365,7 @@ function Field({
   children,
 }: FieldProps) {
   return (
-    <div className={fieldLabel}>
+    <div className={twMerge(fieldLabel, className)}>
       <p className="m-0">
         <label htmlFor={id}>{label}</label>
         {hintContent !== undefined && (
@@ -344,12 +377,14 @@ function Field({
           </>
         )}
       </p>
-      {children}
-      {error !== undefined && (
-        <span role="alert" className="text-[13px] font-normal text-error">
-          {error}
-        </span>
-      )}
+      <div className="flex flex-col gap-1.5">
+        {children}
+        {error !== undefined && (
+          <span role="alert" className="text-[13px] font-normal text-error">
+            {error}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -373,7 +408,7 @@ function TemplateHint() {
 }
 
 type ConfirmButtonProps = {
-  label: string;
+  children: ReactNode;
   title: string;
   description: string;
   confirm: string;
@@ -382,7 +417,7 @@ type ConfirmButtonProps = {
 };
 
 function ConfirmButton({
-  label,
+  children,
   title,
   description,
   confirm,
@@ -395,7 +430,7 @@ function ConfirmButton({
         className={buttonClasses('danger')}
         disabled={disabled}
       >
-        {label}
+        {children}
       </AlertDialog.Trigger>
       <AlertDialog.Portal>
         <AlertDialog.Backdrop className="fixed inset-0 bg-ink/30" />
