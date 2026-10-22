@@ -12,7 +12,7 @@ import {
   useServers,
 } from '@/ui/api';
 import { Button, ButtonLink } from '@/ui/components/button';
-import { displayEndpoint } from '@/ui/components/endpoint';
+import { CopyButton } from '@/ui/components/copy-button';
 
 const DEFAULT_VERSION = '0.1.0';
 
@@ -62,8 +62,8 @@ export function NewServerPage() {
 
   const endpoint =
     instance === undefined
-      ? `localhost:6280/s/${slug}/mcp`
-      : displayEndpoint(instance.mcp.urlTemplate.replace('{server}', slug));
+      ? `http://localhost:6280/s/${slug}/mcp`
+      : instance.mcp.urlTemplate.replace('{server}', slug);
 
   const submit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -110,11 +110,11 @@ export function NewServerPage() {
       <form
         onSubmit={submit}
         noValidate
-        className="mx-auto box-border flex w-full max-w-[760px] flex-1 flex-col gap-5 px-6 pt-7 pb-12"
+        className="mx-auto box-border flex w-full max-w-190 flex-1 flex-col gap-5 px-6 pt-7 pb-12"
       >
         <section
           aria-labelledby="identity-heading"
-          className="flex flex-col gap-[18px] rounded-xl border border-line bg-surface p-[22px]"
+          className="flex flex-col gap-4.5 rounded-xl border border-line bg-surface p-5.5"
         >
           <h2 id="identity-heading" className="m-0 text-base font-semibold">
             Identity
@@ -164,9 +164,10 @@ export function NewServerPage() {
 
           <div className="flex flex-wrap items-center gap-2 rounded-lg bg-muted px-3.5 py-3">
             <span className="text-[13px] text-ink-3">Endpoint</span>
-            <span className="font-mono text-[13px] [overflow-wrap:anywhere] text-ink">
+            <span className="font-mono text-[13px] wrap-anywhere text-ink">
               {endpoint}
             </span>
+            <CopyButton text={endpoint} label="Copy endpoint URL" />
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

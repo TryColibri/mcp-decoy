@@ -50,7 +50,7 @@ export function CopyButton({
       title={copied ? 'Copied' : label}
       onClick={copy}
       className={twMerge(
-        'inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md border border-line bg-surface text-ink-2 hover:bg-hover',
+        'inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md  text-ink-2 hover:bg-hover',
         className,
       )}
     >
