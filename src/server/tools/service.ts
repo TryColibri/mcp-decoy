@@ -1,7 +1,7 @@
 import { ConflictError, NotFoundError } from '@/server/errors';
 import { type DecoyEvents, type EventBus } from '@/server/events';
 import { type ServerRepository } from '@/server/servers';
-import { checkTemplate, DEFAULT_RESPONSE_TEMPLATE } from '@/server/templates';
+import { DEFAULT_RESPONSE_TEMPLATE } from '@/server/templates';
 import {
   type CreateToolRequest,
   type ServerConfig,
@@ -108,10 +108,9 @@ export function createToolsService({
   };
 
   return {
-    list: (server) =>
-      findServer(repository.list(), server).tools.map(withWarnings),
+    list: (server) => findServer(repository.list(), server).tools,
     get: (server, name) =>
-      withWarnings(findTool(findServer(repository.list(), server), name)),
+      findTool(findServer(repository.list(), server), name),
     listPublished: (server) =>
       repository.find(server)?.tools.filter((tool) => tool.published) ?? [],
 
@@ -144,7 +143,7 @@ export function createToolsService({
         };
       });
       announce(server, created);
-      return withWarnings(created);
+      return created;
     },
 
     async update(server, name, patch) {
@@ -188,7 +187,7 @@ export function createToolsService({
         };
       });
       announce(server, before, after);
-      return withWarnings(after);
+      return after;
     },
 
     async delete(server, name) {
@@ -208,8 +207,3 @@ export function createToolsService({
     },
   };
 }
-
-const withWarnings = (tool: ToolConfig): Tool => ({
-  ...tool,
-  warnings: checkTemplate(tool.responseTemplate),
-});

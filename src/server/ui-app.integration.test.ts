@@ -210,7 +210,6 @@ describe('uiApp', () => {
         description: '',
         inputSchema: { type: 'object', properties: {} },
         published: false,
-        warnings: [],
       });
 
       const patched = await request(
@@ -228,9 +227,6 @@ describe('uiApp', () => {
       expect(patched.status).toBe(200);
       const patchedTool = toolSchema.parse(await patched.json());
       expect(patchedTool.description).toBe('Forecast');
-      expect(patchedTool.warnings).toEqual([
-        expect.objectContaining({ message: expect.stringContaining('city') }),
-      ]);
 
       const published = await request(
         '/api/v1/servers/weather/tools/get_forecast',

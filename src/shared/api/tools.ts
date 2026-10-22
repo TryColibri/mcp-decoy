@@ -1,7 +1,5 @@
 import { z } from 'zod';
 
-import { type FieldError, fieldErrorSchema } from './problems';
-
 /** Pattern every tool name must match (MCP tool naming rules). */
 export const TOOL_NAME_PATTERN = /^[A-Za-z0-9_.-]{1,128}$/;
 
@@ -90,33 +88,10 @@ export const toolConfigSchema: z.ZodType<ToolConfig> = z.strictObject({
   updatedAt: z.iso.datetime().describe('Last modification time, ISO 8601.'),
 });
 
-/** A tool as returned by the API: its definition plus template warnings. */
-export type Tool = ToolConfig & {
-  /** Problems found by a trial render of the template with empty `args`. Not blocking. */
-  warnings: FieldError[];
-};
+/** A tool as returned by the API. */
+export type Tool = ToolConfig;
 
-export const toolSchema: z.ZodType<Tool> = z.strictObject({
-  name: toolNameSchema,
-  title: z.string().optional().describe('Optional display title.'),
-  description: z.string().describe('Description sent to clients.'),
-  inputSchema: inputSchemaSchema,
-  annotations: toolAnnotationsSchema.describe(
-    'Behavior hints shown to clients.',
-  ),
-  responseTemplate: z
-    .json()
-    .describe(
-      'json-e template; the rendered result must be a valid `CallToolResult`.',
-    ),
-  published: z.boolean().describe('Whether clients can see and call the tool.'),
-  updatedAt: z.iso.datetime().describe('Last modification time, ISO 8601.'),
-  warnings: z
-    .array(fieldErrorSchema)
-    .describe(
-      'Problems found by a trial render of the template with empty `args`. Not blocking.',
-    ),
-});
+export const toolSchema: z.ZodType<Tool> = toolConfigSchema;
 
 /** Response body of `GET /api/v1/servers/{server}/tools`. */
 export type ToolList = {

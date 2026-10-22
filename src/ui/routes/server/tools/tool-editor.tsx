@@ -27,6 +27,7 @@ import {
   type ToolFormErrors,
   type ToolFormState,
 } from './tool-form';
+import { useToolValidation } from './use-tool-validation';
 
 /** Props of `ToolEditor`. */
 export type ToolEditorProps = {
@@ -75,6 +76,13 @@ export function ToolEditor({
   const [form, setForm] = useState<ToolFormState>(() => toFormState(tool));
   const [errors, setErrors] = useState<ToolFormErrors>({});
   const [busy, setBusy] = useState(false);
+  const validation = useToolValidation({
+    inputSchema: form.inputSchema,
+    responseTemplate: form.responseTemplate,
+  });
+  const inputSchemaError = errors.inputSchema ?? validation.inputSchemaError;
+  const responseTemplateError =
+    errors.responseTemplate ?? validation.responseTemplateError;
   const ids = {
     name: useId(),
     title: useId(),
@@ -251,18 +259,18 @@ export function ToolEditor({
               label="Input schema"
               hint="JSON Schema with “type”: “object”. Not enforced on calls."
               hintId={ids.schemaHint}
-              error={errors.inputSchema}
+              error={inputSchemaError}
             >
               <textarea
                 id={ids.schema}
-                className={twMerge(code, borderOf(errors.inputSchema))}
+                className={twMerge(code, borderOf(inputSchemaError))}
                 value={form.inputSchema}
                 onChange={(event) => {
                   update('inputSchema', event.target.value);
                 }}
                 spellCheck={false}
                 aria-describedby={ids.schemaHint}
-                aria-invalid={errors.inputSchema !== undefined}
+                aria-invalid={inputSchemaError !== undefined}
               />
             </Field>
 
@@ -272,38 +280,19 @@ export function ToolEditor({
               label="Response template"
               hint={<TemplateHint />}
               hintId={ids.templateHint}
-              error={errors.responseTemplate}
+              error={responseTemplateError}
             >
               <textarea
                 id={ids.template}
-                className={twMerge(code, borderOf(errors.responseTemplate))}
+                className={twMerge(code, borderOf(responseTemplateError))}
                 value={form.responseTemplate}
                 onChange={(event) => {
                   update('responseTemplate', event.target.value);
                 }}
                 spellCheck={false}
                 aria-describedby={ids.templateHint}
-                aria-invalid={errors.responseTemplate !== undefined}
+                aria-invalid={responseTemplateError !== undefined}
               />
-              {tool.warnings.length > 0 && (
-                <div
-                  aria-live="polite"
-                  className="flex flex-col gap-1 rounded-lg bg-out-bg px-3 py-2 text-xs font-normal text-out"
-                >
-                  <span className="font-semibold">
-                    Trial render with empty args (last save):
-                  </span>
-                  {tool.warnings.map((warning) => (
-                    <span
-                      key={`${warning.path}:${warning.message}`}
-                      className="font-mono"
-                    >
-                      {warning.path === '' ? '' : `${warning.path}: `}
-                      {warning.message}
-                    </span>
-                  ))}
-                </div>
-              )}
             </Field>
           </div>
 

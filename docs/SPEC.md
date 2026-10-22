@@ -294,24 +294,24 @@ something, it's an API feature.
 
 ### 7.2 Endpoints
 
-| Method & path                                         | Purpose                                                                                                                                                                                                |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `GET /api/v1`                                         | Instance info: version, MCP port and host, UI port, config file path, MCP URL template, link to the servers collection.                                                                                |
-| `GET /api/v1/servers`                                 | List servers, each with `toolCount`, `publishedToolCount`, `sessionCount` and `mcpUrl`.                                                                                                                |
-| `POST /api/v1/servers`                                | Create `{ name, serverInfo?, instructions? }` → 201 + `Location`.                                                                                                                                      |
-| `GET /api/v1/servers/{server}`                        | One server (same summary fields).                                                                                                                                                                      |
-| `DELETE /api/v1/servers/{server}`                     | Delete it and close its sessions → 204.                                                                                                                                                                |
-| `GET /api/v1/servers/{server}/tools`                  | List tools, drafts included.                                                                                                                                                                           |
-| `POST /api/v1/servers/{server}/tools`                 | Create a tool; omitted fields take defaults; `published` defaults to `false` → 201 + `Location`.                                                                                                       |
-| `GET /api/v1/servers/{server}/tools/{tool}`           | One tool.                                                                                                                                                                                              |
-| `PATCH /api/v1/servers/{server}/tools/{tool}`         | Partial update of any field, including `published: true/false` (publishing is a state change on the resource, not an RPC endpoint). Returns the tool plus `warnings` (template trial-render warnings). |
-| `DELETE /api/v1/servers/{server}/tools/{tool}`        | Delete → 204.                                                                                                                                                                                          |
-| `GET /api/v1/servers/{server}/sessions`               | Live MCP sessions: `id`, `clientInfo`, `protocolVersion`, client capabilities, `connectedAt`, `lastSeenAt`.                                                                                            |
-| `DELETE /api/v1/servers/{server}/sessions/{session}`  | Close a session server-side → 204. Its client gets 404 on its next request and should re-initialize.                                                                                                   |
-| `GET /api/v1/servers/{server}/logs?q=&cursor=&limit=` | Log entries, newest first, paginated.                                                                                                                                                                  |
-| `DELETE /api/v1/servers/{server}/logs`                | Clear → 204.                                                                                                                                                                                           |
-| `GET /api/v1/servers/{server}/logs/stream?after=`     | Live SSE stream (§ 9.4).                                                                                                                                                                               |
-| `GET /api/v1/servers/{server}/logs/export`            | All entries as NDJSON (`application/x-ndjson`), with `Content-Disposition: attachment`.                                                                                                                |
+| Method & path                                         | Purpose                                                                                                                             |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1`                                         | Instance info: version, MCP port and host, UI port, config file path, MCP URL template, link to the servers collection.             |
+| `GET /api/v1/servers`                                 | List servers, each with `toolCount`, `publishedToolCount`, `sessionCount` and `mcpUrl`.                                             |
+| `POST /api/v1/servers`                                | Create `{ name, serverInfo?, instructions? }` → 201 + `Location`.                                                                   |
+| `GET /api/v1/servers/{server}`                        | One server (same summary fields).                                                                                                   |
+| `DELETE /api/v1/servers/{server}`                     | Delete it and close its sessions → 204.                                                                                             |
+| `GET /api/v1/servers/{server}/tools`                  | List tools, drafts included.                                                                                                        |
+| `POST /api/v1/servers/{server}/tools`                 | Create a tool; omitted fields take defaults; `published` defaults to `false` → 201 + `Location`.                                    |
+| `GET /api/v1/servers/{server}/tools/{tool}`           | One tool.                                                                                                                           |
+| `PATCH /api/v1/servers/{server}/tools/{tool}`         | Partial update of any field, including `published: true/false` (publishing is a state change on the resource, not an RPC endpoint). |
+| `DELETE /api/v1/servers/{server}/tools/{tool}`        | Delete → 204.                                                                                                                       |
+| `GET /api/v1/servers/{server}/sessions`               | Live MCP sessions: `id`, `clientInfo`, `protocolVersion`, client capabilities, `connectedAt`, `lastSeenAt`.                         |
+| `DELETE /api/v1/servers/{server}/sessions/{session}`  | Close a session server-side → 204. Its client gets 404 on its next request and should re-initialize.                                |
+| `GET /api/v1/servers/{server}/logs?q=&cursor=&limit=` | Log entries, newest first, paginated.                                                                                               |
+| `DELETE /api/v1/servers/{server}/logs`                | Clear → 204.                                                                                                                        |
+| `GET /api/v1/servers/{server}/logs/stream?after=`     | Live SSE stream (§ 9.4).                                                                                                            |
+| `GET /api/v1/servers/{server}/logs/export`            | All entries as NDJSON (`application/x-ndjson`), with `Content-Disposition: attachment`.                                             |
 
 Live session counts in the SPA come from SWR polling (`refreshInterval: 2000`)
 on the servers and server resources. That's good enough locally; don't add
@@ -407,9 +407,12 @@ on user input.
   insert a structure, use `{ "$eval": "args" }`.
 - json-e treats object keys that start with `$` as operators; `$$` escapes a
   literal `$`. Put both facts in the UI hint.
-- Validate the template when it's saved: it must be valid JSON. Run a trial
-  render with an empty `args` and return errors as **warnings**, not blockers,
-  because a template can legitimately need arguments.
+- Validate the template while it is edited, not on save: the first edit at once,
+  then at most every 400 ms. The UI checks that it is JSON, then renders it in
+  the browser with empty `args` and shows only json-e's `TemplateError` and
+  `SyntaxError`, which no arguments can fix. Errors that depend on `args` (a
+  missing property) are ignored: a template can legitimately need arguments.
+  Other json-e errors surface when the tool is called.
 - Validate the rendered output against the SDK's `CallToolResult` Zod schema.
 - Wrap json-e in `src/server/templates/` so the engine can be swapped.
 
@@ -624,14 +627,14 @@ Screens:
    rows (mono name, description, a "Draft" badge when unpublished) and a note
    that `tools.listChanged` is on. On the right, an editor: name, title,
    description, input schema (JSON textarea, validated), **Response template**
-   (JSON textarea, json-e hint below the label, template warnings shown under
-   it), annotation checkboxes (readOnlyHint, destructiveHint, openWorldHint),
-   then actions. For a draft: **Publish tool** and Discard draft. For a
-   published tool: **Save changes** and Unpublish, with Delete tool as a
-   secondary action. Publish and Unpublish are `PATCH` with `published`. Next to
-   the buttons: "Live, no restart · notifies N sessions on <server>". Show
-   field-level errors from the problem details. A plain `<textarea>` with a mono
-   font is fine for JSON in v1; no code editor.
+   (JSON textarea, json-e hint below the label), annotation checkboxes
+   (readOnlyHint, destructiveHint, openWorldHint), then actions. For a draft:
+   **Publish tool** and Discard draft. For a published tool: **Save changes**
+   and Unpublish, with Delete tool as a secondary action. Publish and Unpublish
+   are `PATCH` with `published`. Next to the buttons: "Live, no restart ·
+   notifies N sessions on <server>". Show field-level errors from the problem
+   details. A plain `<textarea>` with a mono font is fine for JSON in v1; no
+   code editor.
 6. **New server** (`/servers/new`): a single centered card with name (live slug
    preview of the endpoint, inline "already exists" error checked against the
    SWR servers list, Create disabled when invalid), optional `serverInfo.name`

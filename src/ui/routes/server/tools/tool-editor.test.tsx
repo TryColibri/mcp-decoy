@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -24,7 +24,6 @@ const TOOL: Tool = {
   responseTemplate: { content: [{ type: 'text', text: 'ok' }] },
   published: true,
   updatedAt: '2026-10-21T12:00:00.000Z',
-  warnings: [],
 };
 
 const problem = (status: number, body: object) =>
@@ -169,14 +168,117 @@ describe('ToolEditor', () => {
     );
   });
 
-  it('shows template warnings from the last save', () => {
-    renderEditor({
-      ...TOOL,
-      warnings: [
-        { path: 'content[0].text', message: 'object has no property "city"' },
-      ],
+  describe('live validation', () => {
+    const edit = (label: string, value: string) => {
+      fireEvent.change(screen.getByLabelText(label), { target: { value } });
+    };
+
+    it('reports invalid JSON on the first edit, without saving', () => {
+      renderEditor();
+
+      edit('Input schema', '{');
+
+      expect(screen.getByRole('alert')).toHaveTextContent('Invalid JSON');
+      expect(screen.getByLabelText('Input schema')).toHaveAttribute(
+        'aria-invalid',
+        'true',
+      );
+      expect(mockFetch).not.toHaveBeenCalled();
     });
 
-    expect(screen.getByText(/object has no property "city"/)).toBeVisible();
+    it('reports a schema without type object', () => {
+      renderEditor();
+
+      edit('Input schema', '{"type":"string"}');
+
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Input schema must have "type": "object"',
+      );
+    });
+
+    it('reports a schema that is not a valid JSON Schema', () => {
+      renderEditor();
+
+      edit(
+        'Input schema',
+        '{"type":"object","properties":{"a":{"type":"strng"}}}',
+      );
+
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Not a valid JSON Schema at /properties/a/type',
+      );
+    });
+
+    it('reports a template that is not JSON without calling the API', () => {
+      renderEditor();
+
+      edit('Response template', 'oops');
+
+      expect(screen.getByRole('alert')).toHaveTextContent('Invalid JSON');
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('reports a json-e template that is structurally wrong', () => {
+      renderEditor();
+
+      edit('Response template', '{"$map":[1],"each":"x"}');
+
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        '$map has undefined properties: each',
+      );
+    });
+
+    it('does not report a template that needs arguments', () => {
+      renderEditor();
+
+      edit(
+        'Response template',
+        '{"content":[{"type":"text","text":"${args.city}"}]}',
+      );
+
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    describe('grace period', () => {
+      beforeEach(() => {
+        vi.useFakeTimers();
+      });
+
+      afterEach(() => {
+        vi.useRealTimers();
+      });
+
+      it('holds later edits and validates the latest when it ends', () => {
+        renderEditor();
+
+        edit('Input schema', '{');
+        expect(screen.getByRole('alert')).toHaveTextContent('Invalid JSON');
+
+        edit('Input schema', '{"type":"string"}');
+        act(() => {
+          vi.advanceTimersByTime(399);
+        });
+        expect(screen.getByRole('alert')).toHaveTextContent('Invalid JSON');
+
+        act(() => {
+          vi.advanceTimersByTime(1);
+        });
+        expect(screen.getByRole('alert')).toHaveTextContent(
+          'Input schema must have "type": "object"',
+        );
+      });
+
+      it('validates at once again after a quiet grace period', () => {
+        renderEditor();
+
+        edit('Input schema', '{');
+        act(() => {
+          vi.advanceTimersByTime(400);
+        });
+        edit('Input schema', '{"type":"object"}');
+
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      });
+    });
   });
 });

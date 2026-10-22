@@ -1,10 +1,14 @@
 import {
+  type InputSchema,
   inputSchemaSchema,
   type Tool,
   type ToolAnnotations,
   toolNameSchema,
   type UpdateToolRequest,
 } from '@/shared/api';
+
+import { checkTemplateStructure } from './json-e';
+import { checkJSONSchema } from './json-schema';
 
 /** Editable state of the tool editor. JSON fields are kept as text. */
 export type ToolFormState = {
@@ -77,30 +81,18 @@ export function parseToolForm(state: ToolFormState): ParsedToolForm {
     errors.name = name.error.issues.at(0)?.message ?? 'Invalid name';
   }
 
-  const inputSchema = parseJSON(state.inputSchema);
-  let schema: Record<string, unknown> = {};
+  const inputSchema = parseInputSchema(state.inputSchema);
   if (!inputSchema.ok) {
     errors.inputSchema = inputSchema.error;
-  } else {
-    const parsed = inputSchemaSchema.safeParse(inputSchema.value);
-    if (parsed.success) {
-      schema = parsed.data;
-    } else {
-      errors.inputSchema =
-        typeof inputSchema.value === 'object' &&
-        inputSchema.value !== null &&
-        !Array.isArray(inputSchema.value)
-          ? 'Input schema must have "type": "object"'
-          : 'Input schema must be a JSON object';
-    }
   }
 
   const template = parseJSON(state.responseTemplate);
-  if (!template.ok) {
-    errors.responseTemplate = template.error;
+  const templateError = checkResponseTemplate(state.responseTemplate);
+  if (templateError !== undefined) {
+    errors.responseTemplate = templateError;
   }
 
-  if (Object.keys(errors).length > 0 || !template.ok) {
+  if (Object.keys(errors).length > 0 || !inputSchema.ok || !template.ok) {
     return { ok: false, errors };
   }
 
@@ -117,11 +109,35 @@ export function parseToolForm(state: ToolFormState): ParsedToolForm {
       name: state.name,
       title: state.title.trim() === '' ? null : state.title,
       description: state.description,
-      inputSchema: schema,
+      inputSchema: inputSchema.value,
       responseTemplate: template.value,
       annotations,
     },
   };
+}
+
+/**
+ * Checks the input schema text: it must be a valid JSON Schema, an object
+ * with `"type": "object"`.
+ *
+ * @param text - The input schema field.
+ * @returns The error to show, or `undefined` when the text is valid.
+ */
+export function checkInputSchema(text: string): string | undefined {
+  const parsed = parseInputSchema(text);
+  return parsed.ok ? undefined : parsed.error;
+}
+
+/**
+ * Checks the response template text: it must be JSON, and json-e must not
+ * find structural errors in it, see `checkTemplateStructure`.
+ *
+ * @param text - The response template field.
+ * @returns The error to show, or `undefined` when the text is valid.
+ */
+export function checkResponseTemplate(text: string): string | undefined {
+  const parsed = parseJSON(text);
+  return parsed.ok ? checkTemplateStructure(parsed.value) : parsed.error;
 }
 
 /**
@@ -153,6 +169,34 @@ export function toFormErrors(
 type JSONParseResult =
   | { ok: true; value: unknown }
   | { ok: false; error: string };
+
+type InputSchemaParseResult =
+  | { ok: true; value: InputSchema }
+  | { ok: false; error: string };
+
+const parseInputSchema = (text: string): InputSchemaParseResult => {
+  const json = parseJSON(text);
+  if (!json.ok) {
+    return json;
+  }
+  const parsed = inputSchemaSchema.safeParse(json.value);
+  if (parsed.success) {
+    const invalid = checkJSONSchema(parsed.data);
+    return invalid === undefined
+      ? { ok: true, value: parsed.data }
+      : { ok: false, error: invalid };
+  }
+  const object =
+    typeof json.value === 'object' &&
+    json.value !== null &&
+    !Array.isArray(json.value);
+  return {
+    ok: false,
+    error: object
+      ? 'Input schema must have "type": "object"'
+      : 'Input schema must be a JSON object',
+  };
+};
 
 const parseJSON = (text: string): JSONParseResult => {
   try {

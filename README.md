@@ -126,7 +126,7 @@ Requests with a body need `Content-Type: application/json`.
 | `DELETE /api/v1/servers/{server}`               | Delete it and close its sessions.                   |
 | `GET /api/v1/servers/{server}/tools`            | List tools, drafts included.                        |
 | `POST /api/v1/servers/{server}/tools`           | Create a tool (a draft unless `published`).         |
-| `GET /api/v1/servers/{server}/tools/{tool}`     | One tool, with template warnings.                   |
+| `GET /api/v1/servers/{server}/tools/{tool}`     | One tool.                                           |
 | `PATCH /api/v1/servers/{server}/tools/{tool}`   | Update any field, including `published`.            |
 | `DELETE /api/v1/servers/{server}/tools/{tool}`  | Delete a tool.                                      |
 | `GET /api/v1/servers/{server}/sessions`         | Live MCP sessions.                                  |

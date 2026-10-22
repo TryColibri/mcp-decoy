@@ -57,7 +57,6 @@ describe('ToolsService', () => {
         },
         published: false,
         updatedAt: NOW.toISOString(),
-        warnings: [],
       });
       expect(mockPersist).toHaveBeenCalledTimes(1);
       expect(mockEvents.emit).not.toHaveBeenCalled();
@@ -83,16 +82,6 @@ describe('ToolsService', () => {
       await expect(service.create('nope', { name: 'echo' })).rejects.toThrow(
         NotFoundError,
       );
-    });
-
-    it('returns template warnings without blocking', async () => {
-      const tool = await service.create('weather', {
-        name: 'needs_args',
-        responseTemplate: { content: [{ type: 'text', text: '${args.a.b}' }] },
-      });
-
-      expect(tool.warnings).toHaveLength(1);
-      expect(service.list('weather')).toHaveLength(1);
     });
   });
 

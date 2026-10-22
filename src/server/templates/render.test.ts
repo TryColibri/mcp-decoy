@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  checkTemplate,
-  DEFAULT_RESPONSE_TEMPLATE,
-  renderTemplate,
-} from './render';
+import { DEFAULT_RESPONSE_TEMPLATE, renderTemplate } from './render';
 
 describe('renderTemplate', () => {
   it('interpolates arguments in strings', () => {
@@ -97,17 +93,5 @@ describe('renderTemplate', () => {
 
   it('rejects scalar templates', () => {
     expect(renderTemplate(42, { args: {} })).toMatchObject({ ok: false });
-  });
-});
-
-describe('checkTemplate', () => {
-  it('returns no warnings for a template that renders without arguments', () => {
-    expect(checkTemplate(DEFAULT_RESPONSE_TEMPLATE)).toEqual([]);
-  });
-
-  it('returns warnings when the template needs arguments', () => {
-    expect(
-      checkTemplate({ content: [{ type: 'text', text: '${args.a.b}' }] }),
-    ).toHaveLength(1);
   });
 });

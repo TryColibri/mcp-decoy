@@ -67,17 +67,6 @@ export function renderTemplate(
   return { ok: true, result: validation.value };
 }
 
-/**
- * Trial-renders a template with empty `args`. The problems it finds are
- * warnings, not blockers: a template can legitimately need arguments.
- *
- * @param template - The template to check.
- */
-export function checkTemplate(template: unknown): FieldError[] {
-  const result = renderTemplate(template, { args: {} });
-  return result.ok ? [] : result.errors;
-}
-
 const render = (template: unknown, context: TemplateContext): unknown => {
   // json-e only accepts objects, arrays and strings at the root; anything
   // else renders to itself.
