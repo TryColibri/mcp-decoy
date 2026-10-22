@@ -21,6 +21,7 @@ import { Button, buttonClasses } from '@/ui/components/button';
 import { tw } from '@/ui/tw';
 
 import {
+  isToolFormDirty,
   parseToolForm,
   toFormErrors,
   toFormState,
@@ -28,6 +29,10 @@ import {
   type ToolFormState,
 } from './tool-form';
 import { useToolValidation } from './use-tool-validation';
+import {
+  UnsavedChangesDialog,
+  useUnsavedChangesGuard,
+} from './use-unsaved-changes-guard';
 
 /** Props of `ToolEditor`. */
 export type ToolEditorProps = {
@@ -76,6 +81,8 @@ export function ToolEditor({
   const [form, setForm] = useState<ToolFormState>(() => toFormState(tool));
   const [errors, setErrors] = useState<ToolFormErrors>({});
   const [busy, setBusy] = useState(false);
+  const dirty = isToolFormDirty(form, tool);
+  const { blocker, allowLeave, blockLeave } = useUnsavedChangesGuard(dirty);
   const validation = useToolValidation({
     inputSchema: form.inputSchema,
     responseTemplate: form.responseTemplate,
@@ -112,6 +119,7 @@ export function ToolEditor({
       return;
     }
     setBusy(true);
+    allowLeave();
     try {
       const saved = await unwrap(
         client.servers[':server'].tools[':tool'].$patch({
@@ -121,6 +129,7 @@ export function ToolEditor({
       );
       await onSaved(saved);
     } catch (caught) {
+      blockLeave();
       setErrors(describeError(caught));
       setBusy(false);
     }
@@ -128,6 +137,7 @@ export function ToolEditor({
 
   const remove = async () => {
     setBusy(true);
+    allowLeave();
     try {
       await unwrapEmpty(
         client.servers[':server'].tools[':tool'].$delete({
@@ -136,6 +146,7 @@ export function ToolEditor({
       );
       await onDeleted();
     } catch (caught) {
+      blockLeave();
       setErrors(describeError(caught));
       setBusy(false);
     }
@@ -144,7 +155,11 @@ export function ToolEditor({
   const sessions = server.sessionCount;
   const actions = tool.published ? (
     <>
-      <Button variant="primary" disabled={busy} onClick={() => save(true)}>
+      <Button
+        variant="primary"
+        disabled={busy || !dirty}
+        onClick={() => save(true)}
+      >
         <FloppyDiskIcon size={16} aria-hidden="true" />
         Save changes
       </Button>
@@ -169,7 +184,7 @@ export function ToolEditor({
         <UploadSimpleIcon size={16} aria-hidden="true" />
         Publish tool
       </Button>
-      <Button disabled={busy} onClick={() => save(false)}>
+      <Button disabled={busy || !dirty} onClick={() => save(false)}>
         <FloppyDiskIcon size={16} aria-hidden="true" />
         Save draft
       </Button>
@@ -188,6 +203,7 @@ export function ToolEditor({
 
   return (
     <div className="@container flex min-h-0 flex-1 flex-col">
+      <UnsavedChangesDialog blocker={blocker} />
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         <div className="flex flex-1 flex-col gap-5 px-8 pt-7 pb-8">
           <div className="flex flex-wrap items-center gap-3">

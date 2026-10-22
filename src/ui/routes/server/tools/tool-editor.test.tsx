@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { createMemoryRouter, Link, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type ServerSummary, type Tool } from '@/shared/api';
@@ -42,15 +43,25 @@ const urlOf = (input: RequestInfo | URL | undefined): string =>
 const renderEditor = (tool: Tool = TOOL) => {
   const onSaved = vi.fn(async () => {});
   const onDeleted = vi.fn(async () => {});
-  render(
-    <ToolEditor
-      server={SERVER}
-      tool={tool}
-      onSaved={onSaved}
-      onDeleted={onDeleted}
-    />,
-  );
-  return { onSaved, onDeleted };
+  const router = createMemoryRouter([
+    {
+      path: '/',
+      element: (
+        <>
+          <Link to="/elsewhere">Leave</Link>
+          <ToolEditor
+            server={SERVER}
+            tool={tool}
+            onSaved={onSaved}
+            onDeleted={onDeleted}
+          />
+        </>
+      ),
+    },
+    { path: '/elsewhere', element: <p>Elsewhere</p> },
+  ]);
+  render(<RouterProvider router={router} />);
+  return { onSaved, onDeleted, router };
 };
 
 describe('ToolEditor', () => {
@@ -106,6 +117,7 @@ describe('ToolEditor', () => {
     renderEditor();
     const user = userEvent.setup();
 
+    await user.type(screen.getByLabelText('Title'), 'x');
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -128,6 +140,7 @@ describe('ToolEditor', () => {
     renderEditor();
     const user = userEvent.setup();
 
+    await user.type(screen.getByLabelText('Title'), 'x');
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -166,6 +179,122 @@ describe('ToolEditor', () => {
         published: true,
       },
     );
+  });
+
+  describe('Save changes', () => {
+    it('is disabled until the form has changes', async () => {
+      renderEditor();
+      const user = userEvent.setup();
+      const save = screen.getByRole('button', { name: 'Save changes' });
+
+      expect(save).toBeDisabled();
+      await user.type(screen.getByLabelText('Title'), 'x');
+      expect(save).toBeEnabled();
+      await user.clear(screen.getByLabelText('Title'));
+      expect(save).toBeDisabled();
+    });
+
+    it('disables Save draft the same way on a draft', async () => {
+      renderEditor({ ...TOOL, published: false });
+      const user = userEvent.setup();
+      const save = screen.getByRole('button', { name: 'Save draft' });
+
+      expect(save).toBeDisabled();
+      await user.type(screen.getByLabelText('Title'), 'x');
+      expect(save).toBeEnabled();
+    });
+
+    it('leaves Publish tool enabled on an unchanged draft', () => {
+      renderEditor({ ...TOOL, published: false });
+
+      expect(
+        screen.getByRole('button', { name: 'Publish tool' }),
+      ).toBeEnabled();
+    });
+  });
+
+  describe('unsaved changes', () => {
+    it('lets a clean editor navigate away', async () => {
+      const { router } = renderEditor();
+      const user = userEvent.setup();
+
+      await user.click(screen.getByRole('link', { name: 'Leave' }));
+
+      expect(router.state.location.pathname).toBe('/elsewhere');
+    });
+
+    it('asks before navigating away with edits, and stays on Keep editing', async () => {
+      const { router } = renderEditor();
+      const user = userEvent.setup();
+
+      await user.type(screen.getByLabelText('Title'), 'Forecast');
+      await user.click(screen.getByRole('link', { name: 'Leave' }));
+      expect(
+        await screen.findByRole('alertdialog', {
+          name: 'Discard unsaved changes?',
+        }),
+      ).toBeVisible();
+      await user.click(screen.getByRole('button', { name: 'Keep editing' }));
+
+      expect(router.state.location.pathname).toBe('/');
+      expect(screen.getByLabelText('Title')).toHaveValue('Forecast');
+    });
+
+    it('navigates away on Discard changes', async () => {
+      const { router } = renderEditor();
+      const user = userEvent.setup();
+
+      await user.type(screen.getByLabelText('Title'), 'Forecast');
+      await user.click(screen.getByRole('link', { name: 'Leave' }));
+      await user.click(
+        await screen.findByRole('button', { name: 'Discard changes' }),
+      );
+
+      expect(router.state.location.pathname).toBe('/elsewhere');
+    });
+
+    it('does not ask once the edits are reverted', async () => {
+      const { router } = renderEditor();
+      const user = userEvent.setup();
+
+      await user.type(screen.getByLabelText('Title'), 'x');
+      await user.clear(screen.getByLabelText('Title'));
+      await user.click(screen.getByRole('link', { name: 'Leave' }));
+
+      expect(router.state.location.pathname).toBe('/elsewhere');
+    });
+
+    it('warns before the page unloads, only with edits', async () => {
+      renderEditor();
+      const user = userEvent.setup();
+      const unload = () => {
+        const event = new Event('beforeunload', { cancelable: true });
+        window.dispatchEvent(event);
+        return event.defaultPrevented;
+      };
+
+      expect(unload()).toBe(false);
+      await user.type(screen.getByLabelText('Title'), 'Forecast');
+      expect(unload()).toBe(true);
+    });
+
+    it('does not ask when the save itself navigates away', async () => {
+      mockFetch.mockResolvedValueOnce(
+        Response.json({ ...TOOL, title: 'Forecast' }),
+      );
+      const { onSaved, router } = renderEditor();
+      onSaved.mockImplementationOnce(async () => {
+        await router.navigate('/elsewhere');
+      });
+      const user = userEvent.setup();
+
+      await user.type(screen.getByLabelText('Title'), 'Forecast');
+      await user.click(screen.getByRole('button', { name: 'Save changes' }));
+
+      await vi.waitFor(() => {
+        expect(router.state.location.pathname).toBe('/elsewhere');
+      });
+    });
   });
 
   describe('live validation', () => {

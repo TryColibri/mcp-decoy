@@ -69,6 +69,26 @@ export function toFormState(tool: Tool): ToolFormState {
 }
 
 /**
+ * Whether the form differs from the saved tool.
+ *
+ * @param state - The editor state.
+ * @param tool - The saved tool the form was built from.
+ */
+export function isToolFormDirty(state: ToolFormState, tool: Tool): boolean {
+  const saved = toFormState(tool);
+  return (
+    state.name !== saved.name ||
+    state.title !== saved.title ||
+    state.description !== saved.description ||
+    state.inputSchema !== saved.inputSchema ||
+    state.responseTemplate !== saved.responseTemplate ||
+    state.annotations.readOnlyHint !== saved.annotations.readOnlyHint ||
+    state.annotations.destructiveHint !== saved.annotations.destructiveHint ||
+    state.annotations.openWorldHint !== saved.annotations.openWorldHint
+  );
+}
+
+/**
  * Validates the form on the client: the name, and both JSON fields.
  *
  * @param state - The editor state.
