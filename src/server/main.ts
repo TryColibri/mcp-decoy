@@ -45,8 +45,10 @@ export type StartOptions = {
 export type Instance = {
   /** What `GET /api/v1` returns. */
   info: InstanceInfo;
-  /** URL of the UI. */
+  /** URL of the UI listener. In development the UI is served by Vite instead. */
   uiUrl: string;
+  /** Base URL of the REST API. */
+  apiUrl: string;
   /** Servers loaded from the config file at startup. */
   servers: ServerSummary[];
   /** Closes every session and both listeners, and removes the runtime file. */
@@ -143,6 +145,7 @@ export async function start({
 
   const mcpURLTemplate = `http://${displayHostOf(host)}:${actualMCPPort}/s/{server}/mcp`;
   const uiUrl = `http://localhost:${actualUIPort}`;
+  const apiUrl = `http://127.0.0.1:${actualUIPort}/api/v1`;
   const info: InstanceInfo = {
     version: VERSION,
     mcp: { host, port: actualMCPPort, urlTemplate: mcpURLTemplate },
@@ -155,7 +158,7 @@ export async function start({
   await writeRuntimeFile(paths.runtimeFile, {
     pid: process.pid,
     version: VERSION,
-    apiUrl: `http://127.0.0.1:${actualUIPort}/api/v1`,
+    apiUrl,
     mcpUrlTemplate: mcpURLTemplate,
     startedAt: new Date().toISOString(),
   });
@@ -164,6 +167,7 @@ export async function start({
   return {
     info,
     uiUrl,
+    apiUrl,
     servers: servers.list(),
     close() {
       closing ??= (async () => {
