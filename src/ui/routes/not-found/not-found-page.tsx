@@ -7,7 +7,7 @@ export function NotFoundPage() {
       <h1 className="m-0 text-[28px] font-bold tracking-tight">
         Page not found
       </h1>
-      <p className="m-0 text-[15px] text-ink-3">
+      <p className="m-0 text-[15px] text-ink-600">
         There is nothing at this address.
       </p>
       <ButtonLink to="/" variant="primary">

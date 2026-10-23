@@ -66,9 +66,9 @@ export function NegotiationCard({
 
   if (negotiation === null) {
     return (
-      <section className="flex flex-col gap-2 rounded-xl border border-line bg-surface px-4.5 py-4">
+      <section className="flex flex-col gap-2 rounded-xl border border-paper-200 bg-white px-4.5 py-4">
         {title}
-        <p className="m-0 text-[13px] text-ink-3">
+        <p className="m-0 text-[13px] text-ink-600">
           The <span className="font-mono">initialize</span> exchange of this
           session isn’t loaded and the session is closed.
         </p>
@@ -89,34 +89,36 @@ export function NegotiationCard({
     );
 
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-line bg-surface px-4.5 py-4">
+    <section className="flex flex-col gap-3 rounded-xl border border-paper-200 bg-white px-4.5 py-4">
       <div className="flex items-center justify-between gap-2">
         {title}
         {badge}
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold tracking-wide text-ink-4 uppercase">
+          <span className="text-xs font-semibold tracking-wide text-ink-500 uppercase">
             Client asked
           </span>
           <span className="font-mono text-[13px]">
             {negotiation.requestedVersion ?? '—'}
           </span>
           {negotiation.client !== null && (
-            <span className="text-[13px] text-ink">{negotiation.client}</span>
+            <span className="text-[13px] text-ink-900">
+              {negotiation.client}
+            </span>
           )}
-          <span className="text-[13px] text-ink-2">
+          <span className="text-[13px] text-ink-700">
             {describeCapabilities(negotiation.clientCapabilities)}
           </span>
         </div>
         <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold tracking-wide text-ink-4 uppercase">
+          <span className="text-xs font-semibold tracking-wide text-ink-500 uppercase">
             Server answered
           </span>
           <span className="font-mono text-[13px]">
             {negotiation.agreedVersion ?? '—'}
           </span>
-          <span className="text-[13px] text-ink-2">
+          <span className="text-[13px] text-ink-700">
             {describeCapabilities(negotiation.serverCapabilities)}
           </span>
         </div>
@@ -131,9 +133,9 @@ type BadgeProps = {
 };
 
 const tones: Record<BadgeProps['tone'], string> = {
-  success: tw`bg-success-bg text-success`,
-  warning: tw`bg-out-bg text-out`,
-  error: tw`bg-error-bg text-error`,
+  success: tw`bg-green-50 text-green-900`,
+  warning: tw`bg-orange-50 text-orange-800`,
+  error: tw`bg-red-50 text-red-800`,
 };
 
 function Badge({ tone, children }: BadgeProps) {

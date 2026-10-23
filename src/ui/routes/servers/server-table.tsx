@@ -14,8 +14,8 @@ export type ServerTableProps = {
   servers: ServerSummary[];
 };
 
-const th = tw`border-b border-line px-4 py-2.5 text-left text-xs font-semibold tracking-wide whitespace-nowrap text-ink-4 uppercase`;
-const td = tw`border-b border-line-soft px-4 py-3.5 align-middle text-sm whitespace-nowrap`;
+const th = tw`border-b border-paper-200 px-4 py-2.5 text-left text-xs font-semibold tracking-wide whitespace-nowrap text-ink-500 uppercase`;
+const td = tw`border-b border-paper-100 px-4 py-3.5 align-middle text-sm whitespace-nowrap`;
 
 /** The servers table: name, endpoint, exposed tools, sessions, links. */
 export function ServerTable({ servers }: ServerTableProps) {
@@ -81,7 +81,7 @@ function ServerRow({ server, onEdit }: ServerRowProps) {
       <td className={td}>
         <div className="flex items-center gap-2.5">
           <StatusDot live={server.sessionCount > 0} />
-          <Link to={`${base}/logs`} className="font-semibold text-ink">
+          <Link to={`${base}/logs`} className="font-semibold text-ink-900">
             {server.name}
           </Link>
         </div>
@@ -89,7 +89,7 @@ function ServerRow({ server, onEdit }: ServerRowProps) {
       <td className={td}>
         <EndpointPill url={server.mcpUrl} />
       </td>
-      <td className={twMerge(td, 'text-ink-2')}>{describeTools(server)}</td>
+      <td className={twMerge(td, 'text-ink-700')}>{describeTools(server)}</td>
       <td className={td}>
         <SessionsPill count={server.sessionCount} />
       </td>
@@ -111,7 +111,7 @@ function ServerRow({ server, onEdit }: ServerRowProps) {
             type="button"
             onClick={onEdit}
             aria-label={`Edit ${server.name}`}
-            className="cursor-pointer border-0 bg-transparent px-2.5 py-2 font-sans text-[13px] font-medium text-link hover:text-link-hover"
+            className="cursor-pointer border-0 bg-transparent px-2.5 py-2 font-sans text-[13px] font-medium text-blue-700 hover:text-blue-900"
           >
             Edit
           </button>

@@ -50,12 +50,12 @@ export function CopyButton({
       title={copied ? 'Copied' : label}
       onClick={copy}
       className={twMerge(
-        'inline-flex size-8 shrink-0 cursor-pointer items-center justify-center self-start rounded-md text-ink-2 hover:bg-hover',
+        'inline-flex size-8 shrink-0 cursor-pointer items-center justify-center self-start rounded-md text-ink-700 hover:bg-paper-200',
         className,
       )}
     >
       {copied ? (
-        <CheckIcon size={14} aria-hidden="true" className="text-live" />
+        <CheckIcon size={14} aria-hidden="true" className="text-green-700" />
       ) : (
         <CopyIcon size={14} aria-hidden="true" />
       )}

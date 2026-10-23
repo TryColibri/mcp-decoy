@@ -33,7 +33,7 @@ export function MessageDetail({
       className="relative box-border flex min-w-0 flex-col gap-4 px-6 py-5 lg:min-h-0 lg:flex-[1_1_420px] lg:overflow-y-auto"
     >
       {entry === undefined ? (
-        <section className="rounded-xl border border-dashed border-line bg-surface p-5 text-sm text-ink-3">
+        <section className="rounded-xl border border-dashed border-paper-200 bg-white p-5 text-sm text-ink-600">
           Select a message to see its JSON and the session’s negotiation.
         </section>
       ) : (
@@ -72,13 +72,13 @@ function MessageJSON({ entry, entries, onSelect }: MessageJSONProps) {
   };
 
   return (
-    <section className="flex min-h-64 flex-1 flex-col overflow-hidden rounded-xl border border-line bg-surface">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line-soft px-4.5 py-3.5">
+    <section className="flex min-h-64 flex-1 flex-col overflow-hidden rounded-xl border border-paper-200 bg-white">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-paper-100 px-4.5 py-3.5">
         <DirectionBadge direction={entry.direction} />
         <h2 className="m-0 font-mono text-sm font-medium">
           {entry.method ?? '(unknown)'}
         </h2>
-        <span className="text-xs text-ink-3">
+        <span className="text-xs text-ink-600">
           {entry.direction === 'in' ? 'Client → server' : 'Server → client'} ·{' '}
           {formatTime(entry.at)}
           {entry.durationMs === null ? '' : ` · ${entry.durationMs} ms`}
@@ -100,7 +100,7 @@ function MessageJSON({ entry, entries, onSelect }: MessageJSONProps) {
           )}
         </div>
       </div>
-      <pre className="m-0 min-h-40 flex-1 overflow-auto bg-code px-4.5 py-4 font-mono text-[12.5px] leading-[1.6] whitespace-pre text-code-ink">
+      <pre className="m-0 min-h-40 flex-1 overflow-auto bg-ink-900 px-4.5 py-4 font-mono text-[12.5px] leading-[1.6] whitespace-pre text-paper-200">
         {json}
       </pre>
     </section>

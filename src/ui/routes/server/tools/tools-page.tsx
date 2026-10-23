@@ -75,7 +75,7 @@ export function ToolsPage() {
 
   if (error !== undefined) {
     return (
-      <p role="alert" className="m-0 p-6 text-sm text-error">
+      <p role="alert" className="m-0 p-6 text-sm text-red-800">
         Could not load tools: {error.message}
       </p>
     );
@@ -87,7 +87,7 @@ export function ToolsPage() {
 
   let editor;
   if (tools === undefined) {
-    editor = <p className="m-0 p-8 text-sm text-ink-4">Loading tools…</p>;
+    editor = <p className="m-0 p-8 text-sm text-ink-500">Loading tools…</p>;
   } else if (requested !== undefined && selected === undefined) {
     editor = <ToolNotFound name={requested} toolsPath={toolsPath} />;
   } else if (selected === undefined) {
@@ -151,7 +151,7 @@ function ToolNotFound({ name, toolsPath }: ToolNotFoundProps) {
       <h2 className="m-0 text-[22px] font-bold tracking-tight">
         Tool not found
       </h2>
-      <p className="m-0 text-[15px] text-ink-3">
+      <p className="m-0 text-[15px] text-ink-600">
         This server has no tool named <span className="font-mono">{name}</span>.
         It may have been deleted or renamed.
       </p>

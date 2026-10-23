@@ -8,7 +8,7 @@ import { TunnelPopover } from './tunnel-popover';
 /** Every page: the global header above the routed content. */
 export function RootLayout() {
   return (
-    <div className="flex h-dvh flex-col bg-page text-ink">
+    <div className="flex h-dvh flex-col bg-paper-50 text-ink-900">
       <GlobalHeader />
       <div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto">
         <Outlet />
@@ -29,32 +29,32 @@ function GlobalHeader() {
     instance === undefined || mcpHost === undefined ? null : (
       <>
         <TunnelPopover host={mcpHost} port={instance.mcp.port} />
-        <span aria-hidden="true" className="mx-2 text-ink-faint">
+        <span aria-hidden="true" className="mx-2 text-ink-400">
           ·
         </span>
         <StatusDot live />
         <span>Listening on</span>
-        <span className="font-mono text-ink">
+        <span className="font-mono text-ink-900">
           {mcpHost}:{instance.mcp.port}
         </span>
       </>
     );
 
   return (
-    <header className="flex flex-wrap items-center gap-x-6 gap-y-4 border-b border-line bg-surface px-6 py-3">
+    <header className="flex flex-wrap items-center gap-x-6 gap-y-4 border-b border-paper-200 bg-white px-6 py-3">
       <Link
         to="/"
-        className="flex items-center gap-2.5 text-ink no-underline hover:text-ink"
+        className="flex items-center gap-2.5 text-ink-900 no-underline hover:text-ink-900"
       >
         <LogoMark />
         <span className="text-base font-bold tracking-tight">MCP Decoy</span>
         {instance !== undefined && (
-          <span className="font-mono text-xs text-ink-4">
+          <span className="font-mono text-xs text-ink-500">
             v{instance.version}
           </span>
         )}
       </Link>
-      <div className="ml-auto flex items-center gap-2 text-[13px] text-ink-2">
+      <div className="ml-auto flex items-center gap-2 text-[13px] text-ink-700">
         {error === undefined ? (
           listening
         ) : (
