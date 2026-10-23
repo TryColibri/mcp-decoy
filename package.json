@@ -2,6 +2,10 @@
   "name": "@hodor-ai/mcp-decoy",
   "version": "0.1.0",
   "description": "A configurable mock MCP server with a live web UI, for debugging MCP clients",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TryColibri/mcp-decoy.git"
+  },
   "bin": {
     "mcp-decoy": "dist/cli.js"
   },
