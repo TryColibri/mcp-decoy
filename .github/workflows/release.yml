@@ -1,0 +1,40 @@
+name: Release
+
+on:
+  workflow_call:
+    outputs:
+      version:
+        description: Version semantic-release released, empty if it released nothing.
+        value: ${{ jobs.release.outputs.version }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: release
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      # semantic-release bumps package.json, commits it and tags the commit.
+      # A changed version is how we tell that it released something.
+      - id: release
+        run: |
+          before=$(node -p "require('./package.json').version")
+          pnpm run release
+          after=$(node -p "require('./package.json').version")
+          if [ "$before" != "$after" ]; then
+            echo "version=$after" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

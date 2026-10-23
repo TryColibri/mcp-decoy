@@ -9,6 +9,9 @@
     "dist"
   ],
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "run-p dev:server dev:ui",
     "dev:server": "tsx watch --tsconfig tsconfig.server.json src/server/cli.ts --dev",
@@ -16,6 +19,7 @@
     "build": "vite build && tsdown",
     "start": "node dist/cli.js",
     "prepack": "pnpm build",
+    "release": "semantic-release",
     "format": "oxfmt --check",
     "format:fix": "oxfmt",
     "lint": "oxlint --max-warnings 0",
@@ -43,6 +47,7 @@
     "@modelcontextprotocol/client": "2.3.1",
     "@oxlint/plugins": "1.89.0",
     "@phosphor-icons/react": "2.1.10",
+    "@semantic-release/git": "11.0.1",
     "@tailwindcss/vite": "4.3.3",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.3",
@@ -63,6 +68,7 @@
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "react-router": "8.5.0",
+    "semantic-release": "25.0.9",
     "swr": "2.5.1",
     "tailwind-merge": "3.7.0",
     "tailwindcss": "4.3.3",

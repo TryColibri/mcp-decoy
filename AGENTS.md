@@ -67,10 +67,13 @@ extension (`TypeScriptTeam.native-preview`, recommended in
 1. CI calls `package.json` scripts and may only extend them with flags. If a
    check needs different behavior, change the script, not the workflow. This is
    what keeps a green local run meaning the same thing as a green CI run.
-2. There is no deploy or publishing workflow. The package must still be
-   releasable as is: after `pnpm build`, `npx .` (or
-   `npx ./hodor-ai-mcp-decoy-<version>.tgz` from `pnpm pack`) starts everything
-   with one command.
+2. Releases are automated, from commits to `main`. Pull request titles must be
+   Conventional Commits (`pr-title.yml`), because the squashed title becomes the
+   commit. After the checks pass, `release.yml` runs semantic-release, which
+   bumps `package.json`, commits and tags it. `publish.yml` then publishes that
+   tag to npm. The package must stay releasable as is: after `pnpm build`,
+   `npx .` (or `npx ./hodor-ai-mcp-decoy-<version>.tgz` from `pnpm pack`) starts
+   everything with one command.
 3. Unit tests must not depend on ambient environment (ports, home directory,
    config directory). Tests that need a config directory create a temp one.
 
