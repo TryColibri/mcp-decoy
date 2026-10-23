@@ -3,6 +3,10 @@ import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import {
+  Client,
+  StreamableHTTPClientTransport,
+} from '@modelcontextprotocol/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { type Instance, PortInUseError, start, VERSION } from '@/server/main';
@@ -61,6 +65,49 @@ describe('start', () => {
       { method: 'POST', body: '{}' },
     );
     expect(mcp.status).toBe(404);
+  });
+
+  describe('default configuration', () => {
+    it('starts a fresh config directory with an echo server', async () => {
+      const instance = await startHere();
+
+      expect(instance.servers.map((server) => server.name)).toEqual(['echo']);
+      expect(
+        JSON.parse(await readFile(join(dir, 'servers.json'), 'utf8')),
+      ).toMatchObject({ servers: [{ name: 'echo' }] });
+    });
+
+    it('lets clients call the echo tool', async () => {
+      const instance = await startHere();
+      const client = new Client({ name: 'test-client', version: '1.0.0' });
+      await client.connect(
+        new StreamableHTTPClientTransport(
+          new URL(`http://127.0.0.1:${instance.info.mcp.port}/s/echo/mcp`),
+        ),
+      );
+
+      try {
+        const result = await client.callTool({
+          name: 'echo',
+          arguments: { message: 'hello' },
+        });
+
+        expect(result.content).toEqual([{ type: 'text', text: 'hello' }]);
+      } finally {
+        await client.close();
+      }
+    });
+
+    it('keeps the servers of an existing file, even none', async () => {
+      await writeFile(
+        join(dir, 'servers.json'),
+        JSON.stringify({ version: 1, servers: [] }),
+      );
+
+      const instance = await startHere();
+
+      expect(instance.servers).toEqual([]);
+    });
   });
 
   describe('runtime file', () => {

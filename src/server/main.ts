@@ -4,8 +4,9 @@ import { fileURLToPath } from 'node:url';
 import { serve } from '@hono/node-server';
 
 import {
+  createDefaultServers,
   createServersFileWriter,
-  loadServersFile,
+  loadOrSeedServersFile,
   resolveConfigPaths,
 } from '@/server/config';
 import { type DecoyEvents, type EventBus } from '@/server/events';
@@ -103,13 +104,18 @@ export async function start({
 }: StartOptions): Promise<Instance> {
   const paths = await resolveConfigPaths({ override: configDir, dev });
   await assertNotRunning(paths.runtimeFile);
-  const initial = await loadServersFile(paths.serversFile);
+  const persist = createServersFileWriter(paths.serversFile);
+  const initial = await loadOrSeedServersFile(
+    paths.serversFile,
+    createDefaultServers(new Date()),
+    persist,
+  );
 
   // Ports are only known once listening (they may be 0).
   const ready: { info?: InstanceInfo } = {};
   const { servers, sessions, api, events } = createServices({
     initial,
-    persist: createServersFileWriter(paths.serversFile),
+    persist,
     logLimit,
     instance: () => {
       if (ready.info === undefined) {

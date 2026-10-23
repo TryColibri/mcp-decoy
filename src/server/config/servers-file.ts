@@ -53,19 +53,16 @@ export class InvalidConfigFileError extends Error {
   }
 }
 
-/**
- * Loads the servers persisted in `path`. A missing file means no servers.
- *
- * @param path - Absolute path of `servers.json`.
- * @throws {InvalidConfigFileError} When the file is not valid JSON or doesn't match the schema.
- */
-export async function loadServersFile(path: string): Promise<ServerConfig[]> {
+/** Reads `servers.json`; `undefined` when the file is missing. */
+async function readServersFile(
+  path: string,
+): Promise<ServerConfig[] | undefined> {
   let text: string;
   try {
     text = await readFile(path, 'utf8');
   } catch (error) {
     if (isMissingFileError(error)) {
-      return [];
+      return undefined;
     }
     throw error;
   }
@@ -90,6 +87,39 @@ export async function loadServersFile(path: string): Promise<ServerConfig[]> {
     );
   }
   return result.data.servers;
+}
+
+/**
+ * Loads the servers persisted in `path`. A missing file means no servers.
+ *
+ * @param path - Absolute path of `servers.json`.
+ * @throws {InvalidConfigFileError} When the file is not valid JSON or doesn't match the schema.
+ */
+export async function loadServersFile(path: string): Promise<ServerConfig[]> {
+  return (await readServersFile(path)) ?? [];
+}
+
+/**
+ * Loads the servers persisted in `path`. When the file is missing, writes
+ * `defaults` to it and returns them. An existing file is never overridden, even
+ * one with no servers.
+ *
+ * @param path - Absolute path of `servers.json`.
+ * @param defaults - Servers a fresh configuration starts with.
+ * @param write - Persists servers to `path`.
+ * @throws {InvalidConfigFileError} When the file is not valid JSON or doesn't match the schema.
+ */
+export async function loadOrSeedServersFile(
+  path: string,
+  defaults: ServerConfig[],
+  write: ServersFileWriter,
+): Promise<ServerConfig[]> {
+  const existing = await readServersFile(path);
+  if (existing !== undefined) {
+    return existing;
+  }
+  await write(defaults);
+  return defaults;
 }
 
 /** Persists servers to `servers.json`. */

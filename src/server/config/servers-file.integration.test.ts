@@ -9,6 +9,7 @@ import { type ServerConfig } from '@/shared/api';
 import {
   createServersFileWriter,
   InvalidConfigFileError,
+  loadOrSeedServersFile,
   loadServersFile,
 } from './servers-file';
 
@@ -82,6 +83,37 @@ describe('servers file', () => {
       );
 
       await expect(loadServersFile(path)).rejects.toThrow(/Duplicate/);
+    });
+  });
+
+  describe('loadOrSeedServersFile', () => {
+    const DEFAULT: ServerConfig = { ...SERVER, name: 'default' };
+
+    it('writes and returns the defaults when the file is missing', async () => {
+      const servers = await loadOrSeedServersFile(
+        path,
+        [DEFAULT],
+        createServersFileWriter(path),
+      );
+
+      expect(servers).toEqual([DEFAULT]);
+      await expect(loadServersFile(path)).resolves.toEqual([DEFAULT]);
+    });
+
+    it('returns the persisted servers when the file exists', async () => {
+      await createServersFileWriter(path)([SERVER]);
+
+      await expect(
+        loadOrSeedServersFile(path, [DEFAULT], createServersFileWriter(path)),
+      ).resolves.toEqual([SERVER]);
+    });
+
+    it('keeps a file with no servers empty', async () => {
+      await createServersFileWriter(path)([]);
+
+      await expect(
+        loadOrSeedServersFile(path, [DEFAULT], createServersFileWriter(path)),
+      ).resolves.toEqual([]);
     });
   });
 

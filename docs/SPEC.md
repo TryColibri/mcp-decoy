@@ -442,8 +442,10 @@ Example with interpolation:
   preferences directory). In dev mode (`--dev`) it is `.decoy/` at the
   repository root, which is gitignored. `--config-dir` overrides both.
 - One file, `servers.json`: `{ "version": 1, "servers": [ServerConfig, …] }`,
-  validated with Zod on load. If it's missing, start with no servers. If it's
-  invalid, refuse to start and print the Zod issues and the file path.
+  validated with Zod on load. If it's missing, start with a default `echo`
+  server (one published `echo` tool that returns its `message` argument) and
+  write the file; an existing file with no servers stays empty. If it's invalid,
+  refuse to start and print the Zod issues and the file path.
 - Write atomically (temp file in the same directory, then `rename`) on every
   mutation, serialized through one promise queue so concurrent requests can't
   interleave writes.

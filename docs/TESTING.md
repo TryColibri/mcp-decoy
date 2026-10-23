@@ -45,15 +45,17 @@ pnpm dev:ui
 ```
 
 - [x] The server terminal shows the Clack banner: the API URL, the MCP URL
-      pattern, the config file path and "Servers: none yet". It has no UI line
-      in dev, because Vite prints its own URL in the other terminal.
+      pattern, the config file path and "Servers echo". It has no UI line in
+      dev, because Vite prints its own URL in the other terminal.
 - [x] Open http://localhost:5173. The header shows "decoy v0.1.0" and a green
       dot with "Listening on localhost:6280".
 
 ## 2. Servers and New server
 
-- [x] With no servers, the empty state shows an explanation and a **New server**
-      button.
+- [ ] On a fresh config directory, the table lists the default `echo` server
+      with "1 tool", and `/tmp/decoy-dev/servers.json` now exists.
+- [ ] Delete `echo`. The empty state shows an explanation and a **New server**
+      button, and it stays empty after restarting the dev server.
 - [x] The footer shows the path to `/tmp/decoy-dev/servers.json`. The tunnel
       card shows the `cloudflared` and `ngrok` commands for port 6280.
 - [x] Click **New server** and type `Weather`. An inline error appears and

@@ -62,6 +62,9 @@ every change:
 The default config directory is `$XDG_CONFIG_HOME/decoy`, or `~/.config/decoy`
 when `XDG_CONFIG_HOME` is unset. This is the same on Linux, macOS and Windows.
 
+A fresh config directory starts with an `echo` server that has one `echo` tool,
+so clients can connect to `http://localhost:6280/s/echo/mcp` right away.
+
 The UI shows the exact path. Logs are kept in memory only and are dropped on
 exit.
 

@@ -4,9 +4,11 @@ export {
   type ResolveConfigPathsOptions,
   resolveConfigPaths,
 } from './config-dir';
+export { createDefaultServers } from './default-servers';
 export {
   createServersFileWriter,
   InvalidConfigFileError,
+  loadOrSeedServersFile,
   loadServersFile,
   type ServersFile,
   type ServersFileWriter,
