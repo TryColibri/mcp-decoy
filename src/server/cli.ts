@@ -77,15 +77,25 @@ const run = async () => {
     log.success(`UI        ${styleText('cyan', instance.uiUrl)}`);
   }
   log.info(`API       ${styleText('cyan', instance.apiUrl)}`);
-  log.info(
-    `MCP       ${styleText('cyan', info.mcp.urlTemplate.replace('{server}', '<server>'))}`,
-  );
   log.info(`Config    ${info.configFile}`);
+
+  const formatServers = (names: string[]) => {
+    const width = Math.max(...names.map((name) => name.length));
+    return names
+      .map((name) => {
+        const url = info.mcp.urlTemplate.replace('{server}', name);
+        return `  ${name.padEnd(width)}  ${styleText('cyan', url)}`;
+      })
+      .join('\n');
+  };
   log.info(
     instance.servers.length === 0
       ? 'Servers   none yet — create one in the UI'
-      : `Servers   ${instance.servers.map((server) => server.name).join(', ')}`,
+      : `Servers\n${formatServers(instance.servers.map((server) => server.name))}`,
   );
+  instance.events.on('serverCreated', ({ server }) => {
+    log.success(`Server created\n${formatServers([server])}`);
+  });
   log.message(styleText('dim', 'Press Ctrl+C to stop.'));
 
   let stopping = false;

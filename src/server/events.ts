@@ -1,5 +1,7 @@
 /** Events emitted by services after a successful mutation. */
 export type DecoyEvents = {
+  /** `server` was created. */
+  serverCreated: { server: string };
   /** The set of tools clients can see on `server` changed. */
   toolsChanged: { server: string };
   /** `server` was deleted. */

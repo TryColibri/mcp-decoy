@@ -36,6 +36,14 @@ describe('ServersService', () => {
   });
 
   describe('create', () => {
+    it('emits serverCreated', async () => {
+      await service.create({ name: 'weather' });
+
+      expect(mockEvents.emit).toHaveBeenCalledExactlyOnceWith('serverCreated', {
+        server: 'weather',
+      });
+    });
+
     it('applies defaults and persists', async () => {
       const created = await service.create({ name: 'weather' });
 
@@ -99,6 +107,7 @@ describe('ServersService', () => {
   describe('update', () => {
     it('merges serverInfo field by field and keeps the rest', async () => {
       await service.create({ name: 'weather', instructions: 'Hi' });
+      mockEvents.emit.mockClear();
 
       const updated = await service.update('weather', {
         serverInfo: { version: '2.0.0' },
@@ -115,6 +124,7 @@ describe('ServersService', () => {
 
     it('removes the instructions when given an empty string', async () => {
       await service.create({ name: 'weather', instructions: 'Hi' });
+      mockEvents.emit.mockClear();
 
       const updated = await service.update('weather', { instructions: '' });
 
@@ -125,6 +135,7 @@ describe('ServersService', () => {
     it('renames in place, keeps tools and emits serverRenamed', async () => {
       await service.create({ name: 'first' });
       await service.create({ name: 'weather' });
+      mockEvents.emit.mockClear();
 
       const updated = await service.update('weather', { name: 'forecast' });
 
@@ -139,6 +150,7 @@ describe('ServersService', () => {
 
     it('is not a rename when the name is unchanged', async () => {
       await service.create({ name: 'weather' });
+      mockEvents.emit.mockClear();
 
       await service.update('weather', { name: 'weather' });
 
@@ -148,6 +160,7 @@ describe('ServersService', () => {
     it('throws ConflictError when renaming onto an existing server', async () => {
       await service.create({ name: 'a' });
       await service.create({ name: 'b' });
+      mockEvents.emit.mockClear();
 
       await expect(service.update('a', { name: 'b' })).rejects.toThrow(
         ConflictError,
@@ -164,6 +177,7 @@ describe('ServersService', () => {
   describe('delete', () => {
     it('removes the server and emits serverDeleted', async () => {
       await service.create({ name: 'weather' });
+      mockEvents.emit.mockClear();
 
       await service.delete('weather');
 

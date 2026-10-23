@@ -47,7 +47,7 @@ export type ServersService = {
    */
   assertExists(name: string): void;
   /**
-   * Creates a server with no tools.
+   * Creates a server with no tools and announces it.
    * @throws {ConflictError} When the name is taken.
    */
   create(input: CreateServerRequest): Promise<ServerSummary>;
@@ -127,6 +127,7 @@ export function createServersService({
         };
         return { servers: [...servers, server], result: server };
       });
+      events.emit('serverCreated', { server: created.name });
       return summarize(created);
     },
 

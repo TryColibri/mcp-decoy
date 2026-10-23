@@ -8,6 +8,7 @@ import {
   loadServersFile,
   resolveConfigPaths,
 } from '@/server/config';
+import { type DecoyEvents, type EventBus } from '@/server/events';
 import { createMCPApp } from '@/server/mcp-app';
 import {
   assertNotRunning,
@@ -54,6 +55,8 @@ export type Instance = {
   apiUrl: string;
   /** Servers loaded from the config file at startup. */
   servers: ServerSummary[];
+  /** Subscribe to mutations, such as servers being created. */
+  events: EventBus<DecoyEvents>;
   /** Closes every session and both listeners, and removes the runtime file. */
   close(): Promise<void>;
 };
@@ -104,7 +107,7 @@ export async function start({
 
   // Ports are only known once listening (they may be 0).
   const ready: { info?: InstanceInfo } = {};
-  const { servers, sessions, api } = createServices({
+  const { servers, sessions, api, events } = createServices({
     initial,
     persist: createServersFileWriter(paths.serversFile),
     logLimit,
@@ -172,6 +175,7 @@ export async function start({
     uiUrl,
     apiUrl,
     servers: servers.list(),
+    events,
     close() {
       closing ??= (async () => {
         await sessions.closeAll();
