@@ -4,60 +4,38 @@
   --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'Geist Mono', ui-monospace, monospace;
 
-  /* Surfaces */
-  --color-page: #f7f7f5;
-  --color-surface: #ffffff;
-  --color-subtle: #fafaf8;
-  --color-muted: #f3f3f0;
-  --color-hover: #efefec;
-  --color-input: #fbfbfa;
+  /* Cool neutral: text, code panels */
+  --color-ink-50: #fafafa;
+  --color-ink-100: #f3f4f6;
+  --color-ink-200: #e2e4e9;
+  --color-ink-300: #d1d4db;
+  --color-ink-400: #9ba1b0;
+  --color-ink-500: #6b7180;
+  --color-ink-600: #4c5261;
+  --color-ink-700: #3a3f4b;
+  --color-ink-800: #25272c;
+  --color-ink-900: #16181d;
+  --color-ink-950: #08090c;
 
-  /* Text */
-  --color-ink: #16181d;
-  --color-ink-2: #3f434a;
-  --color-ink-3: #4b4f57;
-  --color-ink-4: #5c6068;
-  --color-ink-faint: #9a9ea6;
-
-  /* Borders */
-  --color-line: #e4e4e0;
-  --color-line-soft: #ededea;
-  --color-control: #dcdcd7;
-
-  /* Code panels */
-  --color-code: #16181d;
-  --color-code-ink: #e8e8e3;
-  --color-code-dim: #8b9099;
-
-  /* Links and selection */
-  --color-link: #1d4ed8;
-  --color-link-hover: #1e3a8a;
-  --color-selected: #eef3fe;
-  --color-selected-line: #9db7f5;
-  --color-row-hover: #f5f7fb;
-
-  /* Directions */
-  --color-in: #1d4ed8;
-  --color-in-bg: #eaf0fd;
-  --color-in-tag: #1e3a8a;
-  --color-out: #9a3412;
-  --color-out-bg: #fdf1e4;
-
-  /* Status */
-  --color-success: #14532d;
-  --color-success-bg: #e7f5ec;
-  --color-live: #15803d;
-  --color-error: #991b1b;
-  --color-error-bg: #fdecec;
-  --color-error-line: #b91c1c;
-  --color-neutral-bg: #f0f0ed;
+  /* Warm neutral: surfaces, borders */
+  --color-paper-50: #f9faf9;
+  --color-paper-100: #f4f5f4;
+  --color-paper-200: #e6e6e5;
+  --color-paper-300: #d5d5d2;
+  --color-paper-400: #a6a6a0;
+  --color-paper-500: #72726b;
+  --color-paper-600: #545550;
+  --color-paper-700: #42423e;
+  --color-paper-800: #282725;
+  --color-paper-900: #1b1b18;
+  --color-paper-950: #0b0b0a;
 }
 
 @layer base {
   html,
   body {
-    background: var(--color-page);
-    color: var(--color-ink);
+    background: var(--color-paper-50);
+    color: var(--color-ink-900);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
@@ -69,15 +47,15 @@
   }
 
   a {
-    color: var(--color-link);
+    color: var(--color-blue-700);
   }
 
   a:hover {
-    color: var(--color-link-hover);
+    color: var(--color-blue-900);
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-link);
+    outline: 2px solid var(--color-blue-700);
     outline-offset: 2px;
   }
 }

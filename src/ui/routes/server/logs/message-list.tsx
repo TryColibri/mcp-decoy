@@ -31,11 +31,11 @@ export type MessageListProps = {
 const grid = tw`grid w-full grid-cols-[104px_28px_minmax(0,1fr)_56px_64px_84px] items-center gap-2 px-4`;
 
 const tagStyles: Record<LogTag, string> = {
-  request: tw`bg-in-bg text-in-tag`,
-  result: tw`bg-success-bg text-success`,
-  notify: tw`bg-neutral-bg text-ink-2`,
-  error: tw`bg-error-bg text-error`,
-  invalid: tw`bg-error-bg text-error`,
+  request: tw`bg-blue-100 text-blue-900`,
+  result: tw`bg-green-50 text-green-900`,
+  notify: tw`bg-paper-100 text-ink-700`,
+  error: tw`bg-red-50 text-red-800`,
+  invalid: tw`bg-red-50 text-red-800`,
 };
 
 /** How far before the end of the list older entries start loading. */
@@ -87,7 +87,7 @@ export function MessageList({
         <div
           className={twMerge(
             grid,
-            'sticky top-0 z-10 min-h-8.5 border-b border-line-soft bg-subtle text-xs font-semibold tracking-wide text-ink-4 uppercase',
+            'sticky top-0 z-10 min-h-8.5 border-b border-paper-100 bg-paper-50 text-xs font-semibold tracking-wide text-ink-500 uppercase',
           )}
         >
           <span>Time</span>
@@ -109,7 +109,7 @@ export function MessageList({
         ))}
         <div
           ref={sentinelRef}
-          className="px-4 py-3 text-center text-xs text-ink-4"
+          className="px-4 py-3 text-center text-xs text-ink-500"
         >
           {hasOlder
             ? loadingOlder
@@ -143,13 +143,13 @@ const MessageRow = memo(function MessageRow({
       }}
       className={twMerge(
         grid,
-        'min-h-10 cursor-pointer border-0 border-b border-solid border-line-soft text-left font-sans text-[13px] text-ink [contain-intrinsic-size:auto_40px] [content-visibility:auto]',
+        'min-h-10 cursor-pointer border-0 border-b border-solid border-paper-100 text-left font-sans text-[13px] text-ink-900 [contain-intrinsic-size:auto_40px] [content-visibility:auto]',
         selected
-          ? 'bg-selected shadow-[inset_3px_0_0_var(--color-link)]'
-          : 'bg-surface hover:bg-row-hover',
+          ? 'bg-blue-50 shadow-[inset_3px_0_0_var(--color-blue-700)]'
+          : 'bg-white hover:bg-blue-50/50',
       )}
     >
-      <span className="font-mono text-ink-4">{formatTime(entry.at)}</span>
+      <span className="font-mono text-ink-500">{formatTime(entry.at)}</span>
       <DirectionBadge direction={entry.direction} />
       <span className="flex min-w-0 items-center gap-2">
         <span className="truncate font-mono font-medium">
@@ -163,18 +163,18 @@ const MessageRow = memo(function MessageRow({
         >
           {tag}
         </span>
-        <span className="truncate text-xs text-ink-4">{noteOf(entry)}</span>
+        <span className="truncate text-xs text-ink-500">{noteOf(entry)}</span>
       </span>
-      <span className="truncate font-mono text-ink-3">
+      <span className="truncate font-mono text-ink-600">
         {entry.jsonrpcId ?? '—'}
       </span>
       <span
-        className="font-mono text-ink-3"
+        className="font-mono text-ink-600"
         title={entry.sessionId ?? undefined}
       >
         {shortSession(entry.sessionId)}
       </span>
-      <span className="text-right font-mono text-ink-3">
+      <span className="text-right font-mono text-ink-600">
         {entry.durationMs === null ? '' : `${entry.durationMs} ms`}
       </span>
     </button>
@@ -196,7 +196,7 @@ export function DirectionBadge({ direction }: DirectionBadgeProps) {
       title={label}
       className={twMerge(
         'inline-flex size-5.5 items-center justify-center rounded-md font-bold',
-        incoming ? 'bg-in-bg text-in' : 'bg-out-bg text-out',
+        incoming ? 'bg-blue-100 text-blue-700' : 'bg-orange-50 text-orange-800',
       )}
     >
       <span aria-hidden="true">{incoming ? '→' : '←'}</span>

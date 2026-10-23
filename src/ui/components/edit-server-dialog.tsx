@@ -131,8 +131,8 @@ export function EditServerDialog({
       }}
     >
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 bg-ink/30" />
-        <Dialog.Popup className="fixed top-1/2 left-1/2 max-h-[calc(100vh-2rem)] w-160 max-w-[calc(100vw-2rem)] -translate-1/2 overflow-y-auto rounded-xl border border-line bg-surface p-6 shadow-xl">
+        <Dialog.Backdrop className="fixed inset-0 bg-ink-900/30" />
+        <Dialog.Popup className="fixed top-1/2 left-1/2 max-h-[calc(100vh-2rem)] w-160 max-w-[calc(100vw-2rem)] -translate-1/2 overflow-y-auto rounded-xl border border-paper-200 bg-white p-6 shadow-xl">
           <form onSubmit={submit} noValidate className="flex flex-col gap-4.5">
             <Dialog.Title className="m-0 text-base font-semibold">
               Edit “{server.name}”
@@ -148,13 +148,13 @@ export function EditServerDialog({
               endpoint={endpoint}
             />
             {renaming && (
-              <Dialog.Description className="m-0 text-[13px]/relaxed text-ink-3">
+              <Dialog.Description className="m-0 text-[13px]/relaxed text-ink-600">
                 Renaming changes the endpoint URL. Live sessions are closed and
                 clients must reconnect to the new URL. Logs are kept.
               </Dialog.Description>
             )}
             {formError !== null && (
-              <p role="alert" className="m-0 text-[13px] text-error">
+              <p role="alert" className="m-0 text-[13px] text-red-800">
                 {formError}
               </p>
             )}

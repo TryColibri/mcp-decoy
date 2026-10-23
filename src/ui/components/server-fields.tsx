@@ -5,7 +5,7 @@ import { serverNameSchema } from '@/shared/api';
 import { CopyButton } from '@/ui/components/copy-button';
 import { tw } from '@/ui/tw';
 
-const control = tw`box-border min-h-10 w-full rounded-lg border bg-surface px-3 font-mono text-sm font-medium text-ink`;
+const control = tw`box-border min-h-10 w-full rounded-lg border bg-white px-3 font-mono text-sm font-medium text-ink-900`;
 
 /** What the server form edits. Empty strings mean "not set". */
 export type ServerFormValues = {
@@ -100,9 +100,9 @@ export function ServerFields({
   return (
     <div {...props} className={twMerge('flex flex-col gap-4.5', className)}>
       <div className="flex flex-col gap-1.5">
-        <p className="m-0 text-[13px] font-semibold text-ink-2">
+        <p className="m-0 text-[13px] font-semibold text-ink-700">
           <label htmlFor={ids.name}>Name</label>{' '}
-          <span id={ids.nameHint} className="text-xs font-normal text-ink-4">
+          <span id={ids.nameHint} className="text-xs font-normal text-ink-500">
             Lowercase letters, digits and dashes. Becomes part of the URL.
           </span>
         </p>
@@ -110,7 +110,7 @@ export function ServerFields({
           id={ids.name}
           className={twMerge(
             control,
-            nameInvalid ? 'border-error-line' : 'border-control',
+            nameInvalid ? 'border-red-700' : 'border-paper-300',
           )}
           value={values.name}
           onChange={(event) => {
@@ -129,17 +129,17 @@ export function ServerFields({
           <span
             id={ids.nameError}
             role="alert"
-            className="text-[13px] text-error"
+            className="text-[13px] text-red-800"
           >
             {shownNameError}
           </span>
         )}
       </div>
 
-      <div className="flex items-start gap-2 rounded-lg bg-muted py-1.5 pr-1.5 pl-3.5">
+      <div className="flex items-start gap-2 rounded-lg bg-paper-100 py-1.5 pr-1.5 pl-3.5">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 py-1">
-          <span className="text-[13px] text-ink-3">Endpoint</span>
-          <span className="font-mono text-[13px] wrap-anywhere text-ink">
+          <span className="text-[13px] text-ink-600">Endpoint</span>
+          <span className="font-mono text-[13px] wrap-anywhere text-ink-900">
             {endpoint}
           </span>
         </div>
@@ -154,13 +154,13 @@ export function ServerFields({
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor={ids.infoName}
-            className="text-[13px] font-semibold text-ink-2"
+            className="text-[13px] font-semibold text-ink-700"
           >
             serverInfo.name
           </label>
           <input
             id={ids.infoName}
-            className={twMerge(control, 'border-control')}
+            className={twMerge(control, 'border-paper-300')}
             value={values.infoName}
             onChange={(event) => {
               onChange({ ...values, infoName: event.target.value });
@@ -170,7 +170,7 @@ export function ServerFields({
             spellCheck={false}
           />
           {fieldErrors['serverInfo.name'] !== undefined && (
-            <span role="alert" className="text-[13px] text-error">
+            <span role="alert" className="text-[13px] text-red-800">
               {fieldErrors['serverInfo.name']}
             </span>
           )}
@@ -178,13 +178,13 @@ export function ServerFields({
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor={ids.infoVersion}
-            className="text-[13px] font-semibold text-ink-2"
+            className="text-[13px] font-semibold text-ink-700"
           >
             serverInfo.version
           </label>
           <input
             id={ids.infoVersion}
-            className={twMerge(control, 'border-control')}
+            className={twMerge(control, 'border-paper-300')}
             value={values.version}
             onChange={(event) => {
               onChange({ ...values, version: event.target.value });
@@ -194,7 +194,7 @@ export function ServerFields({
             spellCheck={false}
           />
           {fieldErrors['serverInfo.version'] !== undefined && (
-            <span role="alert" className="text-[13px] text-error">
+            <span role="alert" className="text-[13px] text-red-800">
               {fieldErrors['serverInfo.version']}
             </span>
           )}
@@ -202,11 +202,11 @@ export function ServerFields({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <p className="m-0 text-[13px] font-semibold text-ink-2">
+        <p className="m-0 text-[13px] font-semibold text-ink-700">
           <label htmlFor={ids.instructions}>Instructions</label>{' '}
           <span
             id={ids.instructionsHint}
-            className="text-xs font-normal text-ink-4"
+            className="text-xs font-normal text-ink-500"
           >
             Optional. Returned to the client in the initialize result.
           </span>
@@ -214,7 +214,7 @@ export function ServerFields({
         <textarea
           id={ids.instructions}
           rows={3}
-          className="box-border min-h-20 w-full resize-y rounded-lg border border-control bg-surface px-3 py-2.5 text-sm text-ink"
+          className="box-border min-h-20 w-full resize-y rounded-lg border border-paper-300 bg-white px-3 py-2.5 text-sm text-ink-900"
           value={values.instructions}
           onChange={(event) => {
             onChange({ ...values, instructions: event.target.value });

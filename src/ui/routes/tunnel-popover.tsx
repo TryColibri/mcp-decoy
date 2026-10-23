@@ -19,16 +19,16 @@ export function TunnelPopover({ host, port }: TunnelPopoverProps) {
 
   return (
     <Popover.Root>
-      <Popover.Trigger className="cursor-pointer rounded-sm border-0 bg-transparent p-0 font-sans text-[13px] text-ink-3 underline decoration-ink-faint decoration-dotted underline-offset-4 hover:text-ink hover:decoration-ink">
+      <Popover.Trigger className="cursor-pointer rounded-sm border-0 bg-transparent p-0 font-sans text-[13px] text-ink-600 underline decoration-ink-400 decoration-dotted underline-offset-4 hover:text-ink-900 hover:decoration-ink-900">
         Need a public URL?
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Positioner side="bottom" align="end" sideOffset={8}>
           <Popover.Popup
             aria-label="Tunnel the MCP port"
-            className="flex w-120 max-w-[calc(100vw-2rem)] flex-col gap-3 rounded-xl border border-line bg-surface p-5 shadow-xl"
+            className="flex w-120 max-w-[calc(100vw-2rem)] flex-col gap-3 rounded-xl border border-paper-200 bg-white p-5 shadow-xl"
           >
-            <Popover.Description className="m-0 text-[13px] leading-normal text-ink-3">
+            <Popover.Description className="m-0 text-[13px] leading-normal text-ink-600">
               MCP Decoy serves plain HTTP. Put a tunnel in front of the MCP
               port, for example with{' '}
               <a
@@ -41,9 +41,9 @@ export function TunnelPopover({ host, port }: TunnelPopoverProps) {
               , then use the tunnel host in place of {host}. Never tunnel the UI
               port.
             </Popover.Description>
-            <div className="flex items-start gap-2 rounded-lg bg-code py-1.5 pr-1.5 pl-3.5">
-              <div className="min-w-0 flex-1 overflow-x-auto py-1.5 font-mono text-xs whitespace-nowrap text-code-ink">
-                <span className="text-code-dim" aria-hidden="true">
+            <div className="flex items-start gap-2 rounded-lg bg-ink-900 py-1.5 pr-1.5 pl-3.5">
+              <div className="min-w-0 flex-1 overflow-x-auto py-1.5 font-mono text-xs whitespace-nowrap text-paper-200">
+                <span className="text-ink-400" aria-hidden="true">
                   ${' '}
                 </span>
                 {command}
@@ -51,7 +51,7 @@ export function TunnelPopover({ host, port }: TunnelPopoverProps) {
               <CopyButton
                 text={command}
                 label="Copy tunnel command"
-                className="size-7 text-code-dim hover:bg-white/10 hover:text-code-ink"
+                className="size-7 text-ink-400 hover:bg-white/10 hover:text-paper-200"
               />
             </div>
           </Popover.Popup>

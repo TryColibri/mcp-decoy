@@ -41,23 +41,23 @@ export function ServerLayout() {
   }
   if (error !== undefined) {
     return (
-      <p role="alert" className="m-0 p-6 text-sm text-error">
+      <p role="alert" className="m-0 p-6 text-sm text-red-800">
         Could not load server “{name}”: {error.message}
       </p>
     );
   }
   if (server === undefined) {
-    return <p className="m-0 p-6 text-sm text-ink-4">Loading…</p>;
+    return <p className="m-0 p-6 text-sm text-ink-500">Loading…</p>;
   }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex shrink-0 flex-col gap-2.5 border-b border-line bg-surface px-6 pt-4.5">
+      <div className="flex shrink-0 flex-col gap-2.5 border-b border-paper-200 bg-white px-6 pt-4.5">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <Link to="/" className="py-1.5 text-sm font-medium no-underline">
             Servers
           </Link>
-          <span aria-hidden="true" className="text-ink-faint">
+          <span aria-hidden="true" className="text-ink-400">
             /
           </span>
           <h1 className="m-0 text-xl font-bold tracking-tight">
@@ -93,8 +93,8 @@ function Tab({ to, children }: TabProps) {
         twMerge(
           'inline-flex min-h-10.5 items-center border-b-2 px-1 text-sm font-medium no-underline',
           isActive
-            ? 'border-ink text-ink hover:text-ink'
-            : 'border-transparent text-ink-3 hover:text-ink',
+            ? 'border-ink-900 text-ink-900 hover:text-ink-900'
+            : 'border-transparent text-ink-600 hover:text-ink-900',
         )
       }
     >
@@ -180,17 +180,17 @@ function DeleteServerButton({ name }: DeleteServerButtonProps) {
         Delete server
       </AlertDialog.Trigger>
       <AlertDialog.Portal>
-        <AlertDialog.Backdrop className="fixed inset-0 bg-ink/30" />
-        <AlertDialog.Popup className="fixed top-1/2 left-1/2 flex w-105 max-w-[calc(100vw-2rem)] -translate-1/2 flex-col gap-4 rounded-xl border border-line bg-surface p-6 shadow-xl">
+        <AlertDialog.Backdrop className="fixed inset-0 bg-ink-900/30" />
+        <AlertDialog.Popup className="fixed top-1/2 left-1/2 flex w-105 max-w-[calc(100vw-2rem)] -translate-1/2 flex-col gap-4 rounded-xl border border-paper-200 bg-white p-6 shadow-xl">
           <AlertDialog.Title className="m-0 text-base font-semibold">
             Delete “{name}”?
           </AlertDialog.Title>
-          <AlertDialog.Description className="m-0 text-sm/relaxed text-ink-3">
+          <AlertDialog.Description className="m-0 text-sm/relaxed text-ink-600">
             Its tools are deleted and its live sessions are closed. Clients get
             404 on their next request. This can’t be undone.
           </AlertDialog.Description>
           {error !== null && (
-            <p role="alert" className="m-0 text-[13px] text-error">
+            <p role="alert" className="m-0 text-[13px] text-red-800">
               {error}
             </p>
           )}
@@ -223,7 +223,7 @@ function ServerNotFound({ name }: ServerNotFoundProps) {
       <h1 className="m-0 text-[28px] font-bold tracking-tight">
         Server not found
       </h1>
-      <p className="m-0 text-[15px] text-ink-3">
+      <p className="m-0 text-[15px] text-ink-600">
         There is no server named <span className="font-mono">{name}</span>. It
         may have been deleted.
       </p>

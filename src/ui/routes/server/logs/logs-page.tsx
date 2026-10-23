@@ -66,12 +66,12 @@ export function LogsPage() {
   let list;
   if (stream.error !== undefined) {
     list = (
-      <p role="alert" className="m-0 p-4 text-sm text-error">
+      <p role="alert" className="m-0 p-4 text-sm text-red-800">
         Could not load messages: {stream.error.message}
       </p>
     );
   } else if (stream.loading) {
-    list = <p className="m-0 p-4 text-sm text-ink-4">Loading messages…</p>;
+    list = <p className="m-0 p-4 text-sm text-ink-500">Loading messages…</p>;
   } else if (stream.entries.length === 0) {
     list = <EmptyMessages server={server.mcpUrl} searching={query !== ''} />;
   } else {
@@ -89,7 +89,7 @@ export function LogsPage() {
 
   return (
     <>
-      <div className="flex shrink-0 flex-wrap items-center gap-2.5 border-b border-line bg-surface px-6 py-3">
+      <div className="flex shrink-0 flex-wrap items-center gap-2.5 border-b border-paper-200 bg-white px-6 py-3">
         <label htmlFor={searchId} className="sr-only">
           Search messages by method or text
         </label>
@@ -101,7 +101,7 @@ export function LogsPage() {
             setSearch(event.target.value);
           }}
           placeholder="Search method or any text"
-          className="box-border min-h-9 min-w-0 flex-[1_1_280px] rounded-lg border border-control bg-surface px-3 font-mono text-[13px] text-ink"
+          className="box-border min-h-9 min-w-0 flex-[1_1_280px] rounded-lg border border-paper-300 bg-white px-3 font-mono text-[13px] text-ink-900"
         />
         <div className="ml-auto flex flex-wrap gap-2">
           {stream.paused ? (
@@ -127,7 +127,7 @@ export function LogsPage() {
           </a>
         </div>
         {clearError !== null && (
-          <p role="alert" className="m-0 w-full text-[13px] text-error">
+          <p role="alert" className="m-0 w-full text-[13px] text-red-800">
             {clearError}
           </p>
         )}
@@ -136,12 +136,12 @@ export function LogsPage() {
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
         <section
           aria-label="Messages"
-          className="flex min-w-0 flex-col border-r border-line bg-surface lg:min-h-0 lg:flex-[999_1_620px]"
+          className="flex min-w-0 flex-col border-r border-paper-200 bg-white lg:min-h-0 lg:flex-[999_1_620px]"
         >
           {list}
           <div
             aria-live="polite"
-            className="mt-auto flex shrink-0 flex-wrap justify-between gap-3 border-t border-line-soft px-4 py-2.5 text-xs text-ink-4"
+            className="mt-auto flex shrink-0 flex-wrap justify-between gap-3 border-t border-paper-100 px-4 py-2.5 text-xs text-ink-500"
           >
             <span>{status}</span>
           </div>
@@ -165,14 +165,14 @@ type EmptyMessagesProps = {
 
 function EmptyMessages({ server, searching }: EmptyMessagesProps) {
   if (searching) {
-    return <p className="m-0 p-4 text-sm text-ink-4">No messages match.</p>;
+    return <p className="m-0 p-4 text-sm text-ink-500">No messages match.</p>;
   }
   return (
     <div className="flex flex-col gap-2 p-6">
       <h2 className="m-0 text-[15px] font-semibold">Waiting for traffic</h2>
-      <p className="m-0 max-w-prose text-sm/relaxed text-ink-3">
+      <p className="m-0 max-w-prose text-sm/relaxed text-ink-600">
         Point your MCP client at{' '}
-        <span className="font-mono wrap-anywhere text-ink">{server}</span>.
+        <span className="font-mono wrap-anywhere text-ink-900">{server}</span>.
         Every message in and out shows up here as it happens.
       </p>
     </div>

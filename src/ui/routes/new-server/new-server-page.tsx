@@ -83,11 +83,11 @@ export function NewServerPage() {
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line bg-surface px-6 py-4.5">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-paper-200 bg-white px-6 py-4.5">
         <Link to="/" className="py-1.5 text-sm font-medium no-underline">
           Servers
         </Link>
-        <span aria-hidden="true" className="text-ink-faint">
+        <span aria-hidden="true" className="text-ink-400">
           /
         </span>
         <h1 className="m-0 text-xl font-bold tracking-tight">New server</h1>
@@ -100,7 +100,7 @@ export function NewServerPage() {
       >
         <section
           aria-labelledby="identity-heading"
-          className="flex flex-col gap-4.5 rounded-xl border border-line bg-surface p-5.5"
+          className="flex flex-col gap-4.5 rounded-xl border border-paper-200 bg-white p-5.5"
         >
           <h2 id="identity-heading" className="m-0 text-base font-semibold">
             Identity
@@ -119,7 +119,7 @@ export function NewServerPage() {
         </section>
 
         {formError !== null && (
-          <p role="alert" className="m-0 text-[13px] text-error">
+          <p role="alert" className="m-0 text-[13px] text-red-800">
             {formError}
           </p>
         )}
@@ -133,7 +133,7 @@ export function NewServerPage() {
             {submitting ? 'Creating…' : 'Create server'}
           </Button>
           <ButtonLink to="/">Cancel</ButtonLink>
-          <span className="text-[13px] text-ink-3">
+          <span className="text-[13px] text-ink-600">
             Starts with no tools. Add them next — it’s live as soon as it’s
             created.
           </span>
