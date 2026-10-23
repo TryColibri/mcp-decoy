@@ -1,95 +1,157 @@
 # decoy
 
-A configurable mock MCP server with a live web UI, for debugging MCP
-**clients**.
+decoy is a mock MCP server for debugging MCP clients. You define tools in a web
+UI, point your client at decoy, and watch every JSON-RPC message in both
+directions.
 
-decoy is the mirror image of the
-[MCP Inspector](https://github.com/modelcontextprotocol/inspector): instead of a
-client poking at your server, decoy is the server your client connects to. You
-define tools in the browser, publish them while your client is connected, and
-watch every JSON-RPC message go by.
+It is the mirror image of the
+[MCP Inspector](https://github.com/modelcontextprotocol/inspector). The
+Inspector is a client that you point at your server. decoy is a server that you
+point your client at.
 
-- **Servers**: as many mock servers as you like, each on its own URL:
-  `http://localhost:6280/s/<server>/mcp`.
-- **Live tools**: add, edit, publish and unpublish tools without restarting
-  anything. Connected sessions get `notifications/tools/list_changed`.
-- **Templated responses**: every tool answers with a
-  [json-e](https://json-e.js.org/) template rendered with the call's arguments.
-- **Logs**: every message in and out, live, with search, pause, clear and JSONL
-  export. Requests and responses are paired, with durations, and each session's
-  `initialize` negotiation is summarized.
-- **REST API**: everything the UI does goes through `/api/v1`, so you can script
-  decoy with `curl`.
+Use decoy when you build or debug an MCP client and need to answer questions
+like the following:
 
-## Usage
+- What does my client send during `initialize`, and what does it do with the
+  server's response?
+- Does my client refresh its tool list after `notifications/tools/list_changed`?
+- How does my client handle a tool that returns `isError: true`, a long text
+  result, or an odd input schema?
+- What does a hosted client, such as a chat product that connects to remote MCP
+  servers, send to my server?
 
-Requires Node.js 24 or later.
+You change tools while the client stays connected. Nothing restarts.
 
-```bash
+## Requirements
+
+- Node.js 24 or later
+
+## Start decoy
+
+Run decoy with `npx`:
+
+```sh
 npx decoy
 ```
 
-Then open <http://localhost:6281>, create a server, add a tool, and point your
-MCP client at the server's endpoint (shown in the UI), for example:
+The output is similar to the following:
 
+```text
+┌  decoy v0.1.0
+│
+◆  UI        http://localhost:6281
+│
+●  API       http://localhost:6281/api/v1
+│
+●  Config    /home/dana/.config/decoy/servers.json
+│
+●  Servers
+│    echo  http://localhost:6280/s/echo/mcp
 ```
-http://localhost:6280/s/weather/mcp
+
+decoy hosts mock MCP servers, which this document calls servers. Each server has
+its own tools, its own logs, and its own URL. One decoy process hosts any number
+of servers.
+
+On the first run, decoy creates one server named `echo` with one published tool,
+also named `echo`, which returns its `message` argument. Open the UI URL to
+manage servers and tools.
+
+## Connect your MCP client
+
+Every server has its own URL, `http://localhost:6280/s/SERVER_NAME/mcp`. decoy
+speaks the Streamable HTTP transport, so give your client that URL and select an
+HTTP transport. The following examples connect to the default `echo` server.
+
+### Claude Code
+
+Add the server with the `claude mcp add` command:
+
+```sh
+claude mcp add --transport http echo http://localhost:6280/s/echo/mcp
 ```
 
-decoy speaks Streamable HTTP only, with sessions (`Mcp-Session-Id`). Stop it
-with Ctrl+C.
+### Cursor
 
-### Flags
+Add the server to `.cursor/mcp.json` in your project, or to `~/.cursor/mcp.json`
+for all projects:
 
-| Flag                  | Default           | Meaning                                                      |
-| --------------------- | ----------------- | ------------------------------------------------------------ |
-| `--mcp-port <port>`   | `6280`            | Port of the MCP listener.                                    |
-| `--ui-port <port>`    | `6281`            | Port of the UI and REST API listener.                        |
-| `--host <address>`    | `127.0.0.1`       | Bind address of the MCP listener only.                       |
-| `--config-dir <path>` | `~/.config/decoy` | Where `servers.json` (and `runtime.json`) are stored.        |
-| `--log-limit <n>`     | `10000`           | Messages kept in memory, across all servers. At least `100`. |
-| `-h`, `--help`        |                   | Show usage.                                                  |
-| `-v`, `--version`     |                   | Show the version.                                            |
+```json
+{
+  "mcpServers": {
+    "echo": { "url": "http://localhost:6280/s/echo/mcp" }
+  }
+}
+```
 
-The UI listener always binds `127.0.0.1` and rejects requests whose `Host` isn't
-`localhost:<ui-port>` or `127.0.0.1:<ui-port>`. It has no authentication.
+### Visual Studio Code
 
-### Where things are stored
+Add the server to `.vscode/mcp.json`:
 
-Servers and tools are saved to `servers.json` in the config directory after
-every change:
+```json
+{
+  "servers": {
+    "echo": { "type": "http", "url": "http://localhost:6280/s/echo/mcp" }
+  }
+}
+```
 
-The default config directory is `$XDG_CONFIG_HOME/decoy`, or `~/.config/decoy`
-when `XDG_CONFIG_HOME` is unset. This is the same on Linux, macOS and Windows.
+### A client that runs on another host
 
-A fresh config directory starts with an `echo` server that has one `echo` tool,
-so clients can connect to `http://localhost:6280/s/echo/mcp` right away.
+A client that runs on a remote host, such as a hosted chat product, can't reach
+`localhost`. decoy serves plain HTTP, so put a tunnel in front of the MCP port.
+Don't tunnel the UI port. For example, with
+[cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/):
 
-The UI shows the exact path. Logs are kept in memory only and are dropped on
-exit.
-
-While decoy runs, it writes `runtime.json` next to `servers.json` (process ID,
-API URL, MCP URL template) and removes it on exit. A second instance using the
-same config directory refuses to start.
-
-### HTTPS or a public URL
-
-decoy serves plain HTTP on localhost. If your client needs HTTPS or runs
-elsewhere, put a tunnel in front of the **MCP port only**:
-
-```bash
+```sh
 cloudflared tunnel --url http://localhost:6280
 ```
 
-Then use the tunnel's host in place of `localhost:6280`. Never tunnel the UI
-port: it has no authentication. The UI shows the same command behind the **Need
-a public URL?** link in its header.
+Then give the client the tunnel URL with the server path appended, such as
+`https://TUNNEL_HOST/s/echo/mcp`. In the UI, the tunnel button shows this
+command with the right port.
 
-## Response templates
+### Check the connection
 
-A tool's response template is a JSON value rendered with
-[json-e](https://json-e.js.org/). The rendered value must be a valid MCP
-`CallToolResult`. The context has one key, `args`, the call's `arguments`.
+Each client connection is a session, identified by its `Mcp-Session-Id` header.
+After the client connects, the server's live session count in the UI changes to
+`1 live`. To close a session and test how your client recovers, use the
+[REST API](#rest-api). Open the server and go to the **Logs** tab. The tab shows
+the `initialize` request and response, followed by the requests that your client
+sends next, such as `tools/list`. Call the `echo` tool from your client to see
+the `tools/call` request and its response.
+
+## Define a tool
+
+A tool is what a client lists and calls on a server. Open a server in the UI and
+go to the **Tools** tab to create one. A tool has the following fields:
+
+- **Name**: the name that clients use in `tools/call`. The name is unique on the
+  server.
+- **Title**: an optional display name.
+- **Description**: the text that clients, and the models behind them, read to
+  decide when to call the tool.
+- **Input schema**: a JSON Schema that describes the arguments. The schema must
+  have `"type": "object"`.
+- **Response template**: what the tool returns. See the following section.
+
+A tool is either a draft or published, and clients see only published tools.
+**Save draft** keeps a tool hidden while you work on it, and **Publish tool**
+makes it visible. When you publish a tool, or edit, rename, unpublish, or delete
+a published tool, decoy sends `notifications/tools/list_changed` to every
+connected session. Changes to drafts send nothing. Use this notification to test
+whether your client refreshes its tool list.
+
+## Write a response template
+
+A response template defines the result of a tool call. decoy renders the
+template with [json-e](https://json-e.js.org/) on every `tools/call`, and the
+output must be a valid MCP `CallToolResult`.
+
+A template is JSON. Strings can interpolate values with `${...}`. The template
+can read one variable: `args`, the `arguments` object of the call.
+
+The following template returns a fixed sentence that includes an argument:
 
 ```json
 {
@@ -99,77 +161,178 @@ A tool's response template is a JSON value rendered with
 }
 ```
 
-- `${args.city}` interpolates a string, number or boolean inside a string.
-- `{ "$eval": "args" }` inserts a structure, for example in `structuredContent`.
-- Keys starting with `$` are json-e operators. Write `$$` for a literal `$`.
-
-New tools echo their arguments back as JSON text:
+To insert a whole value instead of a string, use `$eval`. The following
+template, which is the default for new tools, returns the arguments as JSON
+text:
 
 ```json
 { "content": [{ "type": "text", "text": { "$json": { "$eval": "args" } } }] }
 ```
 
-When a template fails to render, or renders to something that isn't a
-`CallToolResult`, the call returns a tool execution error (`isError: true`)
-explaining why. Calling an unknown or unpublished tool returns the JSON-RPC
-error `-32602`. Arguments are not validated against the input schema.
+To vary the result, use json-e operators such as `$if`. The following template
+returns a tool error when `city` is `Atlantis`:
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": {
+        "$if": "args.city == 'Atlantis'",
+        "then": "City not found: ${args.city}",
+        "else": "Forecast for ${args.city}: 14°C, light rain"
+      }
+    }
+  ],
+  "isError": { "$eval": "args.city == 'Atlantis'" }
+}
+```
+
+Keep the following rules in mind:
+
+- json-e treats every object key that starts with `$` as an operator. To write a
+  literal `$`, double it: `$$`.
+- The UI checks the template while you type. It renders the template with empty
+  arguments and reports only errors that no arguments can fix, such as a syntax
+  error. Errors that depend on `args`, such as a missing property, appear when a
+  client calls the tool.
+- If a template fails to render, or the output isn't a valid `CallToolResult`,
+  the tool call returns a result with `isError: true` and a text message that
+  starts with `decoy: the response template of this tool failed to render.`
+
+For the full operator list, see the
+[json-e documentation](https://json-e.js.org/).
+
+## Read the logs
+
+The **Logs** tab lists every JSON-RPC message that the server sent or received,
+including malformed requests and notifications. Each entry shows the direction,
+the method, the session, and, on responses, the time since the matching request.
+
+- Select an entry to see the exact JSON text.
+- Filter with the search box. The filter is a case-insensitive substring match
+  over the method and the raw message, and the entry count reflects the filter.
+- Pause the live view to read without the list moving.
+- Clear the logs of a server.
+- Select **Export JSONL** to download the matching entries as newline-delimited
+  JSON.
+
+Logs live in memory only and are lost when decoy exits. decoy keeps the newest
+10,000 messages across all servers. To change the limit, use `--log-limit`.
+
+## Options
+
+Pass options after the command, as in `npx decoy --mcp-port 7000`. The following
+table lists them:
+
+| Option                | Description                                                   | Default                                       |
+| --------------------- | ------------------------------------------------------------- | --------------------------------------------- |
+| `--mcp-port <port>`   | Port of the MCP listener.                                     | `6280`                                        |
+| `--ui-port <port>`    | Port of the UI and API listener.                              | `6281`                                        |
+| `--host <address>`    | Bind address of the MCP listener. The UI listener ignores it. | `127.0.0.1`                                   |
+| `--config-dir <path>` | Directory that holds `servers.json`.                          | `$XDG_CONFIG_HOME/decoy` or `~/.config/decoy` |
+| `--log-limit <n>`     | Messages kept in memory, across all servers. Minimum: `100`.  | `10000`                                       |
+| `-h`, `--help`        | Print the usage text.                                         |                                               |
+| `-v`, `--version`     | Print the version.                                            |                                               |
+
+If a port is in use, decoy exits and names the option to change.
+
+decoy supports one running instance per config directory. To run two instances,
+give each its own `--config-dir` and ports.
+
+## Where decoy stores data
+
+decoy writes `servers.json` to the config directory after every change. The file
+holds your servers and tools, so you can back it up, copy it to another machine,
+or commit it. If the file is missing, decoy creates it with the `echo` server.
+If the file is invalid, decoy doesn't start and prints the file path and the
+problems.
+
+While decoy runs, it also writes `runtime.json` to the same directory. The file
+records the process ID and the listener URLs, and decoy removes it on shutdown.
 
 ## REST API
 
-The API lives at `http://localhost:6281/api/v1`. Bodies are JSON, errors are
-[RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) `application/problem+json`.
-Requests with a body need `Content-Type: application/json`.
+The UI is a client of a REST API, and you can use the API too. It listens on the
+UI port, under `/api/v1`. Requests and responses are JSON, and errors use
+[RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem details.
 
-| Method & path                                   | Purpose                                             |
-| ----------------------------------------------- | --------------------------------------------------- |
-| `GET /api/v1`                                   | Instance info: version, ports, config file.         |
-| `GET /api/v1/servers`                           | List servers.                                       |
-| `POST /api/v1/servers`                          | Create `{ name, serverInfo?, instructions? }`.      |
-| `GET /api/v1/servers/{server}`                  | One server.                                         |
-| `DELETE /api/v1/servers/{server}`               | Delete it and close its sessions.                   |
-| `GET /api/v1/servers/{server}/tools`            | List tools, drafts included.                        |
-| `POST /api/v1/servers/{server}/tools`           | Create a tool (a draft unless `published`).         |
-| `GET /api/v1/servers/{server}/tools/{tool}`     | One tool.                                           |
-| `PATCH /api/v1/servers/{server}/tools/{tool}`   | Update any field, including `published`.            |
-| `DELETE /api/v1/servers/{server}/tools/{tool}`  | Delete a tool.                                      |
-| `GET /api/v1/servers/{server}/sessions`         | Live MCP sessions.                                  |
-| `DELETE /api/v1/servers/{server}/sessions/{id}` | Close a session server-side.                        |
-| `GET /api/v1/servers/{server}/logs`             | Log entries, newest first (`q`, `cursor`, `limit`). |
-| `DELETE /api/v1/servers/{server}/logs`          | Clear the log.                                      |
-| `GET /api/v1/servers/{server}/logs/stream`      | Live entries over SSE (`after`, `Last-Event-ID`).   |
-| `GET /api/v1/servers/{server}/logs/export`      | Every entry as NDJSON.                              |
+The following table lists the endpoints:
 
-The Zod schemas in `src/shared/api/` are the contract, with a JSDoc comment on
-every field. For example:
+| Method and path                                | Description                                                             |
+| ---------------------------------------------- | ----------------------------------------------------------------------- |
+| `GET /servers`                                 | List servers.                                                           |
+| `POST /servers`                                | Create a server.                                                        |
+| `GET /servers/{server}`                        | Get a server.                                                           |
+| `PATCH /servers/{server}`                      | Update a server. A new `name` moves the server and closes its sessions. |
+| `DELETE /servers/{server}`                     | Delete a server and close its sessions.                                 |
+| `GET /servers/{server}/tools`                  | List tools, drafts included.                                            |
+| `POST /servers/{server}/tools`                 | Create a tool.                                                          |
+| `GET /servers/{server}/tools/{tool}`           | Get a tool.                                                             |
+| `PATCH /servers/{server}/tools/{tool}`         | Update a tool. Set `published` to publish or unpublish it.              |
+| `DELETE /servers/{server}/tools/{tool}`        | Delete a tool.                                                          |
+| `GET /servers/{server}/sessions`               | List live sessions.                                                     |
+| `DELETE /servers/{server}/sessions/{session}`  | Close a session.                                                        |
+| `GET /servers/{server}/logs?q=&cursor=&limit=` | List log entries, newest first, with cursor pagination.                 |
+| `DELETE /servers/{server}/logs`                | Clear the logs of a server.                                             |
+| `GET /servers/{server}/logs/stream?after=&q=`  | Stream new log entries as server-sent events.                           |
+| `GET /servers/{server}/logs/export`            | Download all entries as newline-delimited JSON.                         |
 
-```bash
-curl -X POST localhost:6281/api/v1/servers \
-  -H 'content-type: application/json' -d '{"name":"weather"}'
+The following command publishes a draft tool named `get_forecast` on the
+`weather` server:
 
-curl -X POST localhost:6281/api/v1/servers/weather/tools \
-  -H 'content-type: application/json' \
-  -d '{"name":"echo","description":"Returns its arguments","published":true}'
+```sh
+curl -X PATCH http://localhost:6281/api/v1/servers/weather/tools/get_forecast \
+  -H 'Content-Type: application/json' \
+  -d '{"published": true}'
 ```
 
-## Development
+Every connected session receives `notifications/tools/list_changed`. The Zod
+schemas in [src/shared/api/](src/shared/api/) define the request and response
+bodies.
 
-```bash
+## Develop decoy
+
+decoy needs Node.js 24 or later and [pnpm](https://pnpm.io/). Run the following
+commands from a clone of the repository:
+
+```sh
 pnpm install
 pnpm dev
 ```
 
-`pnpm dev` runs the server with `tsx watch` (MCP on 6280, API on 6281) and Vite
-on <http://localhost:5173>, which proxies `/api/` to the server, side by side.
-The server stores its config in `.decoy/` at the repository root, which is
-gitignored. To pass flags such as `--config-dir`, run
-`pnpm dev:server --config-dir <dir>` and `pnpm dev:ui` in separate terminals.
+`pnpm dev` starts the server and Vite. Open `http://localhost:5173`, because the
+Vite dev server proxies API requests to the server on port `6281`.
 
-| Script           | What it does                                        |
-| ---------------- | --------------------------------------------------- |
-| `pnpm build`     | `vite build` → `dist/ui/`, `tsdown` → `dist/cli.js` |
-| `pnpm start`     | Runs the build: `node dist/cli.js`                  |
-| `pnpm test`      | Vitest, with type checking                          |
-| `pnpm typecheck` | `tsc -b` over the server and UI projects            |
-| `pnpm fix`       | oxfmt, then oxlint with fixes                       |
+The following scripts run the same checks as CI:
 
-See [AGENTS.md](AGENTS.md) for the architecture and coding standards.
+| Script           | Description                                |
+| ---------------- | ------------------------------------------ |
+| `pnpm test`      | Run the Vitest unit and integration tests. |
+| `pnpm typecheck` | Check types with `tsc -b`.                 |
+| `pnpm lint`      | Run oxlint.                                |
+| `pnpm format`    | Check formatting with oxfmt.               |
+| `pnpm fix`       | Format and lint with automatic fixes.      |
+| `pnpm build`     | Build the UI and the CLI into `dist/`.     |
+
+After `pnpm build`, run `node dist/cli.js` to start the built package.
+
+### Install the agent skills
+
+The repository records the agent skills that AI coding assistants use when they
+work on decoy, such as the Hono and React guidance, in `skills-lock.json`. Git
+ignores the skills themselves, so a fresh clone doesn't contain them.
+
+To install them, run the following command from the root of the repository:
+
+```sh
+npx skills update -p
+```
+
+The `-p` flag limits the command to project skills, so it leaves your global
+skills alone. The command downloads each skill in `skills-lock.json` from its
+source repository into `.agents/skills/` and links it into `.claude/skills/`.
+
+The command installs the latest version of each skill, not the version that
+`skills-lock.json` pins, and it updates the hashes in `skills-lock.json` to
+match. Review the change with `git diff skills-lock.json` before you commit it.
