@@ -5,7 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type LogEntry } from '@/shared/api';
 
-import { appendEntries, useLogStream } from './use-log-stream';
+import {
+  MAX_ENTRIES,
+  PAGE_SIZE,
+  prependEntries,
+  useLogStream,
+} from './use-log-stream';
 
 const entry = (id: number): LogEntry => ({
   id,
@@ -60,6 +65,20 @@ const urlOf = (input: RequestInfo | URL | undefined): string =>
       ? input.href
       : (input ?? '');
 
+/** The server's log, as pages of three: [6, 5, 4] then [3, 2, 1]; or empty once cleared. */
+const pageOf = (url: URL, cleared: boolean) => {
+  if (cleared) {
+    return { items: [], nextCursor: null, total: 0 };
+  }
+  const filtered = url.searchParams.get('q') !== null;
+  if (filtered) {
+    return { items: [entry(5), entry(2)], nextCursor: null, total: 2 };
+  }
+  return url.searchParams.get('cursor') === 'older'
+    ? { items: [entry(3), entry(2), entry(1)], nextCursor: null, total: 6 }
+    : { items: [entry(6), entry(5), entry(4)], nextCursor: 'older', total: 6 };
+};
+
 const wrapper = ({ children }: { children: ReactNode }) => (
   <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
     {children}
@@ -74,34 +93,42 @@ const lastSource = () => {
   return source;
 };
 
-describe('appendEntries', () => {
-  it('appends newer entries', () => {
-    expect(
-      appendEntries([entry(1)], [entry(2), entry(3)]).map((e) => e.id),
-    ).toEqual([1, 2, 3]);
+const ids = (entries: LogEntry[]) => entries.map((e) => e.id);
+
+describe('prependEntries', () => {
+  it('prepends newer entries, newest first', () => {
+    expect(ids(prependEntries([entry(1)], [entry(2), entry(3)]))).toEqual([
+      3, 2, 1,
+    ]);
   });
 
   it('skips entries a reconnect replays', () => {
-    const items = [entry(1), entry(2)];
+    const items = [entry(2), entry(1)];
 
-    expect(appendEntries(items, [entry(2)])).toBe(items);
-    expect(appendEntries(items, [entry(1), entry(3)]).map((e) => e.id)).toEqual(
-      [1, 2, 3],
-    );
+    expect(prependEntries(items, [entry(2)])).toBe(items);
+    expect(ids(prependEntries(items, [entry(1), entry(3)]))).toEqual([3, 2, 1]);
   });
 });
 
 describe('useLogStream', () => {
   let mockFetch: ReturnType<typeof vi.fn<typeof fetch>>;
+  let cleared: boolean;
+
+  const render = (query = '') =>
+    renderHook(({ q }) => useLogStream('weather', q), {
+      wrapper,
+      initialProps: { q: query },
+    });
+
+  const requested = (call: number) =>
+    new URL(urlOf(mockFetch.mock.calls[call]?.[0]), 'http://localhost');
 
   beforeEach(() => {
     FakeEventSource.instances = [];
+    cleared = false;
     vi.stubGlobal('EventSource', FakeEventSource);
-    mockFetch = vi.fn<typeof fetch>(async () =>
-      Response.json({
-        items: [entry(3), entry(2), entry(1)],
-        nextCursor: 'abc',
-      }),
+    mockFetch = vi.fn<typeof fetch>(async (input) =>
+      Response.json(pageOf(new URL(urlOf(input), 'http://localhost'), cleared)),
     );
     vi.stubGlobal('fetch', mockFetch);
   });
@@ -110,34 +137,90 @@ describe('useLogStream', () => {
     vi.unstubAllGlobals();
   });
 
-  it('loads the latest page oldest first, then streams after its last id', async () => {
-    const { result } = renderHook(() => useLogStream('weather'), { wrapper });
+  it('loads the newest page, then streams after its newest id', async () => {
+    const { result } = render();
 
     await waitFor(() => {
-      expect(result.current.entries.map((e) => e.id)).toEqual([1, 2, 3]);
+      expect(ids(result.current.entries)).toEqual([6, 5, 4]);
     });
+    expect(result.current.total).toBe(6);
     expect(result.current.hasOlder).toBe(true);
-    expect(urlOf(mockFetch.mock.calls[0]?.[0])).toContain('limit=500');
+    expect(requested(0).searchParams.get('limit')).toBe(String(PAGE_SIZE));
+    expect(requested(0).searchParams.has('q')).toBe(false);
     await waitFor(() => {
       expect(lastSource().url).toBe(
-        '/api/v1/servers/weather/logs/stream?after=3',
+        '/api/v1/servers/weather/logs/stream?after=6',
       );
     });
 
     act(() => {
       lastSource().emit('open');
-      lastSource().emit('entry', JSON.stringify(entry(4)));
-      lastSource().emit('entry', JSON.stringify(entry(4)));
+      lastSource().emit('entry', JSON.stringify(entry(7)));
+      lastSource().emit('entry', JSON.stringify(entry(7)));
     });
 
     await waitFor(() => {
-      expect(result.current.entries.map((e) => e.id)).toEqual([1, 2, 3, 4]);
+      expect(ids(result.current.entries)).toEqual([7, 6, 5, 4]);
     });
+    expect(result.current.total).toBe(7);
     expect(result.current.connection).toBe('live');
   });
 
+  it('sends the query to the page and the stream', async () => {
+    const { result } = render('tools/call');
+
+    await waitFor(() => {
+      expect(ids(result.current.entries)).toEqual([5, 2]);
+    });
+    expect(requested(0).searchParams.get('q')).toBe('tools/call');
+    expect(result.current.total).toBe(2);
+    await waitFor(() => {
+      expect(lastSource().url).toBe(
+        '/api/v1/servers/weather/logs/stream?after=5&q=tools%2Fcall',
+      );
+    });
+  });
+
+  it('loads older pages with the returned cursor until the start', async () => {
+    const { result } = render();
+    await waitFor(() => {
+      expect(result.current.hasOlder).toBe(true);
+    });
+
+    act(() => {
+      result.current.loadOlder();
+    });
+
+    await waitFor(() => {
+      expect(ids(result.current.entries)).toEqual([6, 5, 4, 3, 2, 1]);
+    });
+    expect(requested(1).searchParams.get('cursor')).toBe('older');
+    expect(result.current.hasOlder).toBe(false);
+    expect(result.current.loadingOlder).toBe(false);
+    expect(result.current.total).toBe(6);
+  });
+
+  it('counts evicted entries out of the total and drops them', async () => {
+    const { result } = render();
+    await waitFor(() => {
+      expect(FakeEventSource.instances).toHaveLength(1);
+    });
+
+    act(() => {
+      lastSource().emit('entry', JSON.stringify(entry(7)));
+      lastSource().emit('evicted', JSON.stringify({ id: 4 }));
+      lastSource().emit('evicted', JSON.stringify({ id: 1 }));
+    });
+
+    await waitFor(() => {
+      expect(ids(result.current.entries)).toEqual([7, 6, 5]);
+    });
+    // 6 on the server, plus 1 live, minus 2 evicted.
+    expect(result.current.total).toBe(5);
+  });
+
   it('buffers entries while paused and flushes them on resume', async () => {
-    const { result } = renderHook(() => useLogStream('weather'), { wrapper });
+    const { result } = render();
     await waitFor(() => {
       expect(FakeEventSource.instances).toHaveLength(1);
     });
@@ -146,29 +229,35 @@ describe('useLogStream', () => {
       result.current.pause();
     });
     act(() => {
-      lastSource().emit('entry', JSON.stringify(entry(4)));
-      lastSource().emit('entry', JSON.stringify(entry(5)));
+      lastSource().emit('entry', JSON.stringify(entry(7)));
+      lastSource().emit('entry', JSON.stringify(entry(8)));
     });
 
     expect(result.current.pending).toBe(2);
-    expect(result.current.entries.map((e) => e.id)).toEqual([1, 2, 3]);
+    expect(ids(result.current.entries)).toEqual([6, 5, 4]);
+    expect(result.current.total).toBe(6);
 
     act(() => {
       result.current.resume();
     });
 
     await waitFor(() => {
-      expect(result.current.entries.map((e) => e.id)).toEqual([1, 2, 3, 4, 5]);
+      expect(ids(result.current.entries)).toEqual([8, 7, 6, 5, 4]);
     });
     expect(result.current.pending).toBe(0);
+    expect(result.current.total).toBe(8);
   });
 
-  it('empties the list when the log is cleared', async () => {
-    const { result } = renderHook(() => useLogStream('weather'), { wrapper });
+  it('empties everything when the log is cleared', async () => {
+    const { result } = render();
     await waitFor(() => {
       expect(FakeEventSource.instances).toHaveLength(1);
     });
+    act(() => {
+      lastSource().emit('entry', JSON.stringify(entry(7)));
+    });
 
+    cleared = true;
     act(() => {
       lastSource().emit('cleared', '{}');
     });
@@ -176,11 +265,85 @@ describe('useLogStream', () => {
     await waitFor(() => {
       expect(result.current.entries).toEqual([]);
     });
+    expect(result.current.total).toBe(0);
     expect(result.current.hasOlder).toBe(false);
+    await waitFor(() => {
+      expect(lastSource().url).toBe(
+        '/api/v1/servers/weather/logs/stream?after=0',
+      );
+    });
+  });
+
+  it('empties everything on reset', async () => {
+    const { result } = render();
+    await waitFor(() => {
+      expect(ids(result.current.entries)).toEqual([6, 5, 4]);
+    });
+
+    cleared = true;
+    act(() => {
+      result.current.reset();
+    });
+
+    expect(result.current.entries).toEqual([]);
+    expect(result.current.total).toBe(0);
+    expect(result.current.hasOlder).toBe(false);
+    expect(result.current.loadingOlder).toBe(false);
+    await waitFor(() => {
+      expect(FakeEventSource.instances).toHaveLength(2);
+    });
+  });
+
+  it('closes the old stream and opens a new one when the query changes', async () => {
+    const { result, rerender } = render();
+    await waitFor(() => {
+      expect(FakeEventSource.instances).toHaveLength(1);
+    });
+    const first = lastSource();
+
+    rerender({ q: 'tools/call' });
+
+    await waitFor(() => {
+      expect(ids(result.current.entries)).toEqual([5, 2]);
+    });
+    await waitFor(() => {
+      expect(FakeEventSource.instances).toHaveLength(2);
+    });
+    expect(first.closed).toBe(true);
+    expect(lastSource().url).toContain('q=tools%2Fcall');
+    expect(result.current.total).toBe(2);
+  });
+
+  it('starts over from a fresh first page past MAX_ENTRIES', async () => {
+    const { result } = render();
+    await waitFor(() => {
+      expect(FakeEventSource.instances).toHaveLength(1);
+    });
+    act(() => {
+      result.current.pause();
+    });
+    act(() => {
+      for (let id = 100; id <= 100 + MAX_ENTRIES; id++) {
+        lastSource().emit('entry', JSON.stringify(entry(id)));
+      }
+    });
+
+    act(() => {
+      result.current.resume();
+    });
+
+    await waitFor(() => {
+      expect(FakeEventSource.instances).toHaveLength(2);
+    });
+    await waitFor(() => {
+      expect(ids(result.current.entries)).toEqual([6, 5, 4]);
+    });
+    expect(result.current.total).toBe(6);
+    expect(FakeEventSource.instances[0]?.closed).toBe(true);
   });
 
   it('reports reconnecting when the stream drops', async () => {
-    const { result } = renderHook(() => useLogStream('weather'), { wrapper });
+    const { result } = render();
     await waitFor(() => {
       expect(FakeEventSource.instances).toHaveLength(1);
     });
@@ -193,7 +356,7 @@ describe('useLogStream', () => {
   });
 
   it('closes the stream on unmount', async () => {
-    const { unmount } = renderHook(() => useLogStream('weather'), { wrapper });
+    const { unmount } = render();
     await waitFor(() => {
       expect(FakeEventSource.instances).toHaveLength(1);
     });

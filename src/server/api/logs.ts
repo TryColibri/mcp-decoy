@@ -9,6 +9,7 @@ import {
   LOG_STREAM_EVENTS,
   type LogEntry,
   logEntrySchema,
+  logEvictedSchema,
   logPageQuerySchema,
   logPageSchema,
   logStreamQuerySchema,
@@ -57,6 +58,7 @@ export function createLogsRoutes(logs: LogsService) {
             items: page.items,
             nextCursor:
               page.more && last !== undefined ? encodeCursor(last.id) : null,
+            total: page.total,
           }),
           200,
         );
@@ -71,23 +73,24 @@ export function createLogsRoutes(logs: LogsService) {
       zValidator('query', logStreamQuerySchema, validationHook),
       (c) => {
         const server = c.req.param('server');
+        const { q, after } = c.req.valid('query');
         const lastEventID = Number.parseInt(
           c.req.header('last-event-id') ?? '',
           10,
         );
         const afterId = Number.isSafeInteger(lastEventID)
           ? lastEventID
-          : (c.req.valid('query').after ?? 0);
+          : (after ?? 0);
 
         // Subscribe and read the backlog in the same tick, so nothing is
         // missed or sent twice.
         const queue: LogEvent[] = [];
         let wake: (() => void) | undefined;
-        const unsubscribe = logs.subscribe(server, (event) => {
+        const unsubscribe = logs.subscribe(server, { text: q }, (event) => {
           queue.push(event);
           wake?.();
         });
-        const backlog = logs.after(server, afterId);
+        const backlog = logs.after(server, afterId, q);
 
         return streamSSE(c, async (stream) => {
           stream.onAbort(() => {
@@ -119,6 +122,13 @@ export function createLogsRoutes(logs: LogsService) {
                 wake = undefined;
               } else if (event.type === 'entry') {
                 await writeEntry(event.entry);
+              } else if (event.type === 'evicted') {
+                await stream.writeSSE({
+                  event: LOG_STREAM_EVENTS.evicted,
+                  data: JSON.stringify(
+                    logEvictedSchema.parse({ id: event.entry.id }),
+                  ),
+                });
               } else {
                 await stream.writeSSE({
                   event: LOG_STREAM_EVENTS.cleared,

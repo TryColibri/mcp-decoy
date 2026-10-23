@@ -23,7 +23,7 @@ nvm use
 pnpm install
 ```
 
-- [x] Run the automated checks once (format, lint, types, tests). Expect 179
+- [x] Run the automated checks once (format, lint, types, tests). Expect 210
       passing tests:
 
 ```bash
@@ -81,15 +81,15 @@ pnpm dev:ui
 - [x] Rename the tool to `get_forecast`, add a description, and set this
       response template:
       `{"content":[{"type":"text","text":"Forecast for ${args.city}"}]}`
-- [ ] Click **Publish tool**. The badge turns **Published**, the URL becomes
-      `/servers/<server>/tools/get_forecast`, and an orange warning reports
+- [x] Click **Publish tool**. The badge turns **Published**, the URL becomes
+      `?tool=get_forecast`, and an orange warning reports
       `object has no property "city"`. That's expected: the trial render runs
       with empty arguments.
-- [ ] Create a second tool and rename it to `get_forecast`. The conflict error
+- [x] Create a second tool and rename it to `get_forecast`. The conflict error
       appears under **Name**.
-- [ ] Tick a few annotation checkboxes, click **Save changes**, and reload the
+- [x] Tick a few annotation checkboxes, click **Save changes**, and reload the
       page. The ticks are still there.
-- [ ] **Discard draft** and **Delete tool** both open a confirmation dialog
+- [x] **Discard draft** and **Delete tool** both open a confirmation dialog
       before deleting.
 
 ## 4. Connect a real MCP client
@@ -101,63 +101,76 @@ clash with decoy.
 npx @modelcontextprotocol/inspector
 ```
 
-- [ ] Connect with transport **Streamable HTTP** to
+- [x] Connect with transport **Streamable HTTP** to
       `http://localhost:6280/s/weather/mcp`.
-- [ ] Within about 2 seconds, decoy's header and the Servers table show "1 live
+- [x] Within about 2 seconds, decoy's header and the Servers table show "1 live
       session".
-- [ ] **List tools** shows only published tools: no drafts.
-- [ ] Calling `get_forecast` with `{"city":"Paris"}` returns "Forecast for
+- [x] **List tools** shows only published tools: no drafts.
+- [x] Calling `get_forecast` with `{"city":"Paris"}` returns "Forecast for
       Paris".
-- [ ] Calling it without `city` returns `isError: true` with a decoy template
+- [x] Calling it without `city` returns `isError: true` with a decoy template
       error. That's a tool result, not a protocol error.
-- [ ] Publish a new tool in decoy while the Inspector stays connected. The
+- [x] Publish a new tool in decoy while the Inspector stays connected. The
       Inspector receives `notifications/tools/list_changed`, and the new tool
       shows up when you list tools again, without reconnecting.
-- [ ] Unpublish it. Another `list_changed` arrives and the tool disappears from
+- [x] Unpublish it. Another `list_changed` arrives and the tool disappears from
       the list.
-- [ ] The editor's "Live, no restart · notifies 1 session on weather" line
+- [x] The editor's "Live, no restart · notifies 1 session on weather" line
       matches the session count.
 
 ## 5. Logs tab
 
-- [ ] Rows read: time with milliseconds, a blue → or orange ← arrow, the method,
+- [x] Rows read: time with milliseconds, a blue → or orange ← arrow, the method,
       a tag (request/result/notify/error), a short note, the JSON-RPC id, a
       short session id, and the duration on responses.
-- [ ] The notes say: `initialize` shows the client name, `tools/list` results
+- [x] The notes say: `initialize` shows the client name, `tools/list` results
       show "N tools", `tools/call` shows the tool name, and errors show the code
       and message.
-- [ ] Click a row. The Negotiation card shows the client's requested version and
+- [x] Click a row. The Negotiation card shows the client's requested version and
       capabilities next to the server's answer. The JSON panel shows the
       pretty-printed message.
-- [ ] **Go to response** and **Go to request** jump between the two halves of a
+- [x] **Go to response** and **Go to request** jump between the two halves of a
       pair. **Copy JSON** copies the message.
-- [ ] Type `tools/call` in search: the list filters as you type.
-- [ ] Click **Pause**, then make a few calls from the Inspector. The list stays
+- [x] Type `tools/call` in search. After a short pause the list filters, and the
+      footer reads "N matching messages". Clear the search: the full total comes
+      back.
+- [x] Click **Pause**, then make a few calls from the Inspector. The list stays
       frozen and the button reads "Resume · N new". Click it and exactly those
       entries appear, with no duplicates.
-- [ ] The newest message is at the top. Make calls: new rows appear at the top.
+- [x] The newest message is at the top. Make calls: new rows appear at the top.
       Scroll down and make calls: your position stays put.
-- [ ] **Export JSONL** downloads `decoy-weather-logs.jsonl`, with one JSON entry
+- [x] **Export JSONL** downloads `decoy-weather-logs.jsonl`, with one JSON entry
       per line.
-- [ ] **Clear** empties the list, including in a second browser tab that's open
+- [x] **Clear** empties the list, including in a second browser tab that's open
       on the same server.
-- [ ] **Search all** only appears when more than 500 entries exist. To create
-      that many quickly (each request logs one entry in and one out), run this,
-      then search:
+- [x] To create lots of traffic quickly (each request logs one entry in and one
+      out), run this. The footer shows the total (about 520 or more) while about
+      200 rows are loaded. Scroll down: more rows load until the last row reads
+      "Start of log", and the number of rows matches the total.
 
 ```bash
 for i in $(seq 1 260); do curl -s -X POST localhost:6280/s/weather/mcp -H 'content-type: application/json' -d "{\"jsonrpc\":\"2.0\",\"id\":$i,\"method\":\"tools/list\"}" > /dev/null; done
 ```
 
+- [x] Filter on `tools/call` and make a call from the Inspector. It appears at
+      the top and the total goes up by 2 (request and response). `tools/list`
+      traffic doesn't appear or count.
+- [x] Filter on `tools/list`, scroll back to the start, and the number of rows
+      equals the "N matching" total.
+- [x] **Clear** resets the total to 0, in both browser tabs.
+- [x] Eviction: restart with
+      `pnpm dev:server --config-dir /tmp/decoy-dev --log-limit 100`, run the
+      loop above, and the total stays at 100 while new rows keep arriving.
+
 ## 6. Reconnects and restarts
 
-- [ ] Stop the server terminal while the Logs tab is open. The footer changes to
+- [x] Stop the server terminal while the Logs tab is open. The footer changes to
       "reconnecting…".
-- [ ] Start it again. The footer returns to "streaming", but **new entries won't
+- [x] Start it again. The footer returns to "streaming", but **new entries won't
       appear until you reload**. This is the bug described at the top.
-- [ ] The Inspector's next request gets a 404 because sessions don't survive a
+- [x] The Inspector's next request gets a 404 because sessions don't survive a
       restart; reconnecting it works.
-- [ ] Servers and tools are still there after the restart (they're read back
+- [x] Servers and tools are still there after the restart (they're read back
       from `servers.json`).
 
 ## 7. Edit a server
@@ -165,27 +178,27 @@ for i in $(seq 1 260); do curl -s -X POST localhost:6280/s/weather/mcp -H 'conte
 Do this with the Inspector still connected to `weather`, and a second server
 named `echo` created (see section 2).
 
-- [ ] On Servers, each row has an **Edit** link. It opens a dialog titled “Edit
+- [x] On Servers, each row has an **Edit** link. It opens a dialog titled “Edit
       “weather””, filled with the server's name, `serverInfo.name`,
       `serverInfo.version` and instructions. **Save changes** is disabled until
       you change something.
-- [ ] **Cancel**, **Escape** and a click on the backdrop all close the dialog
+- [x] **Cancel**, **Escape** and a click on the backdrop all close the dialog
       without saving.
-- [ ] Change only `serverInfo.version` to `2.0.0` and save. The dialog closes
+- [x] Change only `serverInfo.version` to `2.0.0` and save. The dialog closes
       and `servers.json` has the new version. Nothing else changed, and the
       Inspector stays connected.
-- [ ] Clear `serverInfo.version` and save. The error "Version is required"
+- [x] Clear `serverInfo.version` and save. The error "Version is required"
       appears under that field, and the dialog stays open.
-- [ ] Clear the instructions and save. `servers.json` no longer has an
+- [x] Clear the instructions and save. `servers.json` no longer has an
       `instructions` key for `weather`.
-- [ ] Type `echo` as the name. "A server named “echo” already exists." appears
+- [x] Type `echo` as the name. "A server named “echo” already exists." appears
       and **Save changes** is disabled. Typing `Bad Name` shows the slug error.
-- [ ] Type `forecast` as the name. The endpoint preview follows and a note says
+- [x] Type `forecast` as the name. The endpoint preview follows and a note says
       renaming closes live sessions. Save.
-- [ ] On Servers, the row now reads `forecast`, with the new endpoint.
-- [ ] The Inspector's next request fails with a 404 (the old URL answers
+- [x] On Servers, the row now reads `forecast`, with the new endpoint.
+- [x] The Inspector's next request fails with a 404 (the old URL answers
       "Unknown server"). Reconnecting to the new URL works.
-- [ ] Open `forecast` from the table. The Logs tab still holds the earlier
+- [x] Open `forecast` from the table. The Logs tab still holds the earlier
       messages, and the Tools tab still has your tools.
 - [ ] On the server page, click **Edit server** in the header. The same dialog
       opens. Rename it back to `weather` from the Tools tab. The URL becomes

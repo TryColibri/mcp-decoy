@@ -4,7 +4,6 @@ import { type LogEntry } from '@/shared/api';
 
 import {
   describeCapabilities,
-  matchesSearch,
   negotiationOf,
   noteOf,
   pairOf,
@@ -137,14 +136,5 @@ describe('describeCapabilities', () => {
     ).toBe('roots (listChanged), sampling');
     expect(describeCapabilities({})).toBe('none');
     expect(describeCapabilities(null)).toBe('unknown');
-  });
-});
-
-describe('matchesSearch', () => {
-  it('matches method and raw case-insensitively', () => {
-    expect(matchesSearch(initialize, 'INITIALIZE')).toBe(true);
-    expect(matchesSearch(initialize, 'my-app')).toBe(true);
-    expect(matchesSearch(initialize, 'tools/call')).toBe(false);
-    expect(matchesSearch(initialize, '  ')).toBe(true);
   });
 });

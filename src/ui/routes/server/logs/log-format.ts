@@ -243,22 +243,6 @@ export function describeCapabilities(
   return names.length === 0 ? 'none' : names.join(', ');
 }
 
-/**
- * Whether an entry matches a search: case-insensitive substring over the
- * method and raw JSON, like the API's `q`.
- *
- * @param entry - A log entry.
- * @param query - The search text.
- */
-export function matchesSearch(entry: LogEntry, query: string): boolean {
-  const needle = query.trim().toLowerCase();
-  return (
-    needle === '' ||
-    (entry.method?.toLowerCase().includes(needle) ?? false) ||
-    entry.raw.toLowerCase().includes(needle)
-  );
-}
-
 const stringOrNull = (value: unknown): string | null =>
   typeof value === 'string' ? value : null;
 

@@ -15,6 +15,7 @@ import {
   type InstanceInfo,
   instanceInfoSchema,
   logEntrySchema,
+  logEvictedSchema,
   logPageSchema,
   problemSchema,
   type ServerConfig,
@@ -463,6 +464,120 @@ describe('uiApp', () => {
         'tools/list',
         'tools/list',
       ]);
+    });
+
+    const append = (store: Services['store'], method: string) =>
+      store.append({
+        at: '2026-10-21T12:00:00.000Z',
+        server: 'weather',
+        sessionId: null,
+        direction: 'in',
+        kind: 'request',
+        method,
+        jsonrpcId: 1,
+        durationMs: null,
+        raw: `{"jsonrpc":"2.0","id":1,"method":"${method}"}`,
+      });
+
+    /** Reads a response body as text until a needle shows up. */
+    const sseReader = (response: Response) => {
+      const reader = response
+        .body!.pipeThrough(new TextDecoderStream())
+        .getReader();
+      let text = '';
+      return {
+        text: () => text,
+        readUntil: async (needle: string) => {
+          while (!text.includes(needle)) {
+            const { value, done } = await reader.read();
+            if (done) {
+              break;
+            }
+            text += value;
+          }
+        },
+        cancel: async () => reader.cancel(),
+      };
+    };
+
+    it('reports the total of matching entries on every page', async () => {
+      for (const method of ['tools/list', 'tools/call', 'tools/list']) {
+        append(services.store, method);
+      }
+      append(services.store, 'tools/call');
+      append(services.store, 'initialize');
+      const getPage = async (query: string) =>
+        logPageSchema.parse(
+          await (await request(`/api/v1/servers/weather/logs?${query}`)).json(),
+        );
+
+      const all = await getPage('limit=2');
+      const allOlder = await getPage(`limit=2&cursor=${all.nextCursor ?? ''}`);
+      const calls = await getPage('limit=1&q=TOOLS/CALL');
+      const callsOlder = await getPage(
+        `limit=1&q=TOOLS/CALL&cursor=${calls.nextCursor ?? ''}`,
+      );
+
+      expect([all.total, allOlder.total]).toEqual([5, 5]);
+      expect([calls.total, callsOlder.total]).toEqual([2, 2]);
+      expect(callsOlder.nextCursor).toBeNull();
+    });
+
+    it('streams only the entries matching q, backlog and live', async () => {
+      const old = append(services.store, 'tools/call');
+      append(services.store, 'tools/list');
+
+      const response = await request(
+        '/api/v1/servers/weather/logs/stream?after=0&q=tools/call',
+      );
+      const stream = sseReader(response);
+      await stream.readUntil(`id: ${old.id}\n`);
+      const skipped = append(services.store, 'tools/list');
+      const live = append(services.store, 'tools/call');
+      await stream.readUntil(`id: ${live.id}\n`);
+      await stream.cancel();
+
+      expect(stream.text()).not.toContain(`id: ${skipped.id}\n`);
+      expect(stream.text().match(/event: entry/g)).toHaveLength(2);
+    });
+
+    it('sends evicted over SSE for matching entries only', async () => {
+      const small = createServices({
+        initial: [],
+        persist: vi.fn(async () => {}),
+        logLimit: 3,
+        instance: () => INSTANCE,
+        onError: (error) => {
+          throw error;
+        },
+      });
+      await small.servers.create({ name: 'weather' });
+      const smallApp = createUIApp({
+        api: small.api,
+        port: () => PORT,
+        staticRoot: null,
+        dev: false,
+      });
+      const evictedCall = append(small.store, 'tools/call');
+      const evictedList = append(small.store, 'tools/list');
+      append(small.store, 'tools/list');
+      const response = await smallApp.request(
+        `${ORIGIN}/api/v1/servers/weather/logs/stream?after=${evictedList.id}&q=tools/call`,
+        { headers: { host: `localhost:${PORT}` } },
+      );
+      const stream = sseReader(response);
+
+      append(small.store, 'tools/list');
+      append(small.store, 'tools/list');
+      await stream.readUntil('event: evicted');
+      await stream.cancel();
+      await small.sessions.closeAll();
+
+      const data = /event: evicted\ndata: (.*)\n/.exec(stream.text());
+      expect(logEvictedSchema.parse(JSON.parse(data?.[1] ?? ''))).toEqual({
+        id: evictedCall.id,
+      });
+      expect(stream.text().match(/event: evicted/g)).toHaveLength(1);
     });
 
     it('rejects an invalid cursor or limit', async () => {

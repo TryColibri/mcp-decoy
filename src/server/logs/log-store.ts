@@ -14,12 +14,26 @@ export type LogQuery = {
   limit: number;
 };
 
+/** Filters for `LogStore.count`. */
+export type LogCountQuery = {
+  /** Only entries of this server. */
+  server: string;
+  /** Case-insensitive substring over `method` and `raw`. */
+  text?: string;
+};
+
 /** What a `LogStore` subscriber receives. */
 export type LogEvent =
   | {
       /** A message was captured. */
       type: 'entry';
       /** The captured entry. */
+      entry: LogEntry;
+    }
+  | {
+      /** The oldest entry was dropped to make room for a new one. */
+      type: 'evicted';
+      /** The dropped entry. */
       entry: LogEntry;
     }
   | {
@@ -33,11 +47,13 @@ export type LogStore = {
   append(entry: Omit<LogEntry, 'id'>): LogEntry;
   /** Matching entries, newest first. */
   query(query: LogQuery): LogEntry[];
+  /** Number of entries matching `query`. */
+  count(query: LogCountQuery): number;
   /** Drops every entry of `server`. */
   clear(server: string): void;
   /** Reassigns every entry of `from` to `to`, keeping ids and order. */
   rename(from: string, to: string): void;
-  /** Calls `listener` for new entries and clears of `server`. Returns a function that unsubscribes. */
+  /** Calls `listener` for new, evicted and cleared entries of `server`. Returns a function that unsubscribes. */
   subscribe(server: string, listener: (event: LogEvent) => void): () => void;
 };
 
@@ -66,12 +82,17 @@ export function createRingBufferLogStore(limit: number): LogStore {
   return {
     append(fields) {
       const entry: LogEntry = { id: nextId++, ...fields };
+      let evicted: LogEntry | undefined;
       if (size < limit) {
         buffer[(start + size) % limit] = entry;
         size++;
       } else {
+        evicted = buffer[start];
         buffer[start] = entry;
         start = (start + 1) % limit;
+      }
+      if (evicted !== undefined) {
+        notify(evicted.server, { type: 'evicted', entry: evicted });
       }
       notify(entry.server, { type: 'entry', entry });
       return entry;
@@ -91,12 +112,28 @@ export function createRingBufferLogStore(limit: number): LogStore {
         if (beforeId !== undefined && entry.id >= beforeId) {
           continue;
         }
-        if (needle !== undefined && needle !== '' && !matches(entry, needle)) {
+        if (needle !== undefined && !matchesNeedle(entry, needle)) {
           continue;
         }
         results.push(entry);
       }
       return results;
+    },
+
+    count({ server, text }) {
+      const needle = text?.toLowerCase();
+      let total = 0;
+      for (let index = 0; index < size; index++) {
+        const entry = at(index);
+        if (
+          entry !== undefined &&
+          entry.server === server &&
+          (needle === undefined || matchesNeedle(entry, needle))
+        ) {
+          total++;
+        }
+      }
+      return total;
     },
 
     clear(server) {
@@ -136,6 +173,19 @@ export function createRingBufferLogStore(limit: number): LogStore {
   };
 }
 
-const matches = (entry: LogEntry, needle: string): boolean =>
+// `needle` is lowercase; an empty one matches everything.
+const matchesNeedle = (entry: LogEntry, needle: string): boolean =>
+  needle === '' ||
   (entry.method?.toLowerCase().includes(needle) ?? false) ||
   entry.raw.toLowerCase().includes(needle);
+
+/**
+ * Whether an entry matches a search: case-insensitive substring over `method`
+ * and `raw`. Empty or missing text matches everything.
+ *
+ * @param entry - A log entry.
+ * @param text - The search text.
+ */
+export function matches(entry: LogEntry, text?: string): boolean {
+  return matchesNeedle(entry, text?.toLowerCase() ?? '');
+}

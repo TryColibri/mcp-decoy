@@ -75,6 +75,8 @@ export type LogPage = {
   items: LogEntry[];
   /** Pass as `cursor` to get older entries; `null` on the last page. */
   nextCursor: string | null;
+  /** Entries matching `q` on the server, across all pages. */
+  total: number;
 };
 
 export const logPageSchema: z.ZodType<LogPage> = z.strictObject({
@@ -85,6 +87,11 @@ export const logPageSchema: z.ZodType<LogPage> = z.strictObject({
     .describe(
       'Pass as `cursor` to get older entries; `null` on the last page.',
     ),
+  total: z
+    .number()
+    .int()
+    .min(0)
+    .describe('Entries matching `q` on the server, across all pages.'),
 });
 
 /** Default page size of `GET /api/v1/servers/{server}/logs`. */
@@ -126,6 +133,8 @@ export const logPageQuerySchema: z.ZodType<
 
 /** Query string of `GET /api/v1/servers/{server}/logs/stream`. */
 export type LogStreamQuery = {
+  /** Case-insensitive substring over method and raw JSON. */
+  q?: string;
   /** Replay entries with an id greater than this one first. `Last-Event-ID` takes precedence. */
   after?: number;
 };
@@ -134,6 +143,10 @@ export const logStreamQuerySchema: z.ZodType<
   LogStreamQuery,
   Record<string, string>
 > = z.strictObject({
+  q: z
+    .string()
+    .optional()
+    .describe('Case-insensitive substring over method and raw JSON.'),
   after: z.coerce
     .number<string>()
     .int()
@@ -144,10 +157,25 @@ export const logStreamQuerySchema: z.ZodType<
     ),
 });
 
+/** Data of the `evicted` SSE event. */
+export type LogEvicted = {
+  /** Id of the entry the server dropped to make room. */
+  id: number;
+};
+
+export const logEvictedSchema: z.ZodType<LogEvicted> = z.strictObject({
+  id: z
+    .number()
+    .int()
+    .describe('Id of the entry the server dropped to make room.'),
+});
+
 /** SSE event names sent by `GET /api/v1/servers/{server}/logs/stream`. */
 export const LOG_STREAM_EVENTS = {
   /** `data` is a `LogEntry`; the SSE `id` is the entry id. */
   entry: 'entry',
+  /** An entry matching `q` was dropped to make room; `data` is a `LogEvicted`. */
+  evicted: 'evicted',
   /** The server's log was cleared; `data` is `{}`. */
   cleared: 'cleared',
 } as const;

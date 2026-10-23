@@ -1,58 +1,34 @@
 import { PauseIcon, PlayIcon } from '@phosphor-icons/react';
-import { useDeferredValue, useId, useMemo, useState } from 'react';
-import useSWR, { useSWRConfig } from 'swr';
+import { useId, useState } from 'react';
 
-import { type LogEntry } from '@/shared/api';
-import { type ApiError, client, keys, unwrap, unwrapEmpty } from '@/ui/api';
+import { client, unwrapEmpty } from '@/ui/api';
 import { Button, buttonClasses } from '@/ui/components/button';
 
 import { useServerContext } from '../server-layout';
-import { matchesSearch } from './log-format';
 import { MessageDetail } from './message-detail';
 import { MessageList } from './message-list';
-import { type LoadedLogs, useLogStream } from './use-log-stream';
+import { useDebouncedValue } from './use-debounced-value';
+import { useLogStream } from './use-log-stream';
+
+/** How long the search text must hold still before the server is asked. */
+const SEARCH_DEBOUNCE_MS = 250;
+
+const numberFormat = new Intl.NumberFormat();
 
 /** `/servers/:server/logs`: every JSON-RPC message, live. */
 export function LogsPage() {
   const { server } = useServerContext();
-  const stream = useLogStream(server.name);
-  const { mutate } = useSWRConfig();
   const searchId = useId();
   const [search, setSearch] = useState('');
-  const query = useDeferredValue(search.trim());
-  const [searchAll, setSearchAll] = useState<string | null>(null);
+  const query = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
+  const stream = useLogStream(server.name, query);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [clearError, setClearError] = useState<string | null>(null);
-
-  const { data: allResults, error: searchError } = useSWR<LogEntry[], ApiError>(
-    searchAll === null ? null : [keys.logs(server.name), 'search', searchAll],
-    async () =>
-      (
-        await unwrap(
-          client.servers[':server'].logs.$get({
-            param: { server: server.name },
-            query: { q: searchAll ?? '', limit: '1000' },
-          }),
-        )
-      ).items,
-  );
-
-  const visible = useMemo(() => {
-    if (searchAll !== null) {
-      return allResults ?? [];
-    }
-    const matching =
-      query === ''
-        ? stream.entries
-        : stream.entries.filter((entry) => matchesSearch(entry, query));
-    return matching.toReversed();
-  }, [allResults, query, searchAll, stream.entries]);
 
   const selected =
     selectedId === null
       ? undefined
-      : (visible.find((entry) => entry.id === selectedId) ??
-        stream.entries.find((entry) => entry.id === selectedId));
+      : stream.entries.find((entry) => entry.id === selectedId);
 
   const clear = async () => {
     setClearError(null);
@@ -63,24 +39,15 @@ export function LogsPage() {
         }),
       );
       setSelectedId(null);
-      setSearchAll(null);
-      await mutate<LoadedLogs>(
-        keys.logs(server.name),
-        { items: [], hasOlder: false },
-        { revalidate: false },
-      );
+      stream.reset();
     } catch (caught) {
       setClearError(caught instanceof Error ? caught.message : String(caught));
     }
   };
 
-  const toolbarError = clearError ?? searchError?.message ?? null;
-
   const status = (() => {
-    if (searchAll !== null) {
-      return `${visible.length} matches for “${searchAll}” across all stored messages`;
-    }
-    const count = `${visible.length} ${visible.length === 1 ? 'message' : 'messages'} shown`;
+    const noun = query === '' ? 'message' : 'matching message';
+    const count = `${numberFormat.format(stream.total)} ${noun}${stream.total === 1 ? '' : 's'}`;
     if (stream.paused) {
       return `${count} · paused`;
     }
@@ -105,18 +72,16 @@ export function LogsPage() {
     );
   } else if (stream.loading) {
     list = <p className="m-0 p-4 text-sm text-ink-4">Loading messages…</p>;
-  } else if (visible.length === 0) {
-    list = (
-      <EmptyMessages
-        server={server.mcpUrl}
-        searching={query !== '' || searchAll !== null}
-      />
-    );
+  } else if (stream.entries.length === 0) {
+    list = <EmptyMessages server={server.mcpUrl} searching={query !== ''} />;
   } else {
     list = (
       <MessageList
-        entries={visible}
+        entries={stream.entries}
+        hasOlder={stream.hasOlder}
+        loadingOlder={stream.loadingOlder}
         selectedId={selectedId}
+        onLoadOlder={stream.loadOlder}
         onSelect={setSelectedId}
       />
     );
@@ -134,31 +99,10 @@ export function LogsPage() {
           value={search}
           onChange={(event) => {
             setSearch(event.target.value);
-            setSearchAll(null);
           }}
           placeholder="Search method or any text"
           className="box-border min-h-9 min-w-0 flex-[1_1_280px] rounded-lg border border-control bg-surface px-3 font-mono text-[13px] text-ink"
         />
-        {query !== '' && stream.hasOlder && searchAll === null && (
-          <Button
-            size="small"
-            onClick={() => {
-              setSearchAll(query);
-            }}
-          >
-            Search all
-          </Button>
-        )}
-        {searchAll !== null && (
-          <Button
-            size="small"
-            onClick={() => {
-              setSearchAll(null);
-            }}
-          >
-            Back to live
-          </Button>
-        )}
         <div className="ml-auto flex flex-wrap gap-2">
           {stream.paused ? (
             <Button size="small" onClick={stream.resume}>
@@ -182,9 +126,9 @@ export function LogsPage() {
             Export JSONL
           </a>
         </div>
-        {toolbarError !== null && (
+        {clearError !== null && (
           <p role="alert" className="m-0 w-full text-[13px] text-error">
-            {toolbarError}
+            {clearError}
           </p>
         )}
       </div>
@@ -200,11 +144,6 @@ export function LogsPage() {
             className="mt-auto flex shrink-0 flex-wrap justify-between gap-3 border-t border-line-soft px-4 py-2.5 text-xs text-ink-4"
           >
             <span>{status}</span>
-            {stream.hasOlder && searchAll === null && (
-              <span>
-                Older messages are stored; use Search all to find them.
-              </span>
-            )}
           </div>
         </section>
 

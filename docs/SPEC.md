@@ -309,9 +309,9 @@ something, it's an API feature.
 | `DELETE /api/v1/servers/{server}/tools/{tool}`        | Delete → 204.                                                                                                                            |
 | `GET /api/v1/servers/{server}/sessions`               | Live MCP sessions: `id`, `clientInfo`, `protocolVersion`, client capabilities, `connectedAt`, `lastSeenAt`.                              |
 | `DELETE /api/v1/servers/{server}/sessions/{session}`  | Close a session server-side → 204. Its client gets 404 on its next request and should re-initialize.                                     |
-| `GET /api/v1/servers/{server}/logs?q=&cursor=&limit=` | Log entries, newest first, paginated.                                                                                                    |
+| `GET /api/v1/servers/{server}/logs?q=&cursor=&limit=` | Log entries matching `q`, newest first, paginated, with the `total` of matches across all pages.                                         |
 | `DELETE /api/v1/servers/{server}/logs`                | Clear → 204.                                                                                                                             |
-| `GET /api/v1/servers/{server}/logs/stream?after=`     | Live SSE stream (§ 9.4).                                                                                                                 |
+| `GET /api/v1/servers/{server}/logs/stream?after=&q=`  | Live SSE stream (§ 9.4).                                                                                                                 |
 | `GET /api/v1/servers/{server}/logs/export`            | All entries as NDJSON (`application/x-ndjson`), with `Content-Disposition: attachment`.                                                  |
 
 Live session counts in the SPA come from SWR polling (`refreshInterval: 2000`)
@@ -498,11 +498,15 @@ interface LogStore {
     beforeId?: number;
     limit: number;
   }): LogEntry[];
+  count(q: { server: string; text?: string }): number; // same filter as query
   clear(server: string): void;
   subscribe(
     server: string,
     listener: (
-      event: { type: 'entry'; entry: LogEntry } | { type: 'cleared' },
+      event:
+        | { type: 'entry'; entry: LogEntry }
+        | { type: 'evicted'; entry: LogEntry } // dropped to make room, sent to its own server
+        | { type: 'cleared' },
     ) => void,
   ): () => void;
 }
@@ -510,7 +514,9 @@ interface LogStore {
 
 - v1 implementation: a ring buffer with a **global** cap (`--log-limit`, default
   10 000). The oldest entries are evicted.
-- `text` search: case-insensitive substring over `method` and `raw`.
+- `text` search: case-insensitive substring over `method` and `raw`. It is the
+  only place the matching rule lives; `query`, `count` and the filtered stream
+  all use it.
 
 ### 9.3 Why not DuckDB (for now)
 
@@ -527,19 +533,36 @@ behind the `LogStore` interface.
 
 - `GET /api/v1/servers/{server}/logs/stream` uses `streamSSE`.
   - Replay the entries after `Last-Event-ID` (or `?after=`) from the store, then
-    forward events from `subscribe`.
-  - Send events `entry` (with `id` set to the entry's ID) and `cleared`, plus a
-    heartbeat comment every 15 s.
+    forward events from `subscribe`. With `?q=`, replay and forward only the
+    entries that match; the filter lives in the logs service, not the route.
+  - Send events `entry` (with `id` set to the entry's ID), `evicted` (`data` is
+    `{ "id": <id> }`, no SSE `id`; sent only when the dropped entry matches `q`)
+    and `cleared` (always sent), plus a heartbeat comment every 15 s.
   - Unsubscribe when the stream aborts (`stream.onAbort`).
-- The logs page loads the latest 500 entries with SWR (`GET …/logs?limit=500`),
-  then opens an `EventSource` with `after=<highest id>` and appends incoming
-  entries into the SWR cache (`mutate(key, updater, { revalidate: false })`).
-  That way no entry is missed or duplicated. On `cleared`, empty it.
+- The logs page keeps one data model per `(server, search)`:
+  - **Pages** from SWR's `useSWRInfinite`: `GET …/logs?q=&cursor=&limit=200`,
+    newest first. Each page carries `total`, the number of matching entries on
+    the server. Revalidation is off, because the stream keeps the list current.
+  - **Live** entries from an `EventSource` on
+    `…/logs/stream?after=<highest id of the first page>&q=<search>`, held apart
+    and shown above the pages. That way no entry is missed or duplicated.
+  - The footer shows the total, not the number of loaded rows: `1,234 messages`,
+    or `37 matching messages` while searching. Total = first page's `total` +
+    live entries − evicted entries.
+- **Infinite scroll**: a sentinel under the last row, watched with an
+  `IntersectionObserver` (about 600 px of margin), loads the next page, until a
+  "Start of log" row shows. Rows use `content-visibility: auto`, so thousands of
+  rows stay cheap without a virtualization library.
+- **Eviction** keeps the total exact: when the ring buffer drops the oldest
+  entry, the client decrements the total and drops the row if it's loaded.
+- **Browser cap**: older pages can't outgrow the server's buffer
+  (`--log-limit`). Only the live entries grow without bound; past 10 000 the
+  page starts over from a fresh first page.
 - **Pause** stops appending to the visible list and buffers in the client. Show
   a "N new" counter; resuming flushes the buffer.
-- **Search** filters client-side over what's loaded, debounced. If there are
-  older entries (`nextCursor` is set), a "Search all" action queries `?q=`. Keep
-  this simple.
+- **Search** runs on the server, after a 250 ms pause in typing. Changing it
+  starts a new first page and a new stream, so paging, `total` and live entries
+  all respect it. There is no client-side filtering.
 - **Clear**: `DELETE …/logs`. **Export JSONL**: a plain link to `…/logs/export`.
 
 ---
