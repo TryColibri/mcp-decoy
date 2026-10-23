@@ -80,7 +80,7 @@ describe('uiApp', () => {
     const problem = problemSchema.parse(await response.json());
     expect(problem).toMatchObject({
       status,
-      type: `https://decoy.dev/problems/${type}`,
+      type: `https://mcp-decoy.dev/problems/${type}`,
     });
     return problem;
   };
@@ -127,7 +127,7 @@ describe('uiApp', () => {
       expect(created.headers.get('location')).toBe('/api/v1/servers/weather');
       expect(serverSummarySchema.parse(await created.json())).toEqual({
         name: 'weather',
-        serverInfo: { name: 'decoy/weather', version: '0.1.0' },
+        serverInfo: { name: 'mcp-decoy/weather', version: '0.1.0' },
         instructions: 'Fake data.',
         createdAt: expect.any(String),
         mcpUrl: 'http://localhost:6280/s/weather/mcp',
@@ -169,7 +169,7 @@ describe('uiApp', () => {
       expect(edited.headers.get('location')).toBeNull();
       expect(serverSummarySchema.parse(await edited.json())).toMatchObject({
         name: 'weather',
-        serverInfo: { name: 'decoy/weather', version: '2.0.0' },
+        serverInfo: { name: 'mcp-decoy/weather', version: '2.0.0' },
         instructions: 'Fake data.',
       });
 
@@ -729,11 +729,11 @@ describe('uiApp', () => {
     let root: string;
 
     beforeEach(async () => {
-      root = await mkdtemp(join(tmpdir(), 'decoy-ui-'));
+      root = await mkdtemp(join(tmpdir(), 'mcp-decoy-ui-'));
       await mkdir(join(root, 'ui', 'assets'), { recursive: true });
       await writeFile(
         join(root, 'ui', 'index.html'),
-        '<!doctype html><title>decoy</title>',
+        '<!doctype html><title>MCP Decoy</title>',
       );
       await writeFile(
         join(root, 'ui', 'assets', 'app-abc123.js'),
@@ -765,7 +765,9 @@ describe('uiApp', () => {
 
       expect(response.status).toBe(200);
       expect(response.headers.get('content-type')).toContain('text/html');
-      await expect(response.text()).resolves.toContain('<title>decoy</title>');
+      await expect(response.text()).resolves.toContain(
+        '<title>MCP Decoy</title>',
+      );
     });
 
     it('never serves files outside the root', async () => {

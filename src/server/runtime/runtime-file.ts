@@ -11,7 +11,7 @@ import { writeFileAtomic } from '@/server/config';
 export type RuntimeInfo = {
   /** Process ID of the running instance. */
   pid: number;
-  /** decoy version. */
+  /** MCP Decoy version. */
   version: string;
   /** Base URL of the REST API, e.g. `http://127.0.0.1:6281/api/v1`. */
   apiUrl: string;
@@ -23,7 +23,7 @@ export type RuntimeInfo = {
 
 const runtimeInfoSchema: z.ZodType<RuntimeInfo> = z.strictObject({
   pid: z.number().int().describe('Process ID of the running instance.'),
-  version: z.string().describe('decoy version.'),
+  version: z.string().describe('MCP Decoy version.'),
   apiUrl: z
     .string()
     .describe('Base URL of the REST API, e.g. `http://127.0.0.1:6281/api/v1`.'),
@@ -33,7 +33,7 @@ const runtimeInfoSchema: z.ZodType<RuntimeInfo> = z.strictObject({
   startedAt: z.iso.datetime().describe('When the instance started, ISO 8601.'),
 });
 
-/** Another live decoy instance owns the config directory. */
+/** Another live MCP Decoy instance owns the config directory. */
 export class AlreadyRunningError extends Error {
   override name = 'AlreadyRunningError';
 
@@ -42,7 +42,9 @@ export class AlreadyRunningError extends Error {
 
   /** @param running - The running instance, as advertised in its runtime file. */
   constructor(running: RuntimeInfo) {
-    super(`decoy is already running at ${running.apiUrl} (pid ${running.pid})`);
+    super(
+      `MCP Decoy is already running at ${running.apiUrl} (pid ${running.pid})`,
+    );
     this.running = running;
   }
 }

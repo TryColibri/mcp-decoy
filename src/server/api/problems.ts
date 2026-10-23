@@ -74,7 +74,8 @@ export function toProblem(error: unknown): Problem {
     type: PROBLEM_TYPES.internal,
     title: 'Internal server error',
     status: 500,
-    detail: 'An unexpected error occurred. See the decoy terminal for details.',
+    detail:
+      'An unexpected error occurred. See the MCP Decoy terminal for details.',
   };
 }
 

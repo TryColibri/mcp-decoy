@@ -1,8 +1,8 @@
-# decoy
+# MCP Decoy
 
-decoy is a local tool for debugging MCP **clients**. It is the mirror image of
-the MCP Inspector: a configurable mock MCP server that your client connects to,
-with a web UI to define tools live and watch every JSON-RPC message.
+MCP Decoy is a local tool for debugging MCP **clients**. It is the mirror image
+of the MCP Inspector: a configurable mock MCP server that your client connects
+to, with a web UI to define tools live and watch every JSON-RPC message.
 
 The original implementation brief is in `docs/SPEC.md` and the approved UI
 mockups are in `docs/design/`. Read the brief before changing behavior: its
@@ -19,7 +19,7 @@ decisions are settled.
 | MCP library     | Official TypeScript SDK v2 (`@modelcontextprotocol/server`), **low-level `Server`**, `WebStandardStreamableHTTPServerTransport` |
 | Transport       | Streamable HTTP only, stateful (`Mcp-Session-Id`), one SDK `Server` + one transport per session                                 |
 | Capabilities    | Every mock server advertises only `tools: { listChanged: true }`                                                                |
-| Persistence     | `servers.json` in the config directory (XDG: `~/.config/decoy`, `--config-dir`). Logs in memory only                            |
+| Persistence     | `servers.json` in the config directory (XDG: `~/.config/mcp-decoy`, `--config-dir`). Logs in memory only                        |
 | Tool responses  | Always a **json-e** template, wrapped in `src/server/templates/`                                                                |
 | API             | Public REST API under `/api/v1`, Zod schemas in `src/shared/api/` as the contract, `@hono/zod-validator`, RFC 9457 errors       |
 | API client      | Hono's typed client (`hc`) in `src/shared/client/`                                                                              |
@@ -67,9 +67,13 @@ extension (`TypeScriptTeam.native-preview`, recommended in
 1. CI calls `package.json` scripts and may only extend them with flags. If a
    check needs different behavior, change the script, not the workflow. This is
    what keeps a green local run meaning the same thing as a green CI run.
-2. There is no deploy or publishing workflow. The package must still be
-   releasable as is: after `pnpm build`, `npx .` (or `npx ./decoy-<version>.tgz`
-   from `pnpm pack`) starts everything with one command.
+2. Releases are automated, from commits to `main`. Pull request titles must be
+   Conventional Commits (`pr-title.yml`), because the squashed title becomes the
+   commit. After the checks pass, `release.yml` runs semantic-release, which
+   bumps `package.json`, commits and tags it. `publish.yml` then publishes that
+   tag to npm. The package must stay releasable as is: after `pnpm build`,
+   `npx .` (or `npx ./hodor-ai-mcp-decoy-<version>.tgz` from `pnpm pack`) starts
+   everything with one command.
 3. Unit tests must not depend on ambient environment (ports, home directory,
    config directory). Tests that need a config directory create a temp one.
 
@@ -80,7 +84,7 @@ extension (`TypeScriptTeam.native-preview`, recommended in
 ## Runtime
 
 ```
-npx decoy
+npx @hodor-ai/mcp-decoy
   └─ node dist/cli.js                                   (one process)
        ├─ :6280  mcpApp (Hono)   /s/:server/mcp          ← MCP clients, tunnels
        └─ :6281  uiApp  (Hono)   /api/v1/*   → services   ← browser, 127.0.0.1 only
@@ -136,7 +140,7 @@ subcommands, TUI) can reuse it.
 src/
   shared/
     api/              # Zod schemas + types for API bodies, grouped by resource
-    client/           # createDecoyClient(baseUrl), built on hc<ApiV1>
+    client/           # createMCPDecoyClient(baseUrl), built on hc<ApiV1>
   server/
     cli.ts            # bin entry: parse flags, print banner, call main.start()
     main.ts           # start(options) → { close() }

@@ -8,7 +8,7 @@ import { createErrorHandler, toProblem } from './problems';
 describe('toProblem', () => {
   it('maps NotFoundError to 404', () => {
     expect(toProblem(new NotFoundError('gone'))).toEqual({
-      type: 'https://decoy.dev/problems/not-found',
+      type: 'https://mcp-decoy.dev/problems/not-found',
       title: 'Not found',
       status: 404,
       detail: 'gone',
@@ -17,7 +17,7 @@ describe('toProblem', () => {
 
   it('maps ConflictError to 409', () => {
     expect(toProblem(new ConflictError('taken'))).toMatchObject({
-      type: 'https://decoy.dev/problems/conflict',
+      type: 'https://mcp-decoy.dev/problems/conflict',
       status: 409,
       detail: 'taken',
     });
@@ -27,7 +27,7 @@ describe('toProblem', () => {
     const errors = [{ path: 'name', message: 'Required' }];
 
     expect(toProblem(new ValidationError(errors))).toEqual({
-      type: 'https://decoy.dev/problems/validation',
+      type: 'https://mcp-decoy.dev/problems/validation',
       title: 'Validation failed',
       status: 422,
       detail: 'Required',
@@ -39,14 +39,14 @@ describe('toProblem', () => {
     expect(
       toProblem(new HTTPException(400, { message: 'Malformed JSON' })),
     ).toMatchObject({
-      type: 'https://decoy.dev/problems/malformed-json',
+      type: 'https://mcp-decoy.dev/problems/malformed-json',
       status: 400,
     });
   });
 
   it('maps anything else to 500 without leaking the message', () => {
     expect(toProblem(new Error('secret'))).toMatchObject({
-      type: 'https://decoy.dev/problems/internal',
+      type: 'https://mcp-decoy.dev/problems/internal',
       status: 500,
       detail: expect.not.stringContaining('secret'),
     });

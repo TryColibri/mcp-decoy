@@ -21,7 +21,7 @@ export type CLICommand =
       kind: 'version';
     }
   | {
-      /** Start decoy. */
+      /** Start MCP Decoy. */
       kind: 'start';
       /** Port of the MCP listener. */
       mcpPort: number;
@@ -52,7 +52,7 @@ export class CLIUsageError extends Error {
 }
 
 /** Usage text printed by `--help`. */
-export const USAGE = `Usage: decoy [options]
+export const USAGE = `Usage: mcp-decoy [options]
 
 A configurable mock MCP server with a live web UI, for debugging MCP clients.
 
@@ -61,7 +61,7 @@ Options:
   --ui-port <port>     Port of the UI and API listener (default ${DEFAULT_UI_PORT})
   --host <address>     Bind address of the MCP listener (default ${DEFAULT_HOST})
                        The UI listener always binds 127.0.0.1.
-  --config-dir <path>  Where servers.json is stored (default: $XDG_CONFIG_HOME/decoy or ~/.config/decoy)
+  --config-dir <path>  Where servers.json is stored (default: $XDG_CONFIG_HOME/mcp-decoy or ~/.config/mcp-decoy)
   --log-limit <n>      Messages kept in memory, across servers (default ${DEFAULT_LOG_LIMIT}, min 100)
   -h, --help           Show this help
   -v, --version        Show the version`;

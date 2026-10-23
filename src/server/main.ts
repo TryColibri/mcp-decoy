@@ -9,7 +9,7 @@ import {
   loadOrSeedServersFile,
   resolveConfigPaths,
 } from '@/server/config';
-import { type DecoyEvents, type EventBus } from '@/server/events';
+import { type MCPDecoyEvents, type EventBus } from '@/server/events';
 import { createMCPApp } from '@/server/mcp-app';
 import {
   assertNotRunning,
@@ -22,7 +22,7 @@ import { type InstanceInfo, type ServerSummary } from '@/shared/api';
 
 import packageJSON from '../../package.json' with { type: 'json' };
 
-/** decoy's version, from `package.json`. */
+/** MCP Decoy's version, from `package.json`. */
 export const VERSION = packageJSON.version;
 
 /** Options of `start`. */
@@ -34,8 +34,8 @@ export type StartOptions = {
   /** Bind address of the MCP listener. The UI listener always binds 127.0.0.1. */
   host: string;
   /**
-   * Config directory; defaults to `<repo>/.decoy` in dev mode, else
-   * `$XDG_CONFIG_HOME/decoy` or `~/.config/decoy`.
+   * Config directory; defaults to `<repo>/.mcp-decoy` in dev mode, else
+   * `$XDG_CONFIG_HOME/mcp-decoy` or `~/.config/mcp-decoy`.
    */
   configDir?: string;
   /** Maximum number of log entries kept in memory, across servers. */
@@ -46,7 +46,7 @@ export type StartOptions = {
   onError?: (error: unknown) => void;
 };
 
-/** A running decoy instance. */
+/** A running MCP Decoy instance. */
 export type Instance = {
   /** What `GET /api/v1` returns. */
   info: InstanceInfo;
@@ -57,7 +57,7 @@ export type Instance = {
   /** Servers loaded from the config file at startup. */
   servers: ServerSummary[];
   /** Subscribe to mutations, such as servers being created. */
-  events: EventBus<DecoyEvents>;
+  events: EventBus<MCPDecoyEvents>;
   /** Closes every session and both listeners, and removes the runtime file. */
   close(): Promise<void>;
 };
@@ -83,7 +83,7 @@ export class PortInUseError extends Error {
 }
 
 /**
- * Starts decoy: loads servers, wires services, and opens the MCP and UI
+ * Starts MCP Decoy: loads servers, wires services, and opens the MCP and UI
  * listeners.
  *
  * @param options - Ports, host, config directory, log limit, dev mode.
@@ -119,7 +119,7 @@ export async function start({
     logLimit,
     instance: () => {
       if (ready.info === undefined) {
-        throw new Error('decoy is still starting');
+        throw new Error('MCP Decoy is still starting');
       }
       return ready.info;
     },

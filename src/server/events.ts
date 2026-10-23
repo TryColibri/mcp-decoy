@@ -1,5 +1,5 @@
 /** Events emitted by services after a successful mutation. */
-export type DecoyEvents = {
+export type MCPDecoyEvents = {
   /** `server` was created. */
   serverCreated: { server: string };
   /** The set of tools clients can see on `server` changed. */

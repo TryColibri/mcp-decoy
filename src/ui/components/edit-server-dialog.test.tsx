@@ -9,7 +9,7 @@ import { EditServerDialog } from './edit-server-dialog';
 
 const SERVER: ServerSummary = {
   name: 'weather',
-  serverInfo: { name: 'decoy/weather', version: '0.1.0' },
+  serverInfo: { name: 'mcp-decoy/weather', version: '0.1.0' },
   instructions: 'Fake data.',
   createdAt: '2026-10-21T12:00:00.000Z',
   mcpUrl: 'http://localhost:6280/s/weather/mcp',
@@ -74,7 +74,7 @@ describe('EditServerDialog', () => {
 
     expect(screen.getByLabelText('Name')).toHaveValue('weather');
     expect(screen.getByLabelText('serverInfo.name')).toHaveValue(
-      'decoy/weather',
+      'mcp-decoy/weather',
     );
     expect(screen.getByLabelText('serverInfo.version')).toHaveValue('0.1.0');
     expect(screen.getByLabelText('Instructions')).toHaveValue('Fake data.');
@@ -127,7 +127,7 @@ describe('EditServerDialog', () => {
       json(
         422,
         {
-          type: 'https://decoy.dev/problems/validation',
+          type: 'https://mcp-decoy.dev/problems/validation',
           title: 'Validation failed',
           status: 422,
           detail: 'Invalid request',

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 import { ConflictError, NotFoundError } from '@/server/errors';
-import { type DecoyEvents, type EventBus } from '@/server/events';
+import { type MCPDecoyEvents, type EventBus } from '@/server/events';
 import { type ServerConfig } from '@/shared/api';
 
 import { createServerRepository } from './repository';
@@ -14,8 +14,8 @@ describe('ServersService', () => {
     typeof vi.fn<(servers: ServerConfig[]) => Promise<void>>
   >;
   let mockEvents: {
-    emit: Mock<EventBus<DecoyEvents>['emit']>;
-    on: Mock<EventBus<DecoyEvents>['on']>;
+    emit: Mock<EventBus<MCPDecoyEvents>['emit']>;
+    on: Mock<EventBus<MCPDecoyEvents>['on']>;
   };
   let service: ServersService;
 
@@ -23,8 +23,8 @@ describe('ServersService', () => {
     vi.clearAllMocks();
     mockPersist = vi.fn(async () => {});
     mockEvents = {
-      emit: vi.fn<EventBus<DecoyEvents>['emit']>(),
-      on: vi.fn<EventBus<DecoyEvents>['on']>(),
+      emit: vi.fn<EventBus<MCPDecoyEvents>['emit']>(),
+      on: vi.fn<EventBus<MCPDecoyEvents>['on']>(),
     };
     service = createServersService({
       repository: createServerRepository({ initial: [], persist: mockPersist }),
@@ -49,7 +49,7 @@ describe('ServersService', () => {
 
       expect(created).toEqual({
         name: 'weather',
-        serverInfo: { name: 'decoy/weather', version: '0.1.0' },
+        serverInfo: { name: 'mcp-decoy/weather', version: '0.1.0' },
         createdAt: NOW.toISOString(),
         mcpUrl: 'http://localhost:6280/s/weather/mcp',
         toolCount: 0,
@@ -59,7 +59,7 @@ describe('ServersService', () => {
       expect(mockPersist).toHaveBeenCalledExactlyOnceWith([
         {
           name: 'weather',
-          serverInfo: { name: 'decoy/weather', version: '0.1.0' },
+          serverInfo: { name: 'mcp-decoy/weather', version: '0.1.0' },
           tools: [],
           createdAt: NOW.toISOString(),
         },
@@ -74,7 +74,7 @@ describe('ServersService', () => {
       });
 
       expect(created).toMatchObject({
-        serverInfo: { name: 'decoy/echo', version: '2.0.0' },
+        serverInfo: { name: 'mcp-decoy/echo', version: '2.0.0' },
         instructions: 'Hi',
       });
     });
@@ -115,7 +115,7 @@ describe('ServersService', () => {
 
       expect(updated).toMatchObject({
         name: 'weather',
-        serverInfo: { name: 'decoy/weather', version: '2.0.0' },
+        serverInfo: { name: 'mcp-decoy/weather', version: '2.0.0' },
         instructions: 'Hi',
         createdAt: NOW.toISOString(),
       });

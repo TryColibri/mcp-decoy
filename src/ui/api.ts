@@ -9,10 +9,10 @@ import {
   type Session,
   type Tool,
 } from '@/shared/api';
-import { createDecoyClient } from '@/shared/client';
+import { createMCPDecoyClient } from '@/shared/client';
 
 /** The typed API client. Same origin: Vite proxies `/api` in development. */
-export const client = createDecoyClient('');
+export const client = createMCPDecoyClient('');
 
 /** A failed API call, carrying the parsed problem details. */
 export class ApiError extends Error {

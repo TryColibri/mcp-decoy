@@ -4,10 +4,28 @@ on:
   push:
     branches: [main]
 
+# Never cancel a run in flight: it may be halfway through a release.
 concurrency:
   group: main
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   checks:
     uses: ./.github/workflows/checks.yml
+  release:
+    needs: checks
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    uses: ./.github/workflows/release.yml
+  publish:
+    needs: release
+    if: needs.release.outputs.version != ''
+    permissions:
+      contents: read
+    uses: ./.github/workflows/publish.yml
+    with:
+      version: ${{ needs.release.outputs.version }}
+    secrets:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

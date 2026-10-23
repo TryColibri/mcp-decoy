@@ -1,5 +1,5 @@
 import { ConflictError, NotFoundError } from '@/server/errors';
-import { type DecoyEvents, type EventBus } from '@/server/events';
+import { type MCPDecoyEvents, type EventBus } from '@/server/events';
 import {
   type CreateServerRequest,
   type ServerConfig,
@@ -17,7 +17,7 @@ export type ServersServiceDeps = {
   /** Source of truth for servers. */
   repository: ServerRepository;
   /** Where mutations are announced. */
-  events: EventBus<DecoyEvents>;
+  events: EventBus<MCPDecoyEvents>;
   /** Number of live MCP sessions of a server. */
   sessionCount: (server: string) => number;
   /** Streamable HTTP endpoint of a server. */
@@ -116,7 +116,7 @@ export function createServersService({
         const server: ServerConfig = {
           name,
           serverInfo: {
-            name: serverInfo?.name ?? `decoy/${name}`,
+            name: serverInfo?.name ?? `mcp-decoy/${name}`,
             version: serverInfo?.version ?? DEFAULT_SERVER_VERSION,
           },
           ...(instructions === undefined || instructions === ''

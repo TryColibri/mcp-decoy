@@ -1,7 +1,7 @@
 import { type ApiV1, createApiV1 } from '@/server/api';
 import {
   createEventBus,
-  type DecoyEvents,
+  type MCPDecoyEvents,
   type EventBus,
 } from '@/server/events';
 import {
@@ -37,10 +37,10 @@ export type ServicesOptions = {
   onError: (error: unknown) => void;
 };
 
-/** Every service of a decoy instance, wired together. */
+/** Every service of an MCP Decoy instance, wired together. */
 export type Services = {
   /** The event bus services announce mutations on. */
-  events: EventBus<DecoyEvents>;
+  events: EventBus<MCPDecoyEvents>;
   /** The servers service. */
   servers: ServersService;
   /** The tools service. */
@@ -56,7 +56,7 @@ export type Services = {
 };
 
 /**
- * Wires every service of a decoy instance. Has no I/O of its own: persistence
+ * Wires every service of an MCP Decoy instance. Has no I/O of its own: persistence
  * is injected, so tests can build the whole stack without disk or sockets.
  *
  * @param options - Initial servers, persistence, log limit, instance info.
@@ -68,7 +68,7 @@ export function createServices({
   instance,
   onError,
 }: ServicesOptions): Services {
-  const events = createEventBus<DecoyEvents>(onError);
+  const events = createEventBus<MCPDecoyEvents>(onError);
   const repository = createServerRepository({ initial, persist });
   const store = createRingBufferLogStore(logLimit);
 

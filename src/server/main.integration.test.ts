@@ -39,7 +39,7 @@ describe('start', () => {
   };
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'decoy-test-'));
+    dir = await mkdtemp(join(tmpdir(), 'mcp-decoy-test-'));
   });
 
   afterEach(async () => {
@@ -177,7 +177,7 @@ describe('start', () => {
 
   it('fails fast, naming the flag, when a port is taken', async () => {
     const first = await startHere();
-    const otherDir = await mkdtemp(join(tmpdir(), 'decoy-test-'));
+    const otherDir = await mkdtemp(join(tmpdir(), 'mcp-decoy-test-'));
     try {
       const error = await start({
         mcpPort: first.info.mcp.port,

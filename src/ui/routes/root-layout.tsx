@@ -47,7 +47,7 @@ function GlobalHeader() {
         className="flex items-center gap-2.5 text-ink no-underline hover:text-ink"
       >
         <LogoMark />
-        <span className="text-base font-bold tracking-tight">decoy</span>
+        <span className="text-base font-bold tracking-tight">MCP Decoy</span>
         {instance !== undefined && (
           <span className="font-mono text-xs text-ink-4">
             v{instance.version}
@@ -60,7 +60,7 @@ function GlobalHeader() {
         ) : (
           <>
             <StatusDot live={false} />
-            <span>decoy is not reachable</span>
+            <span>MCP Decoy is not reachable</span>
           </>
         )}
       </div>

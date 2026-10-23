@@ -2,13 +2,13 @@
   "version": "0.2.0",
   "compounds": [
     {
-      "name": "decoy: debug full stack",
-      "configurations": ["decoy: debug server", "decoy: debug client"]
+      "name": "MCP Decoy: debug full stack",
+      "configurations": ["MCP Decoy: debug server", "MCP Decoy: debug client"]
     }
   ],
   "configurations": [
     {
-      "name": "decoy: debug server",
+      "name": "MCP Decoy: debug server",
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "pnpm",
@@ -18,7 +18,7 @@
       "skipFiles": ["<node_internals>/**"]
     },
     {
-      "name": "decoy: debug client",
+      "name": "MCP Decoy: debug client",
       "type": "chrome",
       "request": "launch",
       "url": "http://localhost:5173"

@@ -6,7 +6,7 @@ import {
 } from '@modelcontextprotocol/server';
 
 import { NotFoundError } from '@/server/errors';
-import { type DecoyEvents, type EventBus } from '@/server/events';
+import { type MCPDecoyEvents, type EventBus } from '@/server/events';
 import {
   type ClientInfo,
   type ServerConfig,
@@ -28,7 +28,7 @@ export type SessionManagerDeps = {
   /** Where traffic is recorded. */
   capture: Capture;
   /** Mutations to react to. */
-  events: EventBus<DecoyEvents>;
+  events: EventBus<MCPDecoyEvents>;
   /** Current time. */
   now?: () => Date;
   /** Reports errors that have nowhere else to go. */

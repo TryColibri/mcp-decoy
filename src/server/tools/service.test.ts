@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 import { ConflictError, NotFoundError } from '@/server/errors';
-import { type DecoyEvents, type EventBus } from '@/server/events';
+import { type MCPDecoyEvents, type EventBus } from '@/server/events';
 import { createServerRepository } from '@/server/servers';
 import { type ServerConfig } from '@/shared/api';
 
@@ -11,7 +11,7 @@ const NOW = new Date('2026-10-21T12:00:00.000Z');
 
 const server = (): ServerConfig => ({
   name: 'weather',
-  serverInfo: { name: 'decoy/weather', version: '0.1.0' },
+  serverInfo: { name: 'mcp-decoy/weather', version: '0.1.0' },
   tools: [],
   createdAt: NOW.toISOString(),
 });
@@ -21,8 +21,8 @@ describe('ToolsService', () => {
     typeof vi.fn<(servers: ServerConfig[]) => Promise<void>>
   >;
   let mockEvents: {
-    emit: Mock<EventBus<DecoyEvents>['emit']>;
-    on: Mock<EventBus<DecoyEvents>['on']>;
+    emit: Mock<EventBus<MCPDecoyEvents>['emit']>;
+    on: Mock<EventBus<MCPDecoyEvents>['on']>;
   };
   let service: ToolsService;
 
@@ -30,8 +30,8 @@ describe('ToolsService', () => {
     vi.clearAllMocks();
     mockPersist = vi.fn(async () => {});
     mockEvents = {
-      emit: vi.fn<EventBus<DecoyEvents>['emit']>(),
-      on: vi.fn<EventBus<DecoyEvents>['on']>(),
+      emit: vi.fn<EventBus<MCPDecoyEvents>['emit']>(),
+      on: vi.fn<EventBus<MCPDecoyEvents>['on']>(),
     };
     service = createToolsService({
       repository: createServerRepository({
