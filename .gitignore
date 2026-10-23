@@ -26,8 +26,6 @@ npm-debug.log*
 # typescript
 *.tsbuildinfo
 
-# Claude
-.claude/worktrees/
-
-# Local preview config (machine-specific paths)
-.claude/launch.json
+# Agents
+.claude/
+.agents/
