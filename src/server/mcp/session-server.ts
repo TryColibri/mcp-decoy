@@ -79,7 +79,7 @@ const templateFailure = (
     {
       type: 'text',
       text: [
-        'decoy: the response template of this tool failed to render.',
+        'MCP Decoy: the response template of this tool failed to render.',
         ...errors.map(({ path, message }) =>
           path === '' ? message : `${path}: ${message}`,
         ),

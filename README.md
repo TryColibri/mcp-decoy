@@ -1,15 +1,15 @@
-# decoy
+# MCP Decoy
 
-decoy is a mock MCP server for debugging MCP clients. You define tools in a web
-UI, point your client at decoy, and watch every JSON-RPC message in both
+MCP Decoy is a mock MCP server for debugging MCP clients. You define tools in a
+web UI, point your client at MCP Decoy, and watch every JSON-RPC message in both
 directions.
 
 It is the mirror image of the
 [MCP Inspector](https://github.com/modelcontextprotocol/inspector). The
-Inspector is a client that you point at your server. decoy is a server that you
-point your client at.
+Inspector is a client that you point at your server. MCP Decoy is a server that
+you point your client at.
 
-Use decoy when you build or debug an MCP client and need to answer questions
+Use MCP Decoy when you build or debug an MCP client and need to answer questions
 like the following:
 
 - What does my client send during `initialize`, and what does it do with the
@@ -26,18 +26,25 @@ You change tools while the client stays connected. Nothing restarts.
 
 - Node.js 24 or later
 
-## Start decoy
+## Start MCP Decoy
 
-Run decoy with `npx`:
+Run MCP Decoy with `npx`:
 
 ```sh
-npx decoy
+npx @hodor-ai/mcp-decoy
+```
+
+To install MCP Decoy globally and run it as `mcp-decoy`:
+
+```sh
+npm install --global @hodor-ai/mcp-decoy
+mcp-decoy
 ```
 
 The output is similar to the following:
 
 ```text
-┌  decoy v0.1.0
+┌  MCP Decoy v0.1.0
 │
 ◆  UI        http://localhost:6281
 │
@@ -49,19 +56,20 @@ The output is similar to the following:
 │    echo  http://localhost:6280/s/echo/mcp
 ```
 
-decoy hosts mock MCP servers, which this document calls servers. Each server has
-its own tools, its own logs, and its own URL. One decoy process hosts any number
-of servers.
+MCP Decoy hosts mock MCP servers, which this document calls servers. Each server
+has its own tools, its own logs, and its own URL. One MCP Decoy process hosts
+any number of servers.
 
-On the first run, decoy creates one server named `echo` with one published tool,
-also named `echo`, which returns its `message` argument. Open the UI URL to
-manage servers and tools.
+On the first run, MCP Decoy creates one server named `echo` with one published
+tool, also named `echo`, which returns its `message` argument. Open the UI URL
+to manage servers and tools.
 
 ## Connect your MCP client
 
-Every server has its own URL, `http://localhost:6280/s/SERVER_NAME/mcp`. decoy
-speaks the Streamable HTTP transport, so give your client that URL and select an
-HTTP transport. The following examples connect to the default `echo` server.
+Every server has its own URL, `http://localhost:6280/s/SERVER_NAME/mcp`. MCP
+Decoy speaks the Streamable HTTP transport, so give your client that URL and
+select an HTTP transport. The following examples connect to the default `echo`
+server.
 
 ### Claude Code
 
@@ -99,8 +107,8 @@ Add the server to `.vscode/mcp.json`:
 ### A client that runs on another host
 
 A client that runs on a remote host, such as a hosted chat product, can't reach
-`localhost`. decoy serves plain HTTP, so put a tunnel in front of the MCP port.
-Don't tunnel the UI port. For example, with
+`localhost`. MCP Decoy serves plain HTTP, so put a tunnel in front of the MCP
+port. Don't tunnel the UI port. For example, with
 [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/):
 
 ```sh
@@ -138,13 +146,13 @@ go to the **Tools** tab to create one. A tool has the following fields:
 A tool is either a draft or published, and clients see only published tools.
 **Save draft** keeps a tool hidden while you work on it, and **Publish tool**
 makes it visible. When you publish a tool, or edit, rename, unpublish, or delete
-a published tool, decoy sends `notifications/tools/list_changed` to every
+a published tool, MCP Decoy sends `notifications/tools/list_changed` to every
 connected session. Changes to drafts send nothing. Use this notification to test
 whether your client refreshes its tool list.
 
 ## Write a response template
 
-A response template defines the result of a tool call. decoy renders the
+A response template defines the result of a tool call. MCP Decoy renders the
 template with [json-e](https://json-e.js.org/) on every `tools/call`, and the
 output must be a valid MCP `CallToolResult`.
 
@@ -198,7 +206,7 @@ Keep the following rules in mind:
   client calls the tool.
 - If a template fails to render, or the output isn't a valid `CallToolResult`,
   the tool call returns a result with `isError: true` and a text message that
-  starts with `decoy: the response template of this tool failed to render.`
+  starts with `MCP Decoy: the response template of this tool failed to render.`
 
 For the full operator list, see the
 [json-e documentation](https://json-e.js.org/).
@@ -217,12 +225,13 @@ the method, the session, and, on responses, the time since the matching request.
 - Select **Export JSONL** to download the matching entries as newline-delimited
   JSON.
 
-Logs live in memory only and are lost when decoy exits. decoy keeps the newest
-10,000 messages across all servers. To change the limit, use `--log-limit`.
+Logs live in memory only and are lost when MCP Decoy exits. MCP Decoy keeps the
+newest 10,000 messages across all servers. To change the limit, use
+`--log-limit`.
 
 ## Options
 
-Pass options after the command, as in `npx decoy --mcp-port 7000`. The following
+Pass options after the command, as in `mcp-decoy --mcp-port 7000`. The following
 table lists them:
 
 | Option                | Description                                                   | Default                                       |
@@ -235,21 +244,22 @@ table lists them:
 | `-h`, `--help`        | Print the usage text.                                         |                                               |
 | `-v`, `--version`     | Print the version.                                            |                                               |
 
-If a port is in use, decoy exits and names the option to change.
+If a port is in use, MCP Decoy exits and names the option to change.
 
-decoy supports one running instance per config directory. To run two instances,
-give each its own `--config-dir` and ports.
+MCP Decoy supports one running instance per config directory. To run two
+instances, give each its own `--config-dir` and ports.
 
-## Where decoy stores data
+## Where MCP Decoy stores data
 
-decoy writes `servers.json` to the config directory after every change. The file
-holds your servers and tools, so you can back it up, copy it to another machine,
-or commit it. If the file is missing, decoy creates it with the `echo` server.
-If the file is invalid, decoy doesn't start and prints the file path and the
-problems.
+MCP Decoy writes `servers.json` to the config directory after every change. The
+file holds your servers and tools, so you can back it up, copy it to another
+machine, or commit it. If the file is missing, MCP Decoy creates it with the
+`echo` server. If the file is invalid, MCP Decoy doesn't start and prints the
+file path and the problems.
 
-While decoy runs, it also writes `runtime.json` to the same directory. The file
-records the process ID and the listener URLs, and decoy removes it on shutdown.
+While MCP Decoy runs, it also writes `runtime.json` to the same directory. The
+file records the process ID and the listener URLs, and MCP Decoy removes it on
+shutdown.
 
 ## REST API
 
@@ -291,10 +301,10 @@ Every connected session receives `notifications/tools/list_changed`. The Zod
 schemas in [src/shared/api/](src/shared/api/) define the request and response
 bodies.
 
-## Develop decoy
+## Develop MCP Decoy
 
-decoy needs Node.js 24 or later and [pnpm](https://pnpm.io/). Run the following
-commands from a clone of the repository:
+MCP Decoy needs Node.js 24 or later and [pnpm](https://pnpm.io/). Run the
+following commands from a clone of the repository:
 
 ```sh
 pnpm install
@@ -320,8 +330,8 @@ After `pnpm build`, run `node dist/cli.js` to start the built package.
 ### Install the agent skills
 
 The repository records the agent skills that AI coding assistants use when they
-work on decoy, such as the Hono and React guidance, in `skills-lock.json`. Git
-ignores the skills themselves, so a fresh clone doesn't contain them.
+work on MCP Decoy, such as the Hono and React guidance, in `skills-lock.json`.
+Git ignores the skills themselves, so a fresh clone doesn't contain them.
 
 To install them, run the following command from the root of the repository:
 

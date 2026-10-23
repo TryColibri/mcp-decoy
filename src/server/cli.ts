@@ -17,7 +17,7 @@ const run = async () => {
       for (const problem of error.problems) {
         log.error(problem);
       }
-      log.message('Run decoy --help for usage.');
+      log.message('Run mcp-decoy --help for usage.');
       process.exit(2);
     }
     throw error;
@@ -32,7 +32,7 @@ const run = async () => {
     return;
   }
 
-  intro(`${styleText('bold', 'decoy')} ${styleText('dim', `v${VERSION}`)}`);
+  intro(`${styleText('bold', 'MCP Decoy')} ${styleText('dim', `v${VERSION}`)}`);
 
   let instance: Instance;
   try {
@@ -105,7 +105,7 @@ const run = async () => {
     }
     stopping = true;
     await instance.close();
-    outro('decoy stopped');
+    outro('MCP Decoy stopped');
     process.exit(0);
   };
   process.on('SIGINT', () => void stop());

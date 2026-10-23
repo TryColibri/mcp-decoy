@@ -22,7 +22,7 @@ import { type InstanceInfo, type ServerSummary } from '@/shared/api';
 
 import packageJSON from '../../package.json' with { type: 'json' };
 
-/** decoy's version, from `package.json`. */
+/** MCP Decoy's version, from `package.json`. */
 export const VERSION = packageJSON.version;
 
 /** Options of `start`. */
@@ -46,7 +46,7 @@ export type StartOptions = {
   onError?: (error: unknown) => void;
 };
 
-/** A running decoy instance. */
+/** A running MCP Decoy instance. */
 export type Instance = {
   /** What `GET /api/v1` returns. */
   info: InstanceInfo;
@@ -83,7 +83,7 @@ export class PortInUseError extends Error {
 }
 
 /**
- * Starts decoy: loads servers, wires services, and opens the MCP and UI
+ * Starts MCP Decoy: loads servers, wires services, and opens the MCP and UI
  * listeners.
  *
  * @param options - Ports, host, config directory, log limit, dev mode.
@@ -119,7 +119,7 @@ export async function start({
     logLimit,
     instance: () => {
       if (ready.info === undefined) {
-        throw new Error('decoy is still starting');
+        throw new Error('MCP Decoy is still starting');
       }
       return ready.info;
     },

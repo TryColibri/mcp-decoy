@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-/** Response body of `GET /api/v1`: what this decoy instance is and where it listens. */
+/** Response body of `GET /api/v1`: what this MCP Decoy instance is and where it listens. */
 export type InstanceInfo = {
-  /** decoy version. */
+  /** MCP Decoy version. */
   version: string;
   /** The MCP listener. */
   mcp: {
@@ -28,7 +28,7 @@ export type InstanceInfo = {
 };
 
 export const instanceInfoSchema: z.ZodType<InstanceInfo> = z.strictObject({
-  version: z.string().describe('decoy version.'),
+  version: z.string().describe('MCP Decoy version.'),
   mcp: z
     .strictObject({
       host: z.string().describe('Bind address of the MCP listener.'),

@@ -1,8 +1,8 @@
-# decoy
+# MCP Decoy
 
-decoy is a local tool for debugging MCP **clients**. It is the mirror image of
-the MCP Inspector: a configurable mock MCP server that your client connects to,
-with a web UI to define tools live and watch every JSON-RPC message.
+MCP Decoy is a local tool for debugging MCP **clients**. It is the mirror image
+of the MCP Inspector: a configurable mock MCP server that your client connects
+to, with a web UI to define tools live and watch every JSON-RPC message.
 
 The original implementation brief is in `docs/SPEC.md` and the approved UI
 mockups are in `docs/design/`. Read the brief before changing behavior: its
@@ -68,8 +68,9 @@ extension (`TypeScriptTeam.native-preview`, recommended in
    check needs different behavior, change the script, not the workflow. This is
    what keeps a green local run meaning the same thing as a green CI run.
 2. There is no deploy or publishing workflow. The package must still be
-   releasable as is: after `pnpm build`, `npx .` (or `npx ./decoy-<version>.tgz`
-   from `pnpm pack`) starts everything with one command.
+   releasable as is: after `pnpm build`, `npx .` (or
+   `npx ./hodor-ai-mcp-decoy-<version>.tgz` from `pnpm pack`) starts everything
+   with one command.
 3. Unit tests must not depend on ambient environment (ports, home directory,
    config directory). Tests that need a config directory create a temp one.
 
@@ -80,7 +81,7 @@ extension (`TypeScriptTeam.native-preview`, recommended in
 ## Runtime
 
 ```
-npx decoy
+npx @hodor-ai/mcp-decoy
   └─ node dist/cli.js                                   (one process)
        ├─ :6280  mcpApp (Hono)   /s/:server/mcp          ← MCP clients, tunnels
        └─ :6281  uiApp  (Hono)   /api/v1/*   → services   ← browser, 127.0.0.1 only

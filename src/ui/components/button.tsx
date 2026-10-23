@@ -46,7 +46,7 @@ export type ButtonProps = ComponentProps<'button'> & {
 };
 
 /**
- * A `<button>` styled as a decoy button. Defaults to `type="button"`.
+ * A `<button>` styled as an MCP Decoy button. Defaults to `type="button"`.
  * `className` is merged over the button styles; `ref` is the `<button>`.
  */
 export function Button({
@@ -74,7 +74,7 @@ export type ButtonLinkProps = ComponentProps<typeof Link> & {
 };
 
 /**
- * A router `<Link>` styled as a decoy button. `className` is merged over the
+ * A router `<Link>` styled as an MCP Decoy button. `className` is merged over the
  * button styles; `ref` is the `<a>`.
  */
 export function ButtonLink({

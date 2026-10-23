@@ -15,7 +15,7 @@ export const clientInfoSchema: z.ZodType<ClientInfo> = z.strictObject({
 
 /** A live MCP session, as returned by `GET /api/v1/servers/{server}/sessions`. */
 export type Session = {
-  /** The `Mcp-Session-Id` assigned by decoy. */
+  /** The `Mcp-Session-Id` assigned by MCP Decoy. */
   id: string;
   /** What the client reported in `initialize`, if it was valid. */
   clientInfo: ClientInfo | null;
@@ -32,7 +32,7 @@ export type Session = {
 };
 
 export const sessionSchema: z.ZodType<Session> = z.strictObject({
-  id: z.string().describe('The `Mcp-Session-Id` assigned by decoy.'),
+  id: z.string().describe('The `Mcp-Session-Id` assigned by MCP Decoy.'),
   clientInfo: clientInfoSchema
     .nullable()
     .describe('What the client reported in `initialize`, if it was valid.'),

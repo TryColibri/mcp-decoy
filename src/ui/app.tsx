@@ -32,7 +32,7 @@ const router = createBrowserRouter(
   ),
 );
 
-/** The decoy SPA: client-side routes over the REST API. */
+/** The MCP Decoy SPA: client-side routes over the REST API. */
 export function App() {
   return (
     <SWRConfig value={{ revalidateOnFocus: true }}>

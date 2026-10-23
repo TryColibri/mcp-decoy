@@ -37,7 +37,7 @@ export type ServicesOptions = {
   onError: (error: unknown) => void;
 };
 
-/** Every service of a decoy instance, wired together. */
+/** Every service of an MCP Decoy instance, wired together. */
 export type Services = {
   /** The event bus services announce mutations on. */
   events: EventBus<DecoyEvents>;
@@ -56,7 +56,7 @@ export type Services = {
 };
 
 /**
- * Wires every service of a decoy instance. Has no I/O of its own: persistence
+ * Wires every service of an MCP Decoy instance. Has no I/O of its own: persistence
  * is injected, so tests can build the whole stack without disk or sockets.
  *
  * @param options - Initial servers, persistence, log limit, instance info.

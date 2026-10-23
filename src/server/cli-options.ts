@@ -21,7 +21,7 @@ export type CLICommand =
       kind: 'version';
     }
   | {
-      /** Start decoy. */
+      /** Start MCP Decoy. */
       kind: 'start';
       /** Port of the MCP listener. */
       mcpPort: number;
@@ -52,7 +52,7 @@ export class CLIUsageError extends Error {
 }
 
 /** Usage text printed by `--help`. */
-export const USAGE = `Usage: decoy [options]
+export const USAGE = `Usage: mcp-decoy [options]
 
 A configurable mock MCP server with a live web UI, for debugging MCP clients.
 
