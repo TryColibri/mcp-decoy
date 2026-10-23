@@ -1,7 +1,7 @@
 import { type ApiV1, createApiV1 } from '@/server/api';
 import {
   createEventBus,
-  type DecoyEvents,
+  type MCPDecoyEvents,
   type EventBus,
 } from '@/server/events';
 import {
@@ -40,7 +40,7 @@ export type ServicesOptions = {
 /** Every service of an MCP Decoy instance, wired together. */
 export type Services = {
   /** The event bus services announce mutations on. */
-  events: EventBus<DecoyEvents>;
+  events: EventBus<MCPDecoyEvents>;
   /** The servers service. */
   servers: ServersService;
   /** The tools service. */
@@ -68,7 +68,7 @@ export function createServices({
   instance,
   onError,
 }: ServicesOptions): Services {
-  const events = createEventBus<DecoyEvents>(onError);
+  const events = createEventBus<MCPDecoyEvents>(onError);
   const repository = createServerRepository({ initial, persist });
   const store = createRingBufferLogStore(logLimit);
 

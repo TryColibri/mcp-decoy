@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /** Base URI of every problem `type` returned by the API. */
-export const PROBLEM_TYPE_BASE = 'https://decoy.dev/problems/';
+export const PROBLEM_TYPE_BASE = 'https://mcp-decoy.dev/problems/';
 
 /** Stable problem type URIs, one per error kind. Clients switch on these. */
 export const PROBLEM_TYPES = {

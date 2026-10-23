@@ -9,7 +9,7 @@ import { ToolEditor } from './tool-editor';
 
 const SERVER: ServerSummary = {
   name: 'weather',
-  serverInfo: { name: 'decoy/weather', version: '0.1.0' },
+  serverInfo: { name: 'mcp-decoy/weather', version: '0.1.0' },
   createdAt: '2026-10-21T12:00:00.000Z',
   mcpUrl: 'http://localhost:6280/s/weather/mcp',
   toolCount: 1,
@@ -108,7 +108,7 @@ describe('ToolEditor', () => {
   it('maps problem field errors onto fields', async () => {
     mockFetch.mockResolvedValueOnce(
       problem(422, {
-        type: 'https://decoy.dev/problems/validation',
+        type: 'https://mcp-decoy.dev/problems/validation',
         title: 'Validation failed',
         detail: 'Bad schema',
         errors: [{ path: 'inputSchema.type', message: 'Must be "object"' }],
@@ -132,7 +132,7 @@ describe('ToolEditor', () => {
   it('shows a conflict under the name', async () => {
     mockFetch.mockResolvedValueOnce(
       problem(409, {
-        type: 'https://decoy.dev/problems/conflict',
+        type: 'https://mcp-decoy.dev/problems/conflict',
         title: 'Conflict',
         detail: 'A tool named "echo" already exists on server "weather"',
       }),

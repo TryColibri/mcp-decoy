@@ -9,7 +9,7 @@
 *.tgz
 
 # dev mode config directory (servers.json, runtime.json)
-/.decoy
+/.mcp-decoy
 
 # misc
 .DS_Store

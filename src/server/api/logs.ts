@@ -150,7 +150,7 @@ export function createLogsRoutes(logs: LogsService) {
         .map((entry) => `${JSON.stringify(logEntrySchema.parse(entry))}\n`);
       return c.body(lines.join(''), 200, {
         'Content-Type': 'application/x-ndjson',
-        'Content-Disposition': `attachment; filename="decoy-${server}-logs.jsonl"`,
+        'Content-Disposition': `attachment; filename="mcp-decoy-${server}-logs.jsonl"`,
       });
     });
 }

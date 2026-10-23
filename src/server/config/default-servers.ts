@@ -11,7 +11,7 @@ export function createDefaultServers(now: Date): ServerConfig[] {
   return [
     {
       name: 'echo',
-      serverInfo: { name: 'decoy/echo', version: '0.1.0' },
+      serverInfo: { name: 'mcp-decoy/echo', version: '0.1.0' },
       tools: [
         {
           name: 'echo',

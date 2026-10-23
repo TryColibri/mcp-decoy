@@ -15,7 +15,7 @@ import {
 
 const SERVER: ServerConfig = {
   name: 'weather',
-  serverInfo: { name: 'decoy/weather', version: '0.1.0' },
+  serverInfo: { name: 'mcp-decoy/weather', version: '0.1.0' },
   instructions: 'Fake data.',
   tools: [
     {
@@ -36,7 +36,7 @@ describe('servers file', () => {
   let path: string;
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'decoy-test-'));
+    dir = await mkdtemp(join(tmpdir(), 'mcp-decoy-test-'));
     path = join(dir, 'servers.json');
   });
 

@@ -92,7 +92,7 @@ describe('mcpApp', () => {
       });
 
       expect(client.getServerVersion()).toEqual({
-        name: 'decoy/weather',
+        name: 'mcp-decoy/weather',
         version: '0.1.0',
       });
       expect(client.getServerCapabilities()).toEqual({

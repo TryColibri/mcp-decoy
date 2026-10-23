@@ -35,7 +35,7 @@ describe('parseCLI', () => {
         '--host',
         '0.0.0.0',
         '--config-dir',
-        '/tmp/decoy',
+        '/tmp/mcp-decoy',
         '--log-limit',
         '500',
         '--dev',
@@ -45,7 +45,7 @@ describe('parseCLI', () => {
       mcpPort: 7000,
       uiPort: 7001,
       host: '0.0.0.0',
-      configDir: '/tmp/decoy',
+      configDir: '/tmp/mcp-decoy',
       logLimit: 500,
       dev: true,
     });

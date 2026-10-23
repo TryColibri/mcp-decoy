@@ -165,7 +165,7 @@ export function ServerFields({
             onChange={(event) => {
               onChange({ ...values, infoName: event.target.value });
             }}
-            placeholder={`decoy/${slug}`}
+            placeholder={`mcp-decoy/${slug}`}
             autoComplete="off"
             spellCheck={false}
           />

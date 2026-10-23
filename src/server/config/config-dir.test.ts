@@ -23,18 +23,18 @@ describe('resolveConfigPaths', () => {
     vi.unstubAllEnvs();
   });
 
-  it('defaults to ~/.config/decoy', async () => {
+  it('defaults to ~/.config/mcp-decoy', async () => {
     vi.stubEnv('XDG_CONFIG_HOME', '');
 
     const paths = await resolveConfigPaths();
 
     expect(paths).toEqual({
-      dir: '/home/dev/.config/decoy',
-      serversFile: '/home/dev/.config/decoy/servers.json',
-      runtimeFile: '/home/dev/.config/decoy/runtime.json',
+      dir: '/home/dev/.config/mcp-decoy',
+      serversFile: '/home/dev/.config/mcp-decoy/servers.json',
+      runtimeFile: '/home/dev/.config/mcp-decoy/runtime.json',
     });
     expect(mockMkdir).toHaveBeenCalledExactlyOnceWith(
-      '/home/dev/.config/decoy',
+      '/home/dev/.config/mcp-decoy',
       { recursive: true },
     );
   });
@@ -44,7 +44,7 @@ describe('resolveConfigPaths', () => {
 
     const paths = await resolveConfigPaths();
 
-    expect(paths.dir).toBe('/xdg/decoy');
+    expect(paths.dir).toBe('/xdg/mcp-decoy');
   });
 
   it('ignores a relative $XDG_CONFIG_HOME', async () => {
@@ -52,7 +52,7 @@ describe('resolveConfigPaths', () => {
 
     const paths = await resolveConfigPaths();
 
-    expect(paths.dir).toBe('/home/dev/.config/decoy');
+    expect(paths.dir).toBe('/home/dev/.config/mcp-decoy');
   });
 
   it('prefers the override over the environment', async () => {
@@ -63,12 +63,12 @@ describe('resolveConfigPaths', () => {
     expect(paths.dir).toBe('/custom/dir');
   });
 
-  it('uses the repository-local .decoy directory in dev mode', async () => {
+  it('uses the repository-local .mcp-decoy directory in dev mode', async () => {
     vi.stubEnv('XDG_CONFIG_HOME', '/xdg');
 
     const paths = await resolveConfigPaths({ dev: true });
 
-    expect(paths.dir).toBe(resolve(import.meta.dirname, '../../../.decoy'));
+    expect(paths.dir).toBe(resolve(import.meta.dirname, '../../../.mcp-decoy'));
   });
 
   it('prefers the override over dev mode', async () => {

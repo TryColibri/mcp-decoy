@@ -1,5 +1,5 @@
 import { ConflictError, NotFoundError } from '@/server/errors';
-import { type DecoyEvents, type EventBus } from '@/server/events';
+import { type MCPDecoyEvents, type EventBus } from '@/server/events';
 import { type ServerRepository } from '@/server/servers';
 import { DEFAULT_RESPONSE_TEMPLATE } from '@/server/templates';
 import {
@@ -18,7 +18,7 @@ export type ToolsServiceDeps = {
   /** Source of truth for servers and their tools. */
   repository: ServerRepository;
   /** Where mutations are announced. */
-  events: EventBus<DecoyEvents>;
+  events: EventBus<MCPDecoyEvents>;
   /** Current time. */
   now?: () => Date;
 };

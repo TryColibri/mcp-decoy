@@ -3,7 +3,7 @@ import { homedir } from 'node:os';
 import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-/** Files decoy keeps in its config directory. */
+/** Files MCP Decoy keeps in its config directory. */
 export type ConfigPaths = {
   /** Absolute path of the config directory. */
   dir: string;
@@ -14,17 +14,17 @@ export type ConfigPaths = {
 };
 
 /**
- * Config directory used in dev mode: `.decoy/` at the repository root, which is
+ * Config directory used in dev mode: `.mcp-decoy/` at the repository root, which is
  * gitignored. Dev mode runs from source, so this file's location is inside the
  * repository.
  */
 const DEV_CONFIG_DIR = fileURLToPath(
-  new URL('../../../.decoy', import.meta.url),
+  new URL('../../../.mcp-decoy', import.meta.url),
 );
 
 /**
- * Returns the default config directory: `$XDG_CONFIG_HOME/decoy`, or
- * `~/.config/decoy` when it is unset or not absolute. decoy uses the same
+ * Returns the default config directory: `$XDG_CONFIG_HOME/mcp-decoy`, or
+ * `~/.config/mcp-decoy` when it is unset or not absolute. MCP Decoy uses the same
  * dotfile-style location on every platform instead of the system preferences
  * directory.
  */
@@ -34,22 +34,22 @@ function defaultConfigDir(): string {
     xdgConfigHome !== undefined && isAbsolute(xdgConfigHome)
       ? xdgConfigHome
       : join(homedir(), '.config');
-  return join(base, 'decoy');
+  return join(base, 'mcp-decoy');
 }
 
 /** Options for {@link resolveConfigPaths}. */
 export type ResolveConfigPathsOptions = {
   /** `--config-dir`; takes precedence over every default. */
   override?: string;
-  /** Dev mode: default to the repository-local `.decoy/` directory. */
+  /** Dev mode: default to the repository-local `.mcp-decoy/` directory. */
   dev?: boolean;
 };
 
 /**
  * Resolves the config directory and creates it if needed.
  *
- * The directory is `override` if given, else `<repo>/.decoy` in dev mode, else
- * `$XDG_CONFIG_HOME/decoy`, or `~/.config/decoy` when `XDG_CONFIG_HOME` is
+ * The directory is `override` if given, else `<repo>/.mcp-decoy` in dev mode, else
+ * `$XDG_CONFIG_HOME/mcp-decoy`, or `~/.config/mcp-decoy` when `XDG_CONFIG_HOME` is
  * unset.
  *
  * @param options - See {@link ResolveConfigPathsOptions}.

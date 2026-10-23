@@ -50,7 +50,7 @@ The output is similar to the following:
 │
 ●  API       http://localhost:6281/api/v1
 │
-●  Config    /home/dana/.config/decoy/servers.json
+●  Config    /home/dana/.config/mcp-decoy/servers.json
 │
 ●  Servers
 │    echo  http://localhost:6280/s/echo/mcp
@@ -234,15 +234,15 @@ newest 10,000 messages across all servers. To change the limit, use
 Pass options after the command, as in `mcp-decoy --mcp-port 7000`. The following
 table lists them:
 
-| Option                | Description                                                   | Default                                       |
-| --------------------- | ------------------------------------------------------------- | --------------------------------------------- |
-| `--mcp-port <port>`   | Port of the MCP listener.                                     | `6280`                                        |
-| `--ui-port <port>`    | Port of the UI and API listener.                              | `6281`                                        |
-| `--host <address>`    | Bind address of the MCP listener. The UI listener ignores it. | `127.0.0.1`                                   |
-| `--config-dir <path>` | Directory that holds `servers.json`.                          | `$XDG_CONFIG_HOME/decoy` or `~/.config/decoy` |
-| `--log-limit <n>`     | Messages kept in memory, across all servers. Minimum: `100`.  | `10000`                                       |
-| `-h`, `--help`        | Print the usage text.                                         |                                               |
-| `-v`, `--version`     | Print the version.                                            |                                               |
+| Option                | Description                                                   | Default                                               |
+| --------------------- | ------------------------------------------------------------- | ----------------------------------------------------- |
+| `--mcp-port <port>`   | Port of the MCP listener.                                     | `6280`                                                |
+| `--ui-port <port>`    | Port of the UI and API listener.                              | `6281`                                                |
+| `--host <address>`    | Bind address of the MCP listener. The UI listener ignores it. | `127.0.0.1`                                           |
+| `--config-dir <path>` | Directory that holds `servers.json`.                          | `$XDG_CONFIG_HOME/mcp-decoy` or `~/.config/mcp-decoy` |
+| `--log-limit <n>`     | Messages kept in memory, across all servers. Minimum: `100`.  | `10000`                                               |
+| `-h`, `--help`        | Print the usage text.                                         |                                                       |
+| `-v`, `--version`     | Print the version.                                            |                                                       |
 
 If a port is in use, MCP Decoy exits and names the option to change.
 

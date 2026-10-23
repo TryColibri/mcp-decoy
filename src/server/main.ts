@@ -9,7 +9,7 @@ import {
   loadOrSeedServersFile,
   resolveConfigPaths,
 } from '@/server/config';
-import { type DecoyEvents, type EventBus } from '@/server/events';
+import { type MCPDecoyEvents, type EventBus } from '@/server/events';
 import { createMCPApp } from '@/server/mcp-app';
 import {
   assertNotRunning,
@@ -34,8 +34,8 @@ export type StartOptions = {
   /** Bind address of the MCP listener. The UI listener always binds 127.0.0.1. */
   host: string;
   /**
-   * Config directory; defaults to `<repo>/.decoy` in dev mode, else
-   * `$XDG_CONFIG_HOME/decoy` or `~/.config/decoy`.
+   * Config directory; defaults to `<repo>/.mcp-decoy` in dev mode, else
+   * `$XDG_CONFIG_HOME/mcp-decoy` or `~/.config/mcp-decoy`.
    */
   configDir?: string;
   /** Maximum number of log entries kept in memory, across servers. */
@@ -57,7 +57,7 @@ export type Instance = {
   /** Servers loaded from the config file at startup. */
   servers: ServerSummary[];
   /** Subscribe to mutations, such as servers being created. */
-  events: EventBus<DecoyEvents>;
+  events: EventBus<MCPDecoyEvents>;
   /** Closes every session and both listeners, and removes the runtime file. */
   close(): Promise<void>;
 };

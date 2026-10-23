@@ -122,7 +122,7 @@ export const serverListSchema: z.ZodType<ServerList> = z.strictObject({
 export type CreateServerRequest = {
   /** URL slug of the new server. */
   name: string;
-  /** Defaults to `{ name: "decoy/<name>", version: "0.1.0" }`, field by field. */
+  /** Defaults to `{ name: "mcp-decoy/<name>", version: "0.1.0" }`, field by field. */
   serverInfo?: Partial<ServerInfo>;
   /** Optional `instructions` in the `initialize` result. Empty means none. */
   instructions?: string;
@@ -138,7 +138,7 @@ export const createServerRequestSchema: z.ZodType<CreateServerRequest> =
       })
       .optional()
       .describe(
-        'Defaults to `{ name: "decoy/<name>", version: "0.1.0" }`, field by field.',
+        'Defaults to `{ name: "mcp-decoy/<name>", version: "0.1.0" }`, field by field.',
       ),
     instructions: z
       .string()

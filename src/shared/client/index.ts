@@ -9,7 +9,7 @@ import type { ApiV1 } from '@/server/api';
  * `''` for same-origin requests from the SPA.
  * @param options - Extra `hc` options (custom `fetch`, headers, …).
  */
-export function createDecoyClient(
+export function createMCPDecoyClient(
   baseUrl: string,
   options?: ClientRequestOptions,
 ) {
@@ -17,4 +17,4 @@ export function createDecoyClient(
 }
 
 /** A typed client for MCP Decoy's REST API. */
-export type DecoyClient = ReturnType<typeof createDecoyClient>;
+export type MCPDecoyClient = ReturnType<typeof createMCPDecoyClient>;

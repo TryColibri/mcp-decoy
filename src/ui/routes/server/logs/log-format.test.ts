@@ -50,7 +50,7 @@ const initialized = entry({
     result: {
       protocolVersion: '2025-06-18',
       capabilities: { tools: { listChanged: true } },
-      serverInfo: { name: 'decoy/weather', version: '0.1.0' },
+      serverInfo: { name: 'mcp-decoy/weather', version: '0.1.0' },
     },
   }),
 });
