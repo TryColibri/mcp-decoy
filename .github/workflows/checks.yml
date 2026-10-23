@@ -4,7 +4,7 @@ on:
   workflow_call:
 
 jobs:
-  format:
+  checks:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -14,52 +14,14 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup
-      - run: pnpm run format
-
-  lint:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/setup
-      - run: pnpm run lint
-
-  typecheck:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/setup
-      - run: pnpm run typecheck
-
-  test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/setup
-      - run: pnpm run test --reporter=default --reporter=github-actions
-
-  build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/setup
-      - run: pnpm run build
+      - parallel:
+          - name: Format
+            run: pnpm run format
+          - name: Lint
+            run: pnpm run lint
+          - name: Typecheck
+            run: pnpm run typecheck
+          - name: Test
+            run: pnpm run test --reporter=default --reporter=github-actions
+          - name: Build
+            run: pnpm run build
