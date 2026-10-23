@@ -41,7 +41,7 @@ export function MessageList({
   onSelect,
 }: MessageListProps) {
   return (
-    <div className="max-h-[calc(100dvh-235px)] min-h-80 overflow-auto">
+    <div className="relative max-h-[60dvh] min-h-80 overflow-auto lg:max-h-none lg:min-h-0 lg:flex-1">
       <div className="min-w-140">
         <div
           className={twMerge(

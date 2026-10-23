@@ -30,7 +30,7 @@ export function MessageDetail({
   return (
     <aside
       aria-label="Message detail"
-      className="box-border flex min-w-0 flex-[1_1_420px] flex-col gap-4 px-6 py-5"
+      className="relative box-border flex min-w-0 flex-col gap-4 px-6 py-5 lg:min-h-0 lg:flex-[1_1_420px] lg:overflow-y-auto"
     >
       {entry === undefined ? (
         <section className="rounded-xl border border-dashed border-line bg-surface p-5 text-sm text-ink-3">
@@ -72,7 +72,7 @@ function MessageJSON({ entry, entries, onSelect }: MessageJSONProps) {
   };
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-line bg-surface">
+    <section className="flex min-h-64 flex-1 flex-col overflow-hidden rounded-xl border border-line bg-surface">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line-soft px-4.5 py-3.5">
         <DirectionBadge direction={entry.direction} />
         <h2 className="m-0 font-mono text-sm font-medium">

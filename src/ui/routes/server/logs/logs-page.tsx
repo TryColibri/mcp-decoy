@@ -124,7 +124,7 @@ export function LogsPage() {
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2.5 border-b border-line bg-surface px-6 py-3">
+      <div className="flex shrink-0 flex-wrap items-center gap-2.5 border-b border-line bg-surface px-6 py-3">
         <label htmlFor={searchId} className="sr-only">
           Search messages by method or text
         </label>
@@ -189,15 +189,15 @@ export function LogsPage() {
         )}
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-wrap items-stretch">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
         <section
           aria-label="Messages"
-          className="flex min-w-0 flex-[999_1_620px] flex-col border-r border-line bg-surface"
+          className="flex min-w-0 flex-col border-r border-line bg-surface lg:min-h-0 lg:flex-[999_1_620px]"
         >
           {list}
           <div
             aria-live="polite"
-            className="mt-auto flex flex-wrap justify-between gap-3 border-t border-line-soft px-4 py-2.5 text-xs text-ink-4"
+            className="mt-auto flex shrink-0 flex-wrap justify-between gap-3 border-t border-line-soft px-4 py-2.5 text-xs text-ink-4"
           >
             <span>{status}</span>
             {stream.hasOlder && searchAll === null && (

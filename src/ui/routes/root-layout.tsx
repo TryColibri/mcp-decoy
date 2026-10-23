@@ -10,7 +10,7 @@ export function RootLayout() {
   return (
     <div className="flex h-dvh flex-col bg-page text-ink">
       <GlobalHeader />
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto">
         <Outlet />
       </div>
     </div>
