@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 
 import {
   InvalidGrantError,
@@ -35,6 +35,26 @@ export type OAuthAuthInfo = {
   expiresAt: number;
   /** The resource (server) the token is valid for. */
   resource: URL;
+};
+
+/** A live access or refresh token, as listed for a server. */
+export type OAuthTokenInfo = {
+  /** Opaque handle for {@link OAuthStore.revokeToken}, so the token value never has to go in a URL. */
+  id: string;
+  /** Whether this is an access or a refresh token. */
+  kind: 'access' | 'refresh';
+  /** The token value. */
+  value: string;
+  /** The client the token was issued to. */
+  clientId: string;
+  /** Name of the client, or `null` when it is no longer known. */
+  clientName: string | null;
+  /** Scopes granted to the token. */
+  scopes: string[];
+  /** Issue time, in seconds since epoch. */
+  issuedAt: number;
+  /** Expiry, in seconds since epoch. `null` for refresh tokens, which don't expire. */
+  expiresAt: number | null;
 };
 
 /** What the consent page needs to render. */
@@ -143,6 +163,13 @@ export type OAuthStore = {
   revokeAll(server: string): void;
   /** Number of live access and refresh tokens of `server`. */
   tokenCount(server: string): number;
+  /** Live access and refresh tokens of `server`, newest first. */
+  listTokens(server: string): OAuthTokenInfo[];
+  /**
+   * Revokes one token of `server` by its listed `id`.
+   * @returns `false` when no token of that server has the ID.
+   */
+  revokeToken(server: string, id: string): boolean;
 };
 
 type PendingConsent = {
@@ -163,11 +190,16 @@ type AuthorizationCode = {
 };
 
 type IssuedToken = {
+  id: string;
   clientId: string;
   server: string;
   resource: string;
   scopes: string[];
+  issuedAt: number;
 };
+
+/** What the caller of `issueTokens` provides; the store adds `id` and `issuedAt`. */
+type TokenGrant = Omit<IssuedToken, 'id' | 'issuedAt'>;
 
 type AccessTokenRecord = IssuedToken & { expiresAt: number };
 
@@ -260,20 +292,29 @@ export function createOAuthStore({
     server,
     resource,
     scopes,
-  }: IssuedToken): OAuthTokens => {
+  }: TokenGrant): OAuthTokens => {
     sweepTokens();
     const accessToken = `decoy_at_${randomToken()}`;
     const refreshToken = `decoy_rt_${randomToken()}`;
-    const expiresAt =
-      Math.floor(now().getTime() / 1000) + ACCESS_TOKEN_TTL_SECONDS;
+    const issuedAt = Math.floor(now().getTime() / 1000);
+    const expiresAt = issuedAt + ACCESS_TOKEN_TTL_SECONDS;
     accessTokens.set(accessToken, {
+      id: randomUUID(),
       clientId,
       server,
       resource,
       scopes,
+      issuedAt,
       expiresAt,
     });
-    refreshTokens.set(refreshToken, { clientId, server, resource, scopes });
+    refreshTokens.set(refreshToken, {
+      id: randomUUID(),
+      clientId,
+      server,
+      resource,
+      scopes,
+      issuedAt,
+    });
     return {
       access_token: accessToken,
       token_type: 'bearer',
@@ -283,31 +324,35 @@ export function createOAuthStore({
     };
   };
 
+  const getClient = (
+    clientId: string,
+  ): OAuthClientInformationFull | undefined => {
+    const dcrClient = dcrClients.get(clientId);
+    if (dcrClient !== undefined) {
+      return dcrClient;
+    }
+    const server = listServers().find(
+      (candidate) =>
+        candidate.auth?.mode === 'oauth' &&
+        candidate.auth.clientId === clientId &&
+        candidate.auth.redirectUris.length > 0,
+    );
+    if (server === undefined || server.auth === undefined) {
+      return undefined;
+    }
+    return {
+      client_id: server.auth.clientId,
+      client_secret: server.auth.clientSecret,
+      redirect_uris: server.auth.redirectUris,
+      token_endpoint_auth_method: 'client_secret_post',
+      grant_types: ['authorization_code', 'refresh_token'],
+      response_types: ['code'],
+      client_name: `${server.name} (pre-registered)`,
+    };
+  };
+
   return {
-    getClient(clientId) {
-      const dcrClient = dcrClients.get(clientId);
-      if (dcrClient !== undefined) {
-        return dcrClient;
-      }
-      const server = listServers().find(
-        (candidate) =>
-          candidate.auth?.mode === 'oauth' &&
-          candidate.auth.clientId === clientId &&
-          candidate.auth.redirectUris.length > 0,
-      );
-      if (server === undefined || server.auth === undefined) {
-        return undefined;
-      }
-      return {
-        client_id: server.auth.clientId,
-        client_secret: server.auth.clientSecret,
-        redirect_uris: server.auth.redirectUris,
-        token_endpoint_auth_method: 'client_secret_post',
-        grant_types: ['authorization_code', 'refresh_token'],
-        response_types: ['code'],
-        client_name: `${server.name} (pre-registered)`,
-      };
-    },
+    getClient,
 
     registerClient(metadata) {
       const client: OAuthClientInformationFull = {
@@ -496,6 +541,54 @@ export function createOAuthStore({
         }
       }
       return count;
+    },
+
+    listTokens(server) {
+      sweepTokens();
+      const infoOf = (
+        value: string,
+        kind: OAuthTokenInfo['kind'],
+        record: IssuedToken & { expiresAt?: number },
+      ): OAuthTokenInfo => ({
+        id: record.id,
+        kind,
+        value,
+        clientId: record.clientId,
+        clientName: getClient(record.clientId)?.client_name ?? null,
+        scopes: record.scopes,
+        issuedAt: record.issuedAt,
+        expiresAt: record.expiresAt ?? null,
+      });
+      const listed: OAuthTokenInfo[] = [];
+      for (const [value, record] of accessTokens) {
+        if (record.server === server) {
+          listed.push(infoOf(value, 'access', record));
+        }
+      }
+      for (const [value, record] of refreshTokens) {
+        if (record.server === server) {
+          listed.push(infoOf(value, 'refresh', record));
+        }
+      }
+      // `sort` is stable: tokens issued in the same second keep the order
+      // above, access tokens before refresh tokens.
+      return listed.sort((a, b) => b.issuedAt - a.issuedAt);
+    },
+
+    revokeToken(server, id) {
+      for (const [value, record] of accessTokens) {
+        if (record.server === server && record.id === id) {
+          accessTokens.delete(value);
+          return true;
+        }
+      }
+      for (const [value, record] of refreshTokens) {
+        if (record.server === server && record.id === id) {
+          refreshTokens.delete(value);
+          return true;
+        }
+      }
+      return false;
     },
   };
 }

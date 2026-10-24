@@ -10,6 +10,7 @@ import { SWRConfig } from 'swr';
 import { NewServerPage } from './routes/new-server/new-server-page';
 import { NotFoundPage } from './routes/not-found/not-found-page';
 import { RootLayout } from './routes/root-layout';
+import { ConnectionsPage } from './routes/server/connections/connections-page';
 import { LogsPage } from './routes/server/logs/logs-page';
 import { ServerLayout } from './routes/server/server-layout';
 import { ToolsPage } from './routes/server/tools/tools-page';
@@ -26,6 +27,7 @@ const router = createBrowserRouter(
         <Route index element={<Navigate to="logs" replace />} />
         <Route path="logs" element={<LogsPage />} />
         <Route path="tools/:tool?" element={<ToolsPage />} />
+        <Route path="connections" element={<ConnectionsPage />} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Route>,
