@@ -310,6 +310,23 @@ describe('mcpApp', () => {
     });
   });
 
+  describe('changing a server’s authentication', () => {
+    it('closes that server’s sessions only', async () => {
+      const { services } = harness;
+      await services.servers.create({ name: 'echo' });
+      const weather = await connect(harness, 'weather');
+      const echo = await connect(harness, 'echo');
+
+      await services.servers.update('weather', { auth: { mode: 'oauth' } });
+
+      expect(services.sessions.count('weather')).toBe(0);
+      expect(services.sessions.count('echo')).toBe(1);
+      // The OAuth gate now answers before the session lookup would.
+      await expect(weather.client.listTools()).rejects.toThrow(/invalid_token/);
+      await expect(echo.client.listTools()).resolves.toBeDefined();
+    });
+  });
+
   describe('renaming a server', () => {
     it('closes its sessions and moves its logs to the new name', async () => {
       const { services } = harness;
