@@ -24,7 +24,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          persist-credentials: false
           # The deploy key is a bypass actor on the `main` ruleset, so
           # semantic-release can push its release commit and tag past the
           # required PR and status checks. GITHUB_TOKEN cannot bypass them.
