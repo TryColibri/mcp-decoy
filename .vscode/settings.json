@@ -1,6 +1,7 @@
 {
   "typescript.tsdk": "node_modules/typescript/lib",
   "tailwindCSS.classFunctions": ["twMerge", "tw"],
+  "css.lint.unknownAtRules": "ignore",
   "editor.codeActionsOnSave": {
     "source.fixAll.oxc": "always"
   },

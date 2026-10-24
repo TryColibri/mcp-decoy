@@ -8,6 +8,8 @@ export type MCPDecoyEvents = {
   serverDeleted: { server: string };
   /** The server named `from` is now named `to`. */
   serverRenamed: { from: string; to: string };
+  /** `server`'s authentication state changed. */
+  serverAuthChanged: { server: string };
 };
 
 type Listener<T> = (payload: T) => void;

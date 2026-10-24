@@ -1,3 +1,5 @@
+import { Tooltip } from '@base-ui/react/tooltip';
+import { LockSimpleIcon } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { twMerge } from 'tailwind-merge';
@@ -84,6 +86,9 @@ function ServerRow({ server, onEdit }: ServerRowProps) {
           <Link to={`${base}/logs`} className="font-semibold text-ink-900">
             {server.name}
           </Link>
+          {server.auth.mode === 'oauth' && (
+            <OAuthLockHint tokenCount={server.auth.tokenCount} />
+          )}
         </div>
       </td>
       <td className={td}>
@@ -118,6 +123,30 @@ function ServerRow({ server, onEdit }: ServerRowProps) {
         </div>
       </td>
     </tr>
+  );
+}
+
+type OAuthLockHintProps = {
+  tokenCount: number;
+};
+
+function OAuthLockHint({ tokenCount }: OAuthLockHintProps) {
+  return (
+    <Tooltip.Root>
+      <Tooltip.Trigger
+        render={<span className="inline-flex items-center text-ink-500" />}
+      >
+        <LockSimpleIcon size={13} weight="bold" aria-hidden="true" />
+        <span className="sr-only">Protected by OAuth</span>
+      </Tooltip.Trigger>
+      <Tooltip.Portal>
+        <Tooltip.Positioner side="top" sideOffset={6}>
+          <Tooltip.Popup className="max-w-72 rounded-lg bg-ink-900 px-3 py-2 text-xs/normal text-white shadow-lg">
+            OAuth · {tokenCount} {tokenCount === 1 ? 'token' : 'tokens'}
+          </Tooltip.Popup>
+        </Tooltip.Positioner>
+      </Tooltip.Portal>
+    </Tooltip.Root>
   );
 }
 
