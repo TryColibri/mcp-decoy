@@ -69,12 +69,12 @@ export function ServerLayout() {
           </div>
         </div>
         <nav aria-label="Server" className="flex gap-5">
-          <Tab to="logs">Logs</Tab>
-          <Tab to="tools">Tools</Tab>
           <Tab to="connections">
             Connections
             <SessionCount count={server.sessionCount} />
           </Tab>
+          <Tab to="logs">Logs</Tab>
+          <Tab to="tools">Tools</Tab>
         </nav>
       </div>
       <Outlet context={{ server } satisfies ServerOutletContext} />

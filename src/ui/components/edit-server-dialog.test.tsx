@@ -151,7 +151,7 @@ describe('EditServerDialog', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it('sends the auth radio and redirect URIs in the PATCH', async () => {
+  it('sends the auth radio in the PATCH, with no redirect URIs', async () => {
     const updated: ServerSummary = {
       ...SERVER,
       auth: {
@@ -167,17 +167,14 @@ describe('EditServerDialog', () => {
     const user = userEvent.setup();
 
     await user.click(screen.getByRole('radio', { name: 'OAuth 2.1' }));
-    await user.type(
-      screen.getByLabelText('Pre-registered client redirect URIs'),
-      'http://localhost:9999/cb',
-    );
+    expect(screen.queryByLabelText(/redirect URIs/i)).toBeNull();
     expect(
       screen.getByText(/Changing authentication closes live sessions/),
     ).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
 
     expect(patch).toHaveBeenCalledExactlyOnceWith({
-      auth: { mode: 'oauth', redirectUris: ['http://localhost:9999/cb'] },
+      auth: { mode: 'oauth' },
     });
     expect(onSaved).toHaveBeenCalledExactlyOnceWith(updated, 'weather');
     expect(onClose).toHaveBeenCalledOnce();

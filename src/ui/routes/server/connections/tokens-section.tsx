@@ -17,8 +17,8 @@ export type TokensSectionProps = {
   server: ServerSummary;
 };
 
-const th = tw`border-b border-paper-200 px-4 py-2.5 text-left text-xs font-semibold tracking-wide whitespace-nowrap text-ink-500 uppercase`;
-const td = tw`border-b border-paper-100 px-4 py-3 align-middle text-sm whitespace-nowrap`;
+const th = tw`border-b border-paper-200 px-3 py-2.5 text-left text-xs font-semibold tracking-wide whitespace-nowrap text-ink-500 uppercase`;
+const td = tw`border-b border-paper-100 p-3 align-middle text-sm whitespace-nowrap`;
 
 /** Every live access and refresh token of a server, revocable one by one or all at once. */
 export function TokensSection({ server }: TokensSectionProps) {
@@ -114,7 +114,7 @@ function TokenRow({ server, token }: TokenRowProps) {
       </td>
       <td className={td}>
         <div className="flex items-center gap-1">
-          <span className="max-w-48 truncate font-mono text-[13px]">
+          <span className="max-w-40 truncate font-mono text-[13px]">
             {token.value}
           </span>
           <CopyButton

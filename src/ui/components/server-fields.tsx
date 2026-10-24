@@ -21,8 +21,6 @@ export type ServerFormValues = {
   instructions: string;
   /** Authentication mode. */
   authMode: 'none' | 'oauth';
-  /** Redirect URIs of the pre-registered OAuth client, one per line. */
-  redirectUris: string;
 };
 
 /** Result of `checkServerName`. */
@@ -60,25 +58,15 @@ export function checkServerName(
 }
 
 /**
- * Builds the `auth` request field from the form's authentication fields.
+ * Builds the `auth` request field from the form's authentication mode. A new
+ * OAuth server has no redirect URIs; they are added from the Connections tab.
  *
- * @param values - `authMode` and `redirectUris` of the form.
+ * @param values - `authMode` of the form.
  */
 export function authInputOf({
   authMode,
-  redirectUris,
-}: Pick<ServerFormValues, 'authMode' | 'redirectUris'>): ServerAuthInput {
-  if (authMode === 'none') {
-    return { mode: 'none' };
-  }
-  const uris = redirectUris
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line !== '');
-  return {
-    mode: 'oauth',
-    ...(uris.length === 0 ? {} : { redirectUris: uris }),
-  };
+}: Pick<ServerFormValues, 'authMode'>): ServerAuthInput {
+  return { mode: authMode };
 }
 
 /** Props of `ServerFields`. */
@@ -122,8 +110,6 @@ export function ServerFields({
     instructionsHint: useId(),
     authNone: useId(),
     authOAuth: useId(),
-    redirectUris: useId(),
-    redirectUrisHint: useId(),
   };
   const slug = values.name === '' ? 'my-server' : values.name;
   const nameInvalid = nameError !== null || fieldErrors.name !== undefined;
@@ -293,34 +279,6 @@ export function ServerFields({
             OAuth 2.1
           </label>
         </RadioGroup>
-        {values.authMode === 'oauth' && (
-          <div className="flex flex-col gap-1.5 pt-1.5">
-            <p className="m-0 text-[13px] font-semibold text-ink-700">
-              <label htmlFor={ids.redirectUris}>
-                Pre-registered client redirect URIs
-              </label>{' '}
-              <span
-                id={ids.redirectUrisHint}
-                className="text-xs font-normal text-ink-500"
-              >
-                One per line. Leave empty to only allow Dynamic Client
-                Registration.
-              </span>
-            </p>
-            <textarea
-              id={ids.redirectUris}
-              rows={2}
-              className="box-border min-h-16 w-full resize-y rounded-lg border border-paper-300 bg-white px-3 py-2.5 font-mono text-sm text-ink-900"
-              value={values.redirectUris}
-              onChange={(event) => {
-                onChange({ ...values, redirectUris: event.target.value });
-              }}
-              placeholder="http://localhost:33418/callback"
-              spellCheck={false}
-              aria-describedby={ids.redirectUrisHint}
-            />
-          </div>
-        )}
       </div>
     </div>
   );
