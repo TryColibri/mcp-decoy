@@ -140,7 +140,7 @@ describe('ConnectionsPage', () => {
       renderPage(OPEN_SERVER);
 
       expect(
-        screen.getByRole('switch', { name: 'Require OAuth' }),
+        screen.getByRole('switch', { name: 'OAuth disabled' }),
       ).not.toBeChecked();
       expect(screen.queryByRole('heading', { name: 'Tokens' })).toBeNull();
       expect(mocks.fetchTokens).not.toHaveBeenCalled();
@@ -159,7 +159,7 @@ describe('ConnectionsPage', () => {
       renderPage(OPEN_SERVER);
 
       await userEvent.click(
-        screen.getByRole('switch', { name: 'Require OAuth' }),
+        screen.getByRole('switch', { name: 'OAuth disabled' }),
       );
 
       expect(mocks.patchServer).toHaveBeenCalledExactlyOnceWith({
@@ -173,7 +173,7 @@ describe('ConnectionsPage', () => {
       renderPage(OAUTH_SERVER);
       const user = userEvent.setup();
 
-      await user.click(screen.getByRole('switch', { name: 'Require OAuth' }));
+      await user.click(screen.getByRole('switch', { name: 'OAuth enabled' }));
       expect(mocks.patchServer).not.toHaveBeenCalled();
       await user.click(screen.getByRole('button', { name: 'Turn off OAuth' }));
 
@@ -187,12 +187,12 @@ describe('ConnectionsPage', () => {
       renderPage(OAUTH_SERVER);
       const user = userEvent.setup();
 
-      await user.click(screen.getByRole('switch', { name: 'Require OAuth' }));
+      await user.click(screen.getByRole('switch', { name: 'OAuth enabled' }));
       await user.click(screen.getByRole('button', { name: 'Cancel' }));
 
       expect(mocks.patchServer).not.toHaveBeenCalled();
       expect(
-        screen.getByRole('switch', { name: 'Require OAuth' }),
+        screen.getByRole('switch', { name: 'OAuth enabled' }),
       ).toBeChecked();
     });
 
@@ -201,7 +201,7 @@ describe('ConnectionsPage', () => {
       renderPage(OPEN_SERVER);
 
       await userEvent.click(
-        screen.getByRole('switch', { name: 'Require OAuth' }),
+        screen.getByRole('switch', { name: 'OAuth disabled' }),
       );
 
       expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -300,7 +300,7 @@ describe('ConnectionsPage', () => {
       expect(screen.getByText('client-1')).toBeVisible();
       expect(screen.getByText('secret-1')).toBeVisible();
       expect(
-        screen.getByRole('switch', { name: 'Require OAuth' }),
+        screen.getByRole('switch', { name: 'OAuth enabled' }),
       ).toBeChecked();
       const rows = await screen.findAllByRole('row');
       expect(rows).toHaveLength(3);
