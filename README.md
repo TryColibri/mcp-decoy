@@ -123,11 +123,12 @@ command with the right port.
 
 Each client connection is a session, identified by its `Mcp-Session-Id` header.
 After the client connects, the server's live session count in the UI changes to
-`1 live`. To close a session and test how your client recovers, use the
-[REST API](#rest-api). Open the server and go to the **Logs** tab. The tab shows
-the `initialize` request and response, followed by the requests that your client
-sends next, such as `tools/list`. Call the `echo` tool from your client to see
-the `tools/call` request and its response.
+`1 live`, and the session appears in the server's **Connections** tab. To close
+a session and test how your client recovers, click **Close** on its row, or use
+the [REST API](#rest-api). Open the server and go to the **Logs** tab. The tab
+shows the `initialize` request and response, followed by the requests that your
+client sends next, such as `tools/list`. Call the `echo` tool from your client
+to see the `tools/call` request and its response.
 
 ## Define a tool
 
@@ -243,12 +244,16 @@ authorization-server router.
   consent page. **Approve** issues a code; **Deny** redirects the client with
   `error=access_denied`.
 - Every server on OAuth also has one pre-registered confidential client, shown
-  with its ID and secret in the server's OAuth pill. It authenticates with
-  `client_secret_post` only — send `client_id` and `client_secret` in the token
-  request body, not as `Authorization: Basic`. Give it redirect URIs to use it;
-  with none, only Dynamic Client Registration works.
-- Click **Revoke tokens** to invalidate every access and refresh token of a
-  server. The client's next request gets a `401` and must re-authorize.
+  with its ID and secret in the server's **Connections** tab. It authenticates
+  with `client_secret_post` only — send `client_id` and `client_secret` in the
+  token request body, not as `Authorization: Basic`. Give it redirect URIs to
+  use it; with none, only Dynamic Client Registration works.
+- The **Connections** tab lists every live access and refresh token with its
+  client, scopes and expiry. Click **Revoke** on a row to invalidate one token,
+  or **Revoke all** to invalidate all of them. The client's next request gets a
+  `401` and must re-authorize. To change the redirect URIs or turn OAuth off,
+  use **Edit OAuth settings**. Switching a server's authentication closes its
+  live sessions.
 - The **Logs** tab interleaves OAuth HTTP exchanges with JSON-RPC traffic, so
   you can watch the whole handshake in one place.
 
@@ -302,25 +307,27 @@ UI port, under `/api/v1`. Requests and responses are JSON, and errors use
 
 The following table lists the endpoints:
 
-| Method and path                                | Description                                                             |
-| ---------------------------------------------- | ----------------------------------------------------------------------- |
-| `GET /servers`                                 | List servers.                                                           |
-| `POST /servers`                                | Create a server.                                                        |
-| `GET /servers/{server}`                        | Get a server.                                                           |
-| `PATCH /servers/{server}`                      | Update a server. A new `name` moves the server and closes its sessions. |
-| `DELETE /servers/{server}`                     | Delete a server and close its sessions.                                 |
-| `GET /servers/{server}/tools`                  | List tools, drafts included.                                            |
-| `POST /servers/{server}/tools`                 | Create a tool.                                                          |
-| `GET /servers/{server}/tools/{tool}`           | Get a tool.                                                             |
-| `PATCH /servers/{server}/tools/{tool}`         | Update a tool. Set `published` to publish or unpublish it.              |
-| `DELETE /servers/{server}/tools/{tool}`        | Delete a tool.                                                          |
-| `GET /servers/{server}/sessions`               | List live sessions.                                                     |
-| `DELETE /servers/{server}/sessions/{session}`  | Close a session.                                                        |
-| `DELETE /servers/{server}/oauth/tokens`        | Revoke every access and refresh token of a server on OAuth.             |
-| `GET /servers/{server}/logs?q=&cursor=&limit=` | List log entries, newest first, with cursor pagination.                 |
-| `DELETE /servers/{server}/logs`                | Clear the logs of a server.                                             |
-| `GET /servers/{server}/logs/stream?after=&q=`  | Stream new log entries as server-sent events.                           |
-| `GET /servers/{server}/logs/export`            | Download all entries as newline-delimited JSON.                         |
+| Method and path                                 | Description                                                             |
+| ----------------------------------------------- | ----------------------------------------------------------------------- |
+| `GET /servers`                                  | List servers.                                                           |
+| `POST /servers`                                 | Create a server.                                                        |
+| `GET /servers/{server}`                         | Get a server.                                                           |
+| `PATCH /servers/{server}`                       | Update a server. A new `name` moves the server and closes its sessions. |
+| `DELETE /servers/{server}`                      | Delete a server and close its sessions.                                 |
+| `GET /servers/{server}/tools`                   | List tools, drafts included.                                            |
+| `POST /servers/{server}/tools`                  | Create a tool.                                                          |
+| `GET /servers/{server}/tools/{tool}`            | Get a tool.                                                             |
+| `PATCH /servers/{server}/tools/{tool}`          | Update a tool. Set `published` to publish or unpublish it.              |
+| `DELETE /servers/{server}/tools/{tool}`         | Delete a tool.                                                          |
+| `GET /servers/{server}/sessions`                | List live sessions.                                                     |
+| `DELETE /servers/{server}/sessions/{session}`   | Close a session.                                                        |
+| `GET /servers/{server}/oauth/tokens`            | List the live access and refresh tokens of a server on OAuth.           |
+| `DELETE /servers/{server}/oauth/tokens`         | Revoke every access and refresh token of a server on OAuth.             |
+| `DELETE /servers/{server}/oauth/tokens/{token}` | Revoke one token, by the `id` that the list returns.                    |
+| `GET /servers/{server}/logs?q=&cursor=&limit=`  | List log entries, newest first, with cursor pagination.                 |
+| `DELETE /servers/{server}/logs`                 | Clear the logs of a server.                                             |
+| `GET /servers/{server}/logs/stream?after=&q=`   | Stream new log entries as server-sent events.                           |
+| `GET /servers/{server}/logs/export`             | Download all entries as newline-delimited JSON.                         |
 
 The following command publishes a draft tool named `get_forecast` on the
 `weather` server:

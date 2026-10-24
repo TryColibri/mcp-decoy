@@ -17,6 +17,7 @@ import {
   logEntrySchema,
   logEvictedSchema,
   logPageSchema,
+  oauthTokenListSchema,
   problemSchema,
   type ServerConfig,
   serverListSchema,
@@ -311,7 +312,7 @@ describe('uiApp', () => {
     });
 
     describe('oauth/tokens', () => {
-      it('revokes tokens with 204, 409 off OAuth and 404 for an unknown server', async () => {
+      const createOAuthServer = async () => {
         await request('/api/v1/servers', {
           method: 'POST',
           json: { name: 'weather' },
@@ -325,30 +326,164 @@ describe('uiApp', () => {
             },
           },
         });
+      };
 
-        const revoked = await request('/api/v1/servers/weather/oauth/tokens', {
-          method: 'DELETE',
+      const issueTokens = () => {
+        const client = services.oauth.registerClient({
+          redirect_uris: ['http://localhost:9999/cb'],
+          client_name: 'Claude',
         });
-        expect(revoked.status).toBe(204);
+        const requestId = services.oauth.beginConsent(client, {
+          codeChallenge: 'challenge',
+          redirectUri: 'http://localhost:9999/cb',
+          resource: new URL('http://localhost:6280/s/weather/mcp'),
+        });
+        const redirect = services.oauth.decide(
+          requestId,
+          true,
+          'http://localhost:6281',
+        )!;
+        const code = new URL(redirect).searchParams.get('code')!;
+        return services.oauth.exchangeAuthorizationCode(client, code);
+      };
 
-        await request('/api/v1/servers', {
-          method: 'POST',
-          json: { name: 'echo' },
+      describe('GET', () => {
+        it('lists no tokens, then the issued ones', async () => {
+          await createOAuthServer();
+
+          const empty = await request('/api/v1/servers/weather/oauth/tokens');
+          expect(empty.status).toBe(200);
+          expect(oauthTokenListSchema.parse(await empty.json()).items).toEqual(
+            [],
+          );
+
+          const tokens = issueTokens();
+          const list = await request('/api/v1/servers/weather/oauth/tokens');
+
+          expect(list.status).toBe(200);
+          const { items } = oauthTokenListSchema.parse(await list.json());
+          expect(items).toEqual([
+            expect.objectContaining({
+              kind: 'access',
+              value: tokens.access_token,
+              clientName: 'Claude',
+              expiresAt: expect.any(String),
+            }),
+            expect.objectContaining({
+              kind: 'refresh',
+              value: tokens.refresh_token,
+              clientName: 'Claude',
+              expiresAt: null,
+            }),
+          ]);
         });
-        await expectProblem(
-          await request('/api/v1/servers/echo/oauth/tokens', {
-            method: 'DELETE',
-          }),
-          409,
-          'conflict',
-        );
-        await expectProblem(
-          await request('/api/v1/servers/nope/oauth/tokens', {
-            method: 'DELETE',
-          }),
-          404,
-          'not-found',
-        );
+
+        it('answers 409 off OAuth and 404 for an unknown server', async () => {
+          await request('/api/v1/servers', {
+            method: 'POST',
+            json: { name: 'echo' },
+          });
+
+          await expectProblem(
+            await request('/api/v1/servers/echo/oauth/tokens'),
+            409,
+            'conflict',
+          );
+          await expectProblem(
+            await request('/api/v1/servers/nope/oauth/tokens'),
+            404,
+            'not-found',
+          );
+        });
+      });
+
+      describe('DELETE', () => {
+        it('revokes tokens with 204, 409 off OAuth and 404 for an unknown server', async () => {
+          await createOAuthServer();
+
+          const revoked = await request(
+            '/api/v1/servers/weather/oauth/tokens',
+            { method: 'DELETE' },
+          );
+          expect(revoked.status).toBe(204);
+
+          await request('/api/v1/servers', {
+            method: 'POST',
+            json: { name: 'echo' },
+          });
+          await expectProblem(
+            await request('/api/v1/servers/echo/oauth/tokens', {
+              method: 'DELETE',
+            }),
+            409,
+            'conflict',
+          );
+          await expectProblem(
+            await request('/api/v1/servers/nope/oauth/tokens', {
+              method: 'DELETE',
+            }),
+            404,
+            'not-found',
+          );
+        });
+      });
+
+      describe('DELETE /{token}', () => {
+        it('revokes one token with 204, then answers 404', async () => {
+          await createOAuthServer();
+          const tokens = issueTokens();
+          const listed = oauthTokenListSchema.parse(
+            await (
+              await request('/api/v1/servers/weather/oauth/tokens')
+            ).json(),
+          ).items;
+          const access = listed.find(({ kind }) => kind === 'access')!;
+
+          const revoked = await request(
+            `/api/v1/servers/weather/oauth/tokens/${access.id}`,
+            { method: 'DELETE' },
+          );
+
+          expect(revoked.status).toBe(204);
+          expect(() => services.oauth.verify(tokens.access_token)).toThrow(
+            'Invalid or expired access token',
+          );
+          const remaining = oauthTokenListSchema.parse(
+            await (
+              await request('/api/v1/servers/weather/oauth/tokens')
+            ).json(),
+          ).items;
+          expect(remaining.map(({ kind }) => kind)).toEqual(['refresh']);
+          await expectProblem(
+            await request(`/api/v1/servers/weather/oauth/tokens/${access.id}`, {
+              method: 'DELETE',
+            }),
+            404,
+            'not-found',
+          );
+        });
+
+        it('answers 409 off OAuth and 404 for an unknown server', async () => {
+          await request('/api/v1/servers', {
+            method: 'POST',
+            json: { name: 'echo' },
+          });
+
+          await expectProblem(
+            await request('/api/v1/servers/echo/oauth/tokens/abc', {
+              method: 'DELETE',
+            }),
+            409,
+            'conflict',
+          );
+          await expectProblem(
+            await request('/api/v1/servers/nope/oauth/tokens/abc', {
+              method: 'DELETE',
+            }),
+            404,
+            'not-found',
+          );
+        });
       });
     });
   });
