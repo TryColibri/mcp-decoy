@@ -1,8 +1,6 @@
 name: Pull Request
 
 on:
-  # No `branches` filter: a stacked PR targets its parent branch, not `main`,
-  # and still needs its checks to run.
   pull_request:
     types: [opened, synchronize, reopened]
   workflow_dispatch: {}
