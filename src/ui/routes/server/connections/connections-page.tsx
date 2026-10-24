@@ -9,7 +9,7 @@ export function ConnectionsPage() {
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 p-6">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 p-6">
         <SessionsSection server={server} />
         <OAuthSection server={server} />
         {server.auth.mode === 'oauth' && <TokensSection server={server} />}

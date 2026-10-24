@@ -1,7 +1,8 @@
 import { type ServerSummary } from '@/shared/api';
 import { CopyButton } from '@/ui/components/copy-button';
 
-import { EditServerButton } from '../edit-server-button';
+import { OAuthSwitch } from './oauth-switch';
+import { RedirectURIsEditor } from './redirect-uris-editor';
 import { Section } from './section';
 
 /** Props of `OAuthSection`. */
@@ -11,23 +12,19 @@ export type OAuthSectionProps = {
 };
 
 /**
- * A server's OAuth settings, read-only: the pre-registered client's
- * credentials, its redirect URIs and the protected-resource metadata URL.
- * Editing happens in the Edit server dialog.
+ * A server's OAuth settings: the pre-registered client's credentials and the
+ * protected-resource metadata URL (read-only), and its redirect URIs
+ * (editable here). A switch in the heading turns OAuth on or off.
  */
 export function OAuthSection({ server }: OAuthSectionProps) {
   const { auth } = server;
 
   if (auth.mode === 'none') {
     return (
-      <Section
-        title="OAuth"
-        actions={
-          <EditServerButton server={server}>Enable OAuth</EditServerButton>
-        }
-      >
+      <Section title="OAuth" actions={<OAuthSwitch server={server} />}>
         <p className="m-0 text-sm/relaxed text-ink-600">
           This server is open: any client can connect without authenticating.
+          Turn on OAuth to require it.
         </p>
       </Section>
     );
@@ -36,12 +33,7 @@ export function OAuthSection({ server }: OAuthSectionProps) {
   const { clientId, clientSecret, redirectUris } = auth;
 
   return (
-    <Section
-      title="OAuth"
-      actions={
-        <EditServerButton server={server}>Edit OAuth settings</EditServerButton>
-      }
-    >
+    <Section title="OAuth" actions={<OAuthSwitch server={server} />}>
       <p className="m-0 text-sm/relaxed text-ink-600">
         The pre-registered client authenticates with{' '}
         <code className="font-mono">client_secret_post</code>. Dynamic Client
@@ -55,32 +47,12 @@ export function OAuthSection({ server }: OAuthSectionProps) {
         label="Protected-resource metadata"
         value={protectedResourceMetadataUrl(server.mcpUrl)}
       />
-      <RedirectURIs uris={redirectUris} />
+      <RedirectURIsEditor
+        key={redirectUris.join('\n')}
+        server={server.name}
+        uris={redirectUris}
+      />
     </Section>
-  );
-}
-
-type RedirectURIsProps = {
-  uris: string[];
-};
-
-function RedirectURIs({ uris }: RedirectURIsProps) {
-  if (uris.length === 0) {
-    return (
-      <div className="flex flex-col gap-1">
-        <FieldLabel>Redirect URIs</FieldLabel>
-        <p className="m-0 text-sm text-ink-600">
-          None — Dynamic Client Registration only
-        </p>
-      </div>
-    );
-  }
-  return (
-    <div className="flex flex-col gap-2">
-      {uris.map((uri) => (
-        <Field key={uri} label="Redirect URI" value={uri} />
-      ))}
-    </div>
   );
 }
 

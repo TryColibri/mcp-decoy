@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   closeSession: vi.fn(),
   revokeToken: vi.fn(),
   revokeTokens: vi.fn(),
+  patchServer: vi.fn(),
   fetchTokens: vi.fn<(server: string) => Promise<OAuthToken[]>>(),
 }));
 
@@ -36,9 +37,14 @@ vi.mock('@/ui/api', () => ({
     useSWR(enabled ? `servers/${server}/oauth/tokens` : null, async () =>
       mocks.fetchTokens(server),
     ),
+  ApiError: class extends Error {
+    fieldErrors = {};
+  },
+  unwrap: async (request: Promise<unknown>) => request,
   client: {
     servers: {
       ':server': {
+        $patch: mocks.patchServer,
         sessions: { ':session': { $delete: mocks.closeSession } },
         oauth: {
           tokens: {
@@ -130,12 +136,12 @@ describe('ConnectionsPage', () => {
   });
 
   describe('on an open server', () => {
-    it('offers to enable OAuth and shows no tokens section', () => {
+    it('has OAuth switched off and shows no tokens section', () => {
       renderPage(OPEN_SERVER);
 
       expect(
-        screen.getByRole('button', { name: 'Enable OAuth' }),
-      ).toBeVisible();
+        screen.getByRole('switch', { name: 'Require OAuth' }),
+      ).not.toBeChecked();
       expect(screen.queryByRole('heading', { name: 'Tokens' })).toBeNull();
       expect(mocks.fetchTokens).not.toHaveBeenCalled();
     });
@@ -144,6 +150,63 @@ describe('ConnectionsPage', () => {
       renderPage(OPEN_SERVER);
 
       expect(screen.getByText(/No live sessions/)).toBeVisible();
+    });
+  });
+
+  describe('the OAuth switch', () => {
+    it('turns OAuth on right away', async () => {
+      mocks.patchServer.mockResolvedValue({});
+      renderPage(OPEN_SERVER);
+
+      await userEvent.click(
+        screen.getByRole('switch', { name: 'Require OAuth' }),
+      );
+
+      expect(mocks.patchServer).toHaveBeenCalledExactlyOnceWith({
+        param: { server: 'weather' },
+        json: { auth: { mode: 'oauth' } },
+      });
+    });
+
+    it('asks before turning OAuth off', async () => {
+      mocks.patchServer.mockResolvedValue({});
+      renderPage(OAUTH_SERVER);
+      const user = userEvent.setup();
+
+      await user.click(screen.getByRole('switch', { name: 'Require OAuth' }));
+      expect(mocks.patchServer).not.toHaveBeenCalled();
+      await user.click(screen.getByRole('button', { name: 'Turn off OAuth' }));
+
+      expect(mocks.patchServer).toHaveBeenCalledExactlyOnceWith({
+        param: { server: 'weather' },
+        json: { auth: { mode: 'none' } },
+      });
+    });
+
+    it('leaves OAuth on when the confirmation is cancelled', async () => {
+      renderPage(OAUTH_SERVER);
+      const user = userEvent.setup();
+
+      await user.click(screen.getByRole('switch', { name: 'Require OAuth' }));
+      await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      expect(mocks.patchServer).not.toHaveBeenCalled();
+      expect(
+        screen.getByRole('switch', { name: 'Require OAuth' }),
+      ).toBeChecked();
+    });
+
+    it('shows the error when turning OAuth on fails', async () => {
+      mocks.patchServer.mockRejectedValue(new Error('Server is down'));
+      renderPage(OPEN_SERVER);
+
+      await userEvent.click(
+        screen.getByRole('switch', { name: 'Require OAuth' }),
+      );
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Server is down',
+      );
     });
   });
 
@@ -163,15 +226,82 @@ describe('ConnectionsPage', () => {
     });
   });
 
+  describe('redirect URIs', () => {
+    const withURIs: ServerSummary = {
+      ...OAUTH_SERVER,
+      auth: {
+        mode: 'oauth',
+        clientId: 'client-1',
+        clientSecret: 'secret-1',
+        redirectUris: ['http://localhost:9999/cb'],
+        tokenCount: 0,
+      },
+    };
+
+    it('starts from the current URIs and has nothing to save yet', () => {
+      renderPage(withURIs);
+
+      expect(screen.getByLabelText('Redirect URIs')).toHaveValue(
+        'http://localhost:9999/cb',
+      );
+      expect(
+        screen.getByRole('button', { name: 'Save redirect URIs' }),
+      ).toBeDisabled();
+    });
+
+    it('saves the edited list through the PATCH', async () => {
+      mocks.patchServer.mockResolvedValue({});
+      renderPage(withURIs);
+      const user = userEvent.setup();
+
+      await user.type(
+        screen.getByLabelText('Redirect URIs'),
+        '{Enter}http://localhost:8888/cb',
+      );
+      expect(screen.getByText(/Saving revokes every token/)).toBeVisible();
+      await user.click(
+        screen.getByRole('button', { name: 'Save redirect URIs' }),
+      );
+
+      expect(mocks.patchServer).toHaveBeenCalledExactlyOnceWith({
+        param: { server: 'weather' },
+        json: {
+          auth: {
+            mode: 'oauth',
+            redirectUris: [
+              'http://localhost:9999/cb',
+              'http://localhost:8888/cb',
+            ],
+          },
+        },
+      });
+    });
+
+    it('shows the error when saving fails', async () => {
+      mocks.patchServer.mockRejectedValue(new Error('Server is down'));
+      renderPage(withURIs);
+      const user = userEvent.setup();
+
+      await user.type(screen.getByLabelText('Redirect URIs'), 'x');
+      await user.click(
+        screen.getByRole('button', { name: 'Save redirect URIs' }),
+      );
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Server is down',
+      );
+    });
+  });
+
   describe('on an OAuth server', () => {
-    it('shows the credentials read-only and lists every token', async () => {
+    it('shows the credentials and lists every token', async () => {
       renderPage(OAUTH_SERVER);
 
       expect(screen.getByText('client-1')).toBeVisible();
       expect(screen.getByText('secret-1')).toBeVisible();
       expect(
-        screen.getByRole('button', { name: 'Edit OAuth settings' }),
-      ).toBeVisible();
+        screen.getByRole('switch', { name: 'Require OAuth' }),
+      ).toBeChecked();
       const rows = await screen.findAllByRole('row');
       expect(rows).toHaveLength(3);
       expect(within(rows[1]).getByText('Access')).toBeVisible();

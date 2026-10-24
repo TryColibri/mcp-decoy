@@ -251,9 +251,11 @@ authorization-server router.
 - The **Connections** tab lists every live access and refresh token with its
   client, scopes and expiry. Click **Revoke** on a row to invalidate one token,
   or **Revoke all** to invalidate all of them. The client's next request gets a
-  `401` and must re-authorize. To change the redirect URIs or turn OAuth off,
-  use **Edit OAuth settings**. Switching a server's authentication closes its
-  live sessions.
+  `401` and must re-authorize. Edit the pre-registered client's redirect URIs in
+  the same tab. Use the **Require OAuth** switch to turn OAuth on or off.
+  Changing the redirect URIs or the authentication revokes every token and
+  closes the server's live sessions. Turning OAuth off also deletes the client
+  credentials.
 - The **Logs** tab interleaves OAuth HTTP exchanges with JSON-RPC traffic, so
   you can watch the whole handshake in one place.
 
