@@ -14,9 +14,6 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
-      # Trusted publishing: npm exchanges this OIDC token for a publish
-      # credential, so no npm token is stored. The trusted publisher on npmjs.com
-      # must name this repository and the `main.yml` workflow.
       id-token: write
     steps:
       - uses: actions/checkout@v7
@@ -28,5 +25,4 @@ jobs:
         with:
           node-version-file: .nvmrc
           registry-url: https://registry.npmjs.org
-      # `prepack` runs `pnpm build`, so the tarball is built from the tag.
       - run: npm publish

@@ -1,8 +1,6 @@
 name: Pull Request Title
 
 on:
-  # No `branches` filter: every PR in a stack is squashed into its own commit,
-  # so every title must be a Conventional Commit.
   pull_request:
     types: [opened, edited, synchronize, reopened]
 

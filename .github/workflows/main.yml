@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
 
-# Never cancel a run in flight: it may be halfway through a release.
 concurrency:
   group: main
   cancel-in-progress: false
