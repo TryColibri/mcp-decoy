@@ -2,11 +2,13 @@ import { Hono } from 'hono';
 
 import { type LogsService } from '@/server/logs';
 import { type SessionManager } from '@/server/mcp';
+import { type OAuthStore } from '@/server/oauth';
 import { type ServersService } from '@/server/servers';
 import { type ToolsService } from '@/server/tools';
 import { type InstanceInfo, instanceInfoSchema } from '@/shared/api';
 
 import { createLogsRoutes } from './logs';
+import { createOAuthRoutes } from './oauth';
 import { createErrorHandler, notFoundHandler } from './problems';
 import { createServersRoutes } from './servers';
 import { createSessionsRoutes } from './sessions';
@@ -26,6 +28,8 @@ export type ApiDeps = {
   sessions: SessionManager;
   /** The logs service. */
   logs: LogsService;
+  /** The OAuth store. */
+  oauth: OAuthStore;
   /** Called once with unexpected errors before answering 500. */
   onUnexpectedError: (error: unknown) => void;
 };
@@ -42,6 +46,7 @@ export function createApiV1({
   tools,
   sessions,
   logs,
+  oauth,
   onUnexpectedError,
 }: ApiDeps) {
   const app = new Hono()
@@ -49,7 +54,8 @@ export function createApiV1({
     .route('/servers', createServersRoutes(servers))
     .route('/servers', createToolsRoutes(tools))
     .route('/servers', createSessionsRoutes(sessions))
-    .route('/servers', createLogsRoutes(logs));
+    .route('/servers', createLogsRoutes(logs))
+    .route('/servers', createOAuthRoutes({ servers, oauth }));
   app.onError(createErrorHandler(onUnexpectedError));
   app.notFound(notFoundHandler);
   return app;

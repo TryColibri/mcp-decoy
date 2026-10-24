@@ -11,10 +11,12 @@ import {
   type LogStore,
 } from '@/server/logs';
 import {
+  type Capture,
   createCapture,
   createSessionManager,
   type SessionManager,
 } from '@/server/mcp';
+import { createOAuthStore, type OAuthStore } from '@/server/oauth';
 import {
   createServerRepository,
   createServersService,
@@ -47,10 +49,16 @@ export type Services = {
   tools: ToolsService;
   /** MCP sessions and the Streamable HTTP entry point. */
   sessions: SessionManager;
+  /** Every server's persisted definition, in creation order. */
+  listServerConfigs: () => readonly ServerConfig[];
+  /** Records JSON-RPC messages and OAuth HTTP exchanges. */
+  capture: Capture;
   /** The raw log store. */
   store: LogStore;
   /** The logs service. */
   logs: LogsService;
+  /** The OAuth store, shared by every mock server on this instance. */
+  oauth: OAuthStore;
   /** The `/api/v1` app. */
   api: ApiV1;
 };
@@ -73,19 +81,26 @@ export function createServices({
   const store = createRingBufferLogStore(logLimit);
 
   const tools = createToolsService({ repository, events });
+  const capture = createCapture(store);
   const sessions = createSessionManager({
     findServer: (name) => repository.find(name),
     serverNames: () => repository.list().map((server) => server.name),
     listPublishedTools: (server) => tools.listPublished(server),
-    capture: createCapture(store),
+    capture,
     events,
     onError,
+  });
+  const oauth = createOAuthStore({
+    findServer: (server) => repository.find(server),
+    listServers: () => repository.list(),
+    events,
   });
   const servers = createServersService({
     repository,
     events,
     sessionCount: (server) => sessions.count(server),
     mcpUrl: (server) => instance().mcp.urlTemplate.replace('{server}', server),
+    tokenCount: (server) => oauth.tokenCount(server),
   });
   events.on('serverRenamed', ({ from, to }) => {
     store.rename(from, to);
@@ -102,8 +117,20 @@ export function createServices({
     tools,
     sessions,
     logs,
+    oauth,
     onUnexpectedError: onError,
   });
 
-  return { events, servers, tools, sessions, store, logs, api };
+  return {
+    events,
+    servers,
+    tools,
+    sessions,
+    listServerConfigs: () => repository.list(),
+    capture,
+    store,
+    logs,
+    oauth,
+    api,
+  };
 }

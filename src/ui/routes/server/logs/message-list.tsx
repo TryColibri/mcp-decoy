@@ -36,6 +36,7 @@ const tagStyles: Record<LogTag, string> = {
   notify: tw`bg-paper-100 text-ink-700`,
   error: tw`bg-red-50 text-red-800`,
   invalid: tw`bg-red-50 text-red-800`,
+  http: tw`bg-purple-50 text-purple-900`,
 };
 
 /** How far before the end of the list older entries start loading. */

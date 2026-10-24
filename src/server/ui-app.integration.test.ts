@@ -134,6 +134,7 @@ describe('uiApp', () => {
         toolCount: 0,
         publishedToolCount: 0,
         sessionCount: 0,
+        auth: { mode: 'none' },
       });
       expect(persist).toHaveBeenCalledTimes(1);
 
@@ -259,6 +260,97 @@ describe('uiApp', () => {
       await expectProblem(await request('/api/v1/nope'), 404, 'not-found');
       await expectProblem(await request('/api/v2'), 404, 'not-found');
     });
+
+    describe('auth', () => {
+      beforeEach(async () => {
+        await request('/api/v1/servers', {
+          method: 'POST',
+          json: { name: 'weather' },
+        });
+      });
+
+      it('switches a server to OAuth and back', async () => {
+        const toOAuth = await request('/api/v1/servers/weather', {
+          method: 'PATCH',
+          json: {
+            auth: {
+              mode: 'oauth',
+              redirectUris: ['http://localhost:9999/cb'],
+            },
+          },
+        });
+        expect(toOAuth.status).toBe(200);
+        const summary = serverSummarySchema.parse(await toOAuth.json());
+        expect(summary.auth).toMatchObject({
+          mode: 'oauth',
+          clientId: expect.any(String),
+          clientSecret: expect.any(String),
+          redirectUris: ['http://localhost:9999/cb'],
+          tokenCount: 0,
+        });
+
+        const toNone = await request('/api/v1/servers/weather', {
+          method: 'PATCH',
+          json: { auth: { mode: 'none' } },
+        });
+        expect(serverSummarySchema.parse(await toNone.json()).auth).toEqual({
+          mode: 'none',
+        });
+      });
+
+      it('answers 422 for a redirect URI that is not an absolute URL', async () => {
+        await expectProblem(
+          await request('/api/v1/servers/weather', {
+            method: 'PATCH',
+            json: { auth: { mode: 'oauth', redirectUris: ['not-a-url'] } },
+          }),
+          422,
+          'validation',
+        );
+      });
+    });
+
+    describe('oauth/tokens', () => {
+      it('revokes tokens with 204, 409 off OAuth and 404 for an unknown server', async () => {
+        await request('/api/v1/servers', {
+          method: 'POST',
+          json: { name: 'weather' },
+        });
+        await request('/api/v1/servers/weather', {
+          method: 'PATCH',
+          json: {
+            auth: {
+              mode: 'oauth',
+              redirectUris: ['http://localhost:9999/cb'],
+            },
+          },
+        });
+
+        const revoked = await request('/api/v1/servers/weather/oauth/tokens', {
+          method: 'DELETE',
+        });
+        expect(revoked.status).toBe(204);
+
+        await request('/api/v1/servers', {
+          method: 'POST',
+          json: { name: 'echo' },
+        });
+        await expectProblem(
+          await request('/api/v1/servers/echo/oauth/tokens', {
+            method: 'DELETE',
+          }),
+          409,
+          'conflict',
+        );
+        await expectProblem(
+          await request('/api/v1/servers/nope/oauth/tokens', {
+            method: 'DELETE',
+          }),
+          404,
+          'not-found',
+        );
+      });
+    });
   });
 
   describe('tools', () => {
@@ -377,7 +469,13 @@ describe('uiApp', () => {
 
   describe('sessions and logs', () => {
     const connect = async () => {
-      const mcpApp = createMCPApp(services.sessions);
+      const mcpApp = createMCPApp({
+        sessions: services.sessions,
+        oauth: services.oauth,
+        findServer: (name) => services.servers.findConfig(name),
+        listServers: services.listServerConfigs,
+        capture: services.capture,
+      });
       const client = new Client({ name: 'test-client', version: '1.0.0' });
       const transport = new StreamableHTTPClientTransport(
         new URL('http://localhost:6280/s/weather/mcp'),
