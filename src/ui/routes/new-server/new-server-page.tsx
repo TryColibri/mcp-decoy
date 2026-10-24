@@ -32,7 +32,6 @@ export function NewServerPage() {
     version: '',
     instructions: '',
     authMode: 'none',
-    redirectUris: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [serverErrors, setServerErrors] = useState<

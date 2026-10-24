@@ -4,4 +4,5 @@ export {
   type OAuthAuthInfo,
   type OAuthStore,
   type OAuthStoreDeps,
+  type OAuthTokenInfo,
 } from './store';

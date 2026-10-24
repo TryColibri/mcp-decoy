@@ -5,8 +5,6 @@ import { twMerge } from 'tailwind-merge';
 export type SessionsPillProps = Omit<ComponentProps<'span'>, 'children'> & {
   /** Number of live MCP sessions. */
   count: number;
-  /** Spell out "live sessions" instead of "live". */
-  long?: boolean;
 };
 
 /**
@@ -15,13 +13,11 @@ export type SessionsPillProps = Omit<ComponentProps<'span'>, 'children'> & {
  */
 export function SessionsPill({
   count,
-  long = false,
   className,
   ...props
 }: SessionsPillProps) {
   const live = count > 0;
-  const noun = count === 1 ? 'live session' : 'live sessions';
-  const text = long ? `${count} ${noun}` : live ? `${count} live` : '0';
+  const text = live ? `${count} live` : '0';
   return (
     <span
       {...props}

@@ -409,6 +409,172 @@ describe('OAuthStore', () => {
     });
   });
 
+  describe('listTokens', () => {
+    const issue = (client: OAuthClientInformationFull, server: string) => {
+      const requestId = store.beginConsent(client, {
+        codeChallenge: 'challenge',
+        redirectUri: client.redirect_uris[0],
+        resource: resourceOf(server),
+      });
+      const redirect = store.decide(requestId, true, 'http://localhost:6281')!;
+      const code = new URL(redirect).searchParams.get('code')!;
+      return store.exchangeAuthorizationCode(client, code);
+    };
+
+    it('lists access and refresh tokens with their client and expiry', () => {
+      const client = registerDCRClient();
+      const tokens = issue(client, OAUTH_SERVER.name);
+
+      expect(store.listTokens(OAUTH_SERVER.name)).toEqual([
+        {
+          id: expect.any(String),
+          kind: 'access',
+          value: tokens.access_token,
+          clientId: client.client_id,
+          clientName: 'Claude',
+          scopes: [],
+          issuedAt: 1792756800,
+          expiresAt: 1792756800 + 3600,
+        },
+        {
+          id: expect.any(String),
+          kind: 'refresh',
+          value: tokens.refresh_token,
+          clientId: client.client_id,
+          clientName: 'Claude',
+          scopes: [],
+          issuedAt: 1792756800,
+          expiresAt: null,
+        },
+      ]);
+    });
+
+    it('names a pre-registered client', () => {
+      const client = store.getClient('preregistered-client')!;
+      issue(client, OAUTH_SERVER.name);
+
+      expect(
+        store.listTokens(OAUTH_SERVER.name).map((token) => token.clientName),
+      ).toEqual(['weather (pre-registered)', 'weather (pre-registered)']);
+    });
+
+    it('lists the newest tokens first', () => {
+      const client = registerDCRClient();
+      const first = issue(client, OAUTH_SERVER.name);
+      vi.advanceTimersByTime(1000);
+      const second = issue(client, OAUTH_SERVER.name);
+
+      expect(
+        store.listTokens(OAUTH_SERVER.name).map((token) => token.value),
+      ).toEqual([
+        second.access_token,
+        second.refresh_token,
+        first.access_token,
+        first.refresh_token,
+      ]);
+    });
+
+    it('leaves out expired access tokens but keeps refresh tokens', () => {
+      const client = registerDCRClient();
+      const tokens = issue(client, OAUTH_SERVER.name);
+
+      vi.advanceTimersByTime(60 * 60 * 1000);
+
+      expect(
+        store.listTokens(OAUTH_SERVER.name).map((token) => token.value),
+      ).toEqual([tokens.refresh_token]);
+    });
+
+    it('only lists the tokens of the server', () => {
+      servers.set('forecast', {
+        ...OAUTH_SERVER,
+        name: 'forecast',
+        auth: { ...OAUTH_SERVER.auth!, clientId: 'forecast-client' },
+      });
+      const client = registerDCRClient();
+      issue(client, 'forecast');
+
+      expect(store.listTokens(OAUTH_SERVER.name)).toEqual([]);
+      expect(store.listTokens('forecast')).toHaveLength(2);
+    });
+
+    it('gives each token its own ID', () => {
+      issue(registerDCRClient(), OAUTH_SERVER.name);
+
+      const ids = store.listTokens(OAUTH_SERVER.name).map(({ id }) => id);
+
+      expect(new Set(ids).size).toBe(2);
+    });
+  });
+
+  describe('revokeToken', () => {
+    const issue = () => {
+      const client = registerDCRClient();
+      const requestId = store.beginConsent(client, {
+        codeChallenge: 'challenge',
+        redirectUri: client.redirect_uris[0],
+        resource: resourceOf(OAUTH_SERVER.name),
+      });
+      const redirect = store.decide(requestId, true, 'http://localhost:6281')!;
+      const code = new URL(redirect).searchParams.get('code')!;
+      return {
+        client,
+        tokens: store.exchangeAuthorizationCode(client, code),
+      };
+    };
+
+    it('revokes an access token by ID', () => {
+      const { tokens } = issue();
+      const access = store
+        .listTokens(OAUTH_SERVER.name)
+        .find(({ kind }) => kind === 'access')!;
+
+      expect(store.revokeToken(OAUTH_SERVER.name, access.id)).toBe(true);
+
+      expect(() => store.verify(tokens.access_token)).toThrow(
+        InvalidTokenError,
+      );
+      expect(store.tokenCount(OAUTH_SERVER.name)).toBe(1);
+    });
+
+    it('revokes a refresh token by ID', () => {
+      const { client, tokens } = issue();
+      const refresh = store
+        .listTokens(OAUTH_SERVER.name)
+        .find(({ kind }) => kind === 'refresh')!;
+
+      expect(store.revokeToken(OAUTH_SERVER.name, refresh.id)).toBe(true);
+
+      expect(() =>
+        store.exchangeRefreshToken(client, tokens.refresh_token!),
+      ).toThrow(InvalidGrantError);
+      expect(store.tokenCount(OAUTH_SERVER.name)).toBe(1);
+    });
+
+    it('returns false for an unknown ID', () => {
+      issue();
+
+      expect(store.revokeToken(OAUTH_SERVER.name, 'nope')).toBe(false);
+      expect(store.tokenCount(OAUTH_SERVER.name)).toBe(2);
+    });
+
+    it('returns false for an ID that belongs to another server', () => {
+      const { tokens } = issue();
+      const [token] = store.listTokens(OAUTH_SERVER.name);
+
+      expect(store.revokeToken('forecast', token.id)).toBe(false);
+      expect(store.verify(tokens.access_token).token).toBe(tokens.access_token);
+    });
+
+    it('returns false the second time', () => {
+      issue();
+      const [token] = store.listTokens(OAUTH_SERVER.name);
+
+      expect(store.revokeToken(OAUTH_SERVER.name, token.id)).toBe(true);
+      expect(store.revokeToken(OAUTH_SERVER.name, token.id)).toBe(false);
+    });
+  });
+
   describe.each([
     ['serverAuthChanged' as const, { server: OAUTH_SERVER.name }],
     ['serverDeleted' as const, { server: OAUTH_SERVER.name }],

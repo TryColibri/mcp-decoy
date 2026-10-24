@@ -41,8 +41,6 @@ const valuesOf = (server: ServerSummary): ServerFormValues => ({
   version: server.serverInfo.version,
   instructions: server.instructions ?? '',
   authMode: server.auth.mode,
-  redirectUris:
-    server.auth.mode === 'oauth' ? server.auth.redirectUris.join('\n') : '',
 });
 
 /** The fields that differ from `server`, as an update request. */
@@ -55,10 +53,7 @@ const changesOf = (
     ...(values.infoName === before.infoName ? {} : { name: values.infoName }),
     ...(values.version === before.version ? {} : { version: values.version }),
   };
-  const authChanged =
-    values.authMode !== before.authMode ||
-    (values.authMode === 'oauth' &&
-      values.redirectUris !== before.redirectUris);
+  const authChanged = values.authMode !== before.authMode;
   return {
     ...(values.name === before.name ? {} : { name: values.name }),
     ...(Object.keys(serverInfo).length === 0 ? {} : { serverInfo }),

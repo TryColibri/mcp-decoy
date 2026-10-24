@@ -3,6 +3,7 @@ import useSWR, { type SWRConfiguration } from 'swr';
 import {
   type FieldError,
   type InstanceInfo,
+  type OAuthToken,
   type Problem,
   problemSchema,
   type ServerSummary,
@@ -107,6 +108,7 @@ export const keys = {
   tools: (server: string) => `servers/${server}/tools`,
   sessions: (server: string) => `servers/${server}/sessions`,
   logs: (server: string) => `servers/${server}/logs`,
+  oauthTokens: (server: string) => `servers/${server}/oauth/tokens`,
 } as const;
 
 /** Live session counts refresh this often. */
@@ -161,5 +163,22 @@ export function useSessions(server: string, config?: SWRConfiguration) {
         )
       ).items,
     { refreshInterval: POLL_MS, ...config },
+  );
+}
+
+/**
+ * `GET /api/v1/servers/{server}/oauth/tokens`, polled. Pass `enabled: false`
+ * for a server that isn't on OAuth, which would answer 409.
+ */
+export function useOAuthTokens(server: string, enabled: boolean) {
+  return useSWR<OAuthToken[], ApiError>(
+    enabled ? keys.oauthTokens(server) : null,
+    async () =>
+      (
+        await unwrap(
+          client.servers[':server'].oauth.tokens.$get({ param: { server } }),
+        )
+      ).items,
+    { refreshInterval: POLL_MS },
   );
 }

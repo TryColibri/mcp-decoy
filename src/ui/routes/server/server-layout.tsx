@@ -1,11 +1,10 @@
 import { AlertDialog } from '@base-ui/react/alert-dialog';
-import { PencilSimpleIcon, TrashIcon } from '@phosphor-icons/react';
-import { useState } from 'react';
+import { TrashIcon } from '@phosphor-icons/react';
+import { type ReactNode, useState } from 'react';
 import {
   Link,
   NavLink,
   Outlet,
-  useLocation,
   useNavigate,
   useOutletContext,
   useParams,
@@ -16,11 +15,9 @@ import { twMerge } from 'tailwind-merge';
 import { type ServerSummary } from '@/shared/api';
 import { client, keys, unwrapEmpty, useServer } from '@/ui/api';
 import { Button, ButtonLink, buttonClasses } from '@/ui/components/button';
-import { EditServerDialog } from '@/ui/components/edit-server-dialog';
 import { EndpointPill } from '@/ui/components/endpoint-pill';
-import { SessionsPill } from '@/ui/components/sessions-pill';
 
-import { OAuthPopover } from './oauth-popover';
+import { EditServerButton } from './edit-server-button';
 
 /** What the server layout hands to its tabs. */
 export type ServerOutletContext = {
@@ -33,7 +30,7 @@ export function useServerContext(): ServerOutletContext {
   return useOutletContext<ServerOutletContext>();
 }
 
-/** `/servers/:server/*`: header, edit and delete actions and the Logs | Tools tabs. */
+/** `/servers/:server/*`: header, edit and delete actions and the Logs | Tools | Connections tabs. */
 export function ServerLayout() {
   const { server: name = '' } = useParams();
   const { data: server, error } = useServer(name);
@@ -66,14 +63,16 @@ export function ServerLayout() {
             {server.name}
           </h1>
           <EndpointPill url={server.mcpUrl} />
-          <OAuthPopover server={server} />
-          <SessionsPill count={server.sessionCount} long />
           <div className="ml-auto flex gap-3">
-            <EditServerButton server={server} />
+            <EditServerButton server={server}>Edit server</EditServerButton>
             <DeleteServerButton name={server.name} />
           </div>
         </div>
         <nav aria-label="Server" className="flex gap-5">
+          <Tab to="connections">
+            Connections
+            <SessionCount count={server.sessionCount} />
+          </Tab>
           <Tab to="logs">Logs</Tab>
           <Tab to="tools">Tools</Tab>
         </nav>
@@ -85,7 +84,7 @@ export function ServerLayout() {
 
 type TabProps = {
   to: string;
-  children: string;
+  children: ReactNode;
 };
 
 function Tab({ to, children }: TabProps) {
@@ -106,48 +105,20 @@ function Tab({ to, children }: TabProps) {
   );
 }
 
-type EditServerButtonProps = {
-  server: ServerSummary;
+type SessionCountProps = {
+  count: number;
 };
 
-function EditServerButton({ server }: EditServerButtonProps) {
-  const navigate = useNavigate();
-  const { pathname, search } = useLocation();
-  const [editing, setEditing] = useState(false);
-
-  // A rename moves every tab of the server to the new URL.
-  const follow = (updated: ServerSummary, previousName: string) => {
-    if (updated.name !== previousName) {
-      const prefix = `/servers/${previousName}`;
-      void navigate(
-        `/servers/${updated.name}${pathname.slice(prefix.length)}${search}`,
-        { replace: true },
-      );
-    }
-  };
-
+/** The live-session count in the Connections tab, hidden when there is none. */
+function SessionCount({ count }: SessionCountProps) {
+  if (count === 0) {
+    return null;
+  }
   return (
-    <>
-      <Button
-        variant="secondary"
-        size="small"
-        onClick={() => {
-          setEditing(true);
-        }}
-      >
-        <PencilSimpleIcon size={14} aria-hidden="true" />
-        Edit server
-      </Button>
-      {editing && (
-        <EditServerDialog
-          server={server}
-          onSaved={follow}
-          onClose={() => {
-            setEditing(false);
-          }}
-        />
-      )}
-    </>
+    <span className="ml-1.5 rounded-full bg-paper-100 px-1.5 text-xs font-medium text-ink-600">
+      <span className="sr-only">Live sessions: </span>
+      {count}
+    </span>
   );
 }
 
