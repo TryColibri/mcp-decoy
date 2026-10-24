@@ -16,6 +16,7 @@ const SERVER: ServerSummary = {
   toolCount: 0,
   publishedToolCount: 0,
   sessionCount: 0,
+  auth: { mode: 'none' },
 };
 
 const OTHER: ServerSummary = { ...SERVER, name: 'echo' };
@@ -148,6 +149,38 @@ describe('EditServerDialog', () => {
       'Version is required',
     );
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('sends the auth radio and redirect URIs in the PATCH', async () => {
+    const updated: ServerSummary = {
+      ...SERVER,
+      auth: {
+        mode: 'oauth',
+        clientId: 'abc',
+        clientSecret: 'def',
+        redirectUris: ['http://localhost:9999/cb'],
+        tokenCount: 0,
+      },
+    };
+    patch.mockReturnValueOnce(json(200, updated));
+    const { onClose, onSaved } = renderDialog();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('radio', { name: 'OAuth 2.1' }));
+    await user.type(
+      screen.getByLabelText('Pre-registered client redirect URIs'),
+      'http://localhost:9999/cb',
+    );
+    expect(
+      screen.getByText(/Changing authentication closes live sessions/),
+    ).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(patch).toHaveBeenCalledExactlyOnceWith({
+      auth: { mode: 'oauth', redirectUris: ['http://localhost:9999/cb'] },
+    });
+    expect(onSaved).toHaveBeenCalledExactlyOnceWith(updated, 'weather');
+    expect(onClose).toHaveBeenCalledOnce();
   });
 
   it('closes on Cancel without calling the API', async () => {

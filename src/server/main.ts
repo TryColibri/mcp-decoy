@@ -113,21 +113,28 @@ export async function start({
 
   // Ports are only known once listening (they may be 0).
   const ready: { info?: InstanceInfo } = {};
-  const { servers, sessions, api, events } = createServices({
-    initial,
-    persist,
-    logLimit,
-    instance: () => {
-      if (ready.info === undefined) {
-        throw new Error('MCP Decoy is still starting');
-      }
-      return ready.info;
-    },
-    onError,
-  });
+  const { servers, sessions, listServerConfigs, capture, oauth, api, events } =
+    createServices({
+      initial,
+      persist,
+      logLimit,
+      instance: () => {
+        if (ready.info === undefined) {
+          throw new Error('MCP Decoy is still starting');
+        }
+        return ready.info;
+      },
+      onError,
+    });
 
   const mcpListener = await listen({
-    fetch: createMCPApp(sessions).fetch,
+    fetch: createMCPApp({
+      sessions,
+      oauth,
+      findServer: (name) => servers.findConfig(name),
+      listServers: listServerConfigs,
+      capture,
+    }).fetch,
     port: mcpPort,
     hostname: host,
     flag: '--mcp-port',

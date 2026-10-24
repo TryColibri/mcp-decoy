@@ -15,6 +15,7 @@ const SERVER: ServerSummary = {
   toolCount: 1,
   publishedToolCount: 1,
   sessionCount: 2,
+  auth: { mode: 'none' },
 };
 
 const TOOL: Tool = {

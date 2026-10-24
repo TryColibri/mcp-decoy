@@ -60,7 +60,36 @@ describe('tagOf', () => {
     expect(tagOf(initialized)).toBe('result');
     expect(tagOf(entry({ kind: 'notification', raw: '{}' }))).toBe('notify');
   });
+
+  it('names OAuth exchanges "http"', () => {
+    expect(tagOf(entry({ kind: 'http', raw: '{}' }))).toBe('http');
+  });
 });
+
+const httpExchange = (
+  requestMethod: string,
+  response: {
+    status: number;
+    headers?: Record<string, string>;
+    body?: unknown;
+  },
+) =>
+  entry({
+    kind: 'http',
+    method: requestMethod,
+    raw: JSON.stringify({
+      request: {
+        method: requestMethod,
+        url: `http://localhost:6280${requestMethod.split(' ')[1]}`,
+        headers: {},
+      },
+      response: {
+        status: response.status,
+        headers: response.headers ?? {},
+        body: response.body,
+      },
+    }),
+  });
 
 describe('noteOf', () => {
   it('summarizes common messages', () => {
@@ -94,6 +123,44 @@ describe('noteOf', () => {
     expect(noteOf(entry({ kind: 'invalid', raw: '{nope' }))).toBe(
       'not JSON-RPC',
     );
+  });
+
+  it('summarizes http exchanges', () => {
+    expect(
+      noteOf(
+        httpExchange('POST /mcp', {
+          status: 401,
+          body: { error: 'invalid_token' },
+        }),
+      ),
+    ).toBe('401 invalid_token');
+    expect(noteOf(httpExchange('GET /authorize', { status: 200 }))).toBe(
+      '200 consent page',
+    );
+    expect(
+      noteOf(
+        httpExchange('POST /consent/abc', {
+          status: 302,
+          headers: { location: 'http://cb?code=xyz&state=s' },
+        }),
+      ),
+    ).toBe('302 approved');
+    expect(
+      noteOf(
+        httpExchange('POST /consent/abc', {
+          status: 302,
+          headers: { location: 'http://cb?error=access_denied' },
+        }),
+      ),
+    ).toBe('302 denied');
+    expect(
+      noteOf(
+        httpExchange('POST /register', {
+          status: 201,
+          body: { client_name: 'Claude' },
+        }),
+      ),
+    ).toBe('201 client "Claude"');
   });
 });
 

@@ -38,6 +38,30 @@ export const serverInfoSchema: z.ZodType<ServerInfo> = z.strictObject({
     .describe('Implementation version.'),
 });
 
+/** A server's pre-registered OAuth client, persisted in `servers.json`. */
+export type ServerAuthConfig = {
+  /** Only mode supported: OAuth 2.1. */
+  mode: 'oauth';
+  /** Pre-registered client ID. */
+  clientId: string;
+  /** Pre-registered client secret (`client_secret_post` only). */
+  clientSecret: string;
+  /** Redirect URIs the pre-registered client may use. */
+  redirectUris: string[];
+};
+
+export const serverAuthConfigSchema: z.ZodType<ServerAuthConfig> =
+  z.strictObject({
+    mode: z.literal('oauth').describe('Only mode supported: OAuth 2.1.'),
+    clientId: z.string().describe('Pre-registered client ID.'),
+    clientSecret: z
+      .string()
+      .describe('Pre-registered client secret (`client_secret_post` only).'),
+    redirectUris: z
+      .array(z.url())
+      .describe('Redirect URIs the pre-registered client may use.'),
+  });
+
 /** A persisted mock MCP server. */
 export type ServerConfig = {
   /** URL slug, unique: /^[a-z0-9]+(?:-[a-z0-9]+)*$/, 1–64 chars. */
@@ -48,6 +72,8 @@ export type ServerConfig = {
   instructions?: string;
   /** Tool definitions, drafts included. */
   tools: ToolConfig[];
+  /** OAuth protection. Absent means the server is open. */
+  auth?: ServerAuthConfig;
   /** Creation time, ISO 8601. */
   createdAt: string;
 };
@@ -64,8 +90,41 @@ export const serverConfigSchema: z.ZodType<ServerConfig> = z.strictObject({
   tools: z
     .array(toolConfigSchema)
     .describe('Tool definitions, drafts included.'),
+  auth: serverAuthConfigSchema
+    .optional()
+    .describe('OAuth protection. Absent means the server is open.'),
   createdAt: z.iso.datetime().describe('Creation time, ISO 8601.'),
 });
+
+/** A server's authentication state, as returned to the UI. */
+export type ServerAuthSummary =
+  | { mode: 'none' }
+  | {
+      mode: 'oauth';
+      clientId: string;
+      clientSecret: string;
+      redirectUris: string[];
+      tokenCount: number;
+    };
+
+export const serverAuthSummarySchema: z.ZodType<ServerAuthSummary> =
+  z.discriminatedUnion('mode', [
+    z.strictObject({ mode: z.literal('none') }),
+    z.strictObject({
+      mode: z.literal('oauth'),
+      clientId: z.string().describe('Pre-registered client ID.'),
+      clientSecret: z
+        .string()
+        .describe('Pre-registered client secret (`client_secret_post` only).'),
+      redirectUris: z
+        .array(z.url())
+        .describe('Redirect URIs the pre-registered client may use.'),
+      tokenCount: z
+        .number()
+        .int()
+        .describe('Number of live access and refresh tokens.'),
+    }),
+  ]);
 
 /** A server as returned by `GET /api/v1/servers` and `GET /api/v1/servers/{server}`. */
 export type ServerSummary = {
@@ -85,6 +144,8 @@ export type ServerSummary = {
   publishedToolCount: number;
   /** Number of live MCP sessions. */
   sessionCount: number;
+  /** Authentication state. `{ mode: 'none' }` means the server is open. */
+  auth: ServerAuthSummary;
 };
 
 export const serverSummarySchema: z.ZodType<ServerSummary> = z.strictObject({
@@ -104,6 +165,9 @@ export const serverSummarySchema: z.ZodType<ServerSummary> = z.strictObject({
     .int()
     .describe('Number of published tools, the ones clients see.'),
   sessionCount: z.number().int().describe('Number of live MCP sessions.'),
+  auth: serverAuthSummarySchema.describe(
+    "Authentication state. `{ mode: 'none' }` means the server is open.",
+  ),
 });
 
 /** Response body of `GET /api/v1/servers`. */
@@ -118,6 +182,27 @@ export const serverListSchema: z.ZodType<ServerList> = z.strictObject({
     .describe('Every server, in creation order.'),
 });
 
+/**
+ * Requested authentication state of a server. With no redirect URIs, the
+ * pre-registered client isn't offered; Dynamic Client Registration still
+ * works.
+ */
+export type ServerAuthInput =
+  | { mode: 'none' }
+  | { mode: 'oauth'; redirectUris?: string[] };
+
+export const serverAuthInputSchema: z.ZodType<ServerAuthInput> =
+  z.discriminatedUnion('mode', [
+    z.strictObject({ mode: z.literal('none') }),
+    z.strictObject({
+      mode: z.literal('oauth'),
+      redirectUris: z
+        .array(z.url('Each redirect URI must be an absolute URL'))
+        .optional()
+        .describe("Pre-registered client's redirect URIs. Absent: DCR only."),
+    }),
+  ]);
+
 /** Request body of `POST /api/v1/servers`. */
 export type CreateServerRequest = {
   /** URL slug of the new server. */
@@ -126,6 +211,8 @@ export type CreateServerRequest = {
   serverInfo?: Partial<ServerInfo>;
   /** Optional `instructions` in the `initialize` result. Empty means none. */
   instructions?: string;
+  /** Authentication state. Defaults to `{ mode: 'none' }`. */
+  auth?: ServerAuthInput;
 };
 
 export const createServerRequestSchema: z.ZodType<CreateServerRequest> =
@@ -146,6 +233,9 @@ export const createServerRequestSchema: z.ZodType<CreateServerRequest> =
       .describe(
         'Optional `instructions` in the `initialize` result. Empty means none.',
       ),
+    auth: serverAuthInputSchema
+      .optional()
+      .describe("Authentication state. Defaults to `{ mode: 'none' }`."),
   });
 
 /** Request body of `PATCH /api/v1/servers/{server}`. Omitted fields keep their value. */
@@ -159,6 +249,13 @@ export type UpdateServerRequest = {
   serverInfo?: Partial<ServerInfo>;
   /** New `instructions` in the `initialize` result. Empty removes them. */
   instructions?: string;
+  /**
+   * New authentication state. Switching to OAuth generates fresh
+   * credentials unless the server is already on OAuth, in which case they
+   * are kept and only `redirectUris` is replaced. Switching to `none` drops
+   * them and closes live sessions.
+   */
+  auth?: ServerAuthInput;
 };
 
 export const updateServerRequestSchema: z.ZodType<UpdateServerRequest> =
@@ -181,4 +278,7 @@ export const updateServerRequestSchema: z.ZodType<UpdateServerRequest> =
       .describe(
         'New `instructions` in the `initialize` result. Empty removes them.',
       ),
+    auth: serverAuthInputSchema
+      .optional()
+      .describe('New authentication state.'),
   });

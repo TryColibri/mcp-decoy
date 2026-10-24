@@ -31,6 +31,7 @@ describe('ServersService', () => {
       events: mockEvents,
       sessionCount: (server) => (server === 'weather' ? 2 : 0),
       mcpUrl: (server) => `http://localhost:6280/s/${server}/mcp`,
+      tokenCount: () => 0,
       now: () => NOW,
     });
   });
@@ -55,6 +56,7 @@ describe('ServersService', () => {
         toolCount: 0,
         publishedToolCount: 0,
         sessionCount: 2,
+        auth: { mode: 'none' },
       });
       expect(mockPersist).toHaveBeenCalledExactlyOnceWith([
         {
@@ -171,6 +173,104 @@ describe('ServersService', () => {
 
     it('throws NotFoundError for an unknown server', async () => {
       await expect(service.update('nope', {})).rejects.toThrow(NotFoundError);
+    });
+  });
+
+  describe('auth', () => {
+    let secrets: string[];
+
+    beforeEach(() => {
+      secrets = ['id-1', 'secret-1', 'id-2', 'secret-2'];
+      service = createServersService({
+        repository: createServerRepository({
+          initial: [],
+          persist: mockPersist,
+        }),
+        events: mockEvents,
+        sessionCount: () => 0,
+        mcpUrl: (server) => `http://localhost:6280/s/${server}/mcp`,
+        tokenCount: () => 0,
+        randomSecret: () => secrets.shift() ?? 'unexpected',
+        now: () => NOW,
+      });
+    });
+
+    it('generates fresh credentials when switching to oauth', async () => {
+      await service.create({ name: 'weather' });
+      mockEvents.emit.mockClear();
+
+      const updated = await service.update('weather', {
+        auth: { mode: 'oauth', redirectUris: ['http://localhost/cb'] },
+      });
+
+      expect(updated.auth).toEqual({
+        mode: 'oauth',
+        clientId: 'id-1',
+        clientSecret: 'secret-1',
+        redirectUris: ['http://localhost/cb'],
+        tokenCount: 0,
+      });
+      expect(mockEvents.emit).toHaveBeenCalledExactlyOnceWith(
+        'serverAuthChanged',
+        { server: 'weather' },
+      );
+    });
+
+    it('keeps credentials and replaces redirectUris when already on oauth', async () => {
+      await service.create({ name: 'weather' });
+      await service.update('weather', {
+        auth: { mode: 'oauth', redirectUris: ['http://localhost/cb'] },
+      });
+      mockEvents.emit.mockClear();
+
+      const updated = await service.update('weather', {
+        auth: { mode: 'oauth', redirectUris: ['http://localhost/other'] },
+      });
+
+      expect(updated.auth).toEqual({
+        mode: 'oauth',
+        clientId: 'id-1',
+        clientSecret: 'secret-1',
+        redirectUris: ['http://localhost/other'],
+        tokenCount: 0,
+      });
+      expect(mockEvents.emit).toHaveBeenCalledExactlyOnceWith(
+        'serverAuthChanged',
+        { server: 'weather' },
+      );
+    });
+
+    it('drops credentials when switching to none', async () => {
+      await service.create({ name: 'weather' });
+      await service.update('weather', {
+        auth: { mode: 'oauth', redirectUris: ['http://localhost/cb'] },
+      });
+      mockEvents.emit.mockClear();
+
+      const updated = await service.update('weather', {
+        auth: { mode: 'none' },
+      });
+
+      expect(updated.auth).toEqual({ mode: 'none' });
+      expect(service.findConfig('weather')?.auth).toBeUndefined();
+      expect(mockEvents.emit).toHaveBeenCalledExactlyOnceWith(
+        'serverAuthChanged',
+        { server: 'weather' },
+      );
+    });
+
+    it('does not emit serverAuthChanged when the requested state is unchanged', async () => {
+      await service.create({ name: 'weather' });
+      await service.update('weather', {
+        auth: { mode: 'oauth', redirectUris: ['http://localhost/cb'] },
+      });
+      mockEvents.emit.mockClear();
+
+      await service.update('weather', {
+        auth: { mode: 'oauth', redirectUris: ['http://localhost/cb'] },
+      });
+
+      expect(mockEvents.emit).not.toHaveBeenCalled();
     });
   });
 

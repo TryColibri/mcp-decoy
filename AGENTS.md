@@ -12,31 +12,32 @@ decisions are settled.
 
 # Tech stack
 
-| Concern         | Choice                                                                                                                          |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Shape           | **One** Node.js process running **two Hono apps** with `@hono/node-server`, plus a **Vite + React 19 + TypeScript SPA**         |
-| Ports           | MCP listener on `6280` (`--host`, default `127.0.0.1`). UI listener on `6281`, always bound to `127.0.0.1` (API + built SPA)    |
-| MCP library     | Official TypeScript SDK v2 (`@modelcontextprotocol/server`), **low-level `Server`**, `WebStandardStreamableHTTPServerTransport` |
-| Transport       | Streamable HTTP only, stateful (`Mcp-Session-Id`), one SDK `Server` + one transport per session                                 |
-| Capabilities    | Every mock server advertises only `tools: { listChanged: true }`                                                                |
-| Persistence     | `servers.json` in the config directory (XDG: `~/.config/mcp-decoy`, `--config-dir`). Logs in memory only                        |
-| Tool responses  | Always a **json-e** template, wrapped in `src/server/templates/`                                                                |
-| API             | Public REST API under `/api/v1`, Zod schemas in `src/shared/api/` as the contract, `@hono/zod-validator`, RFC 9457 errors       |
-| API client      | Hono's typed client (`hc`) in `src/shared/client/`                                                                              |
-| Live logs       | SSE (`streamSSE` from `hono/streaming`)                                                                                         |
-| SPA routing     | **React Router** as a client-side library (declarative mode). No framework mode, no SSR                                         |
-| SPA data        | **`useSWR`** for reads; mutations with the typed client followed by SWR `mutate`                                                |
-| Styling         | Tailwind CSS v4 (`@tailwindcss/vite`) utility classes, `@theme` tokens in `src/ui/styles.css`                                   |
-| UI primitives   | **Base UI** (`@base-ui/react`) for dialogs, tooltips, checkboxes, …                                                             |
-| Icons and fonts | `@phosphor-icons/react`; `@fontsource/geist` and `@fontsource/geist-mono` (bundled, works offline)                              |
-| CLI             | Bombshell: `@bomb.sh/args` for flags, `@clack/prompts` for terminal output                                                      |
-| Bundling        | `vite build` → `dist/ui/`, `tsdown` → `dist/cli.js`                                                                             |
-| Package manager | pnpm — always use `pnpm add`/`pnpm remove`, never edit dependencies in `package.json` directly. Exact versions                  |
-| Test runner     | Vitest (projects: `node` for server and shared, `jsdom` for UI)                                                                 |
-| Formatter       | oxfmt — `pnpm format:fix` to auto-format (or `pnpm fix` to format and lint together)                                            |
-| Lint            | oxlint (type-aware via `oxlint-tsgolint`) — `pnpm lint` runs oxlint only; formatting is checked separately via `pnpm format`    |
-| Typecheck       | TypeScript 7, `tsc -b` over `tsconfig.server.json`, `tsconfig.ui.json` and `tsconfig.node.json`                                 |
-| Node            | `.nvmrc`; `engines.node` is `>=24`                                                                                              |
+| Concern         | Choice                                                                                                                                                                              |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shape           | **One** Node.js process running **two Hono apps** with `@hono/node-server`, plus a **Vite + React 19 + TypeScript SPA**                                                             |
+| Ports           | MCP listener on `6280` (`--host`, default `127.0.0.1`). UI listener on `6281`, always bound to `127.0.0.1` (API + built SPA)                                                        |
+| MCP library     | Official TypeScript SDK v2 (`@modelcontextprotocol/server`), **low-level `Server`**, `WebStandardStreamableHTTPServerTransport`                                                     |
+| Transport       | Streamable HTTP only, stateful (`Mcp-Session-Id`), one SDK `Server` + one transport per session                                                                                     |
+| OAuth AS        | `@hono/mcp` `mcpAuthRouter` + a Decoy `OAuthServerProvider`, mounted at the MCP listener's root, one per origin. SDK v1 (`@modelcontextprotocol/sdk`) is a dependency only for this |
+| Capabilities    | Every mock server advertises only `tools: { listChanged: true }`                                                                                                                    |
+| Persistence     | `servers.json` in the config directory (XDG: `~/.config/mcp-decoy`, `--config-dir`). Logs and OAuth state (DCR clients, codes, tokens) in memory only                               |
+| Tool responses  | Always a **json-e** template, wrapped in `src/server/templates/`                                                                                                                    |
+| API             | Public REST API under `/api/v1`, Zod schemas in `src/shared/api/` as the contract, `@hono/zod-validator`, RFC 9457 errors                                                           |
+| API client      | Hono's typed client (`hc`) in `src/shared/client/`                                                                                                                                  |
+| Live logs       | SSE (`streamSSE` from `hono/streaming`)                                                                                                                                             |
+| SPA routing     | **React Router** as a client-side library (declarative mode). No framework mode, no SSR                                                                                             |
+| SPA data        | **`useSWR`** for reads; mutations with the typed client followed by SWR `mutate`                                                                                                    |
+| Styling         | Tailwind CSS v4 (`@tailwindcss/vite`) utility classes, `@theme` tokens in `src/ui/styles.css`                                                                                       |
+| UI primitives   | **Base UI** (`@base-ui/react`) for dialogs, tooltips, checkboxes, …                                                                                                                 |
+| Icons and fonts | `@phosphor-icons/react`; `@fontsource/geist` and `@fontsource/geist-mono` (bundled, works offline)                                                                                  |
+| CLI             | Bombshell: `@bomb.sh/args` for flags, `@clack/prompts` for terminal output                                                                                                          |
+| Bundling        | `vite build` → `dist/ui/`, `tsdown` → `dist/cli.js`                                                                                                                                 |
+| Package manager | pnpm — always use `pnpm add`/`pnpm remove`, never edit dependencies in `package.json` directly. Exact versions                                                                      |
+| Test runner     | Vitest (projects: `node` for server and shared, `jsdom` for UI)                                                                                                                     |
+| Formatter       | oxfmt — `pnpm format:fix` to auto-format (or `pnpm fix` to format and lint together)                                                                                                |
+| Lint            | oxlint (type-aware via `oxlint-tsgolint`) — `pnpm lint` runs oxlint only; formatting is checked separately via `pnpm format`                                                        |
+| Typecheck       | TypeScript 7, `tsc -b` over `tsconfig.server.json`, `tsconfig.ui.json` and `tsconfig.node.json`                                                                                     |
+| Node            | `.nvmrc`; `engines.node` is `>=24`                                                                                                                                                  |
 
 TypeScript 7 ships no editor plugin API. Install the dedicated **TypeScript 7**
 extension (`TypeScriptTeam.native-preview`, recommended in
@@ -86,12 +87,14 @@ extension (`TypeScriptTeam.native-preview`, recommended in
 ```
 npx @hodor-ai/mcp-decoy
   └─ node dist/cli.js                                   (one process)
-       ├─ :6280  mcpApp (Hono)   /s/:server/mcp          ← MCP clients, tunnels
+       ├─ :6280  mcpApp (Hono)   /.well-known/…, /authorize, /token,
+       │                         /register, /revoke, /consent/:id  ← OAuth AS, per origin
+       │                         /s/:server/mcp                    ← MCP clients, tunnels
        └─ :6281  uiApp  (Hono)   /api/v1/*   → services   ← browser, 127.0.0.1 only
                                  /assets/*   → dist/ui/assets
                                  /*          → dist/ui/index.html (SPA fallback)
 
-       both apps ──▶ services (servers, tools, logs, mcp sessions)
+       both apps ──▶ services (servers, tools, logs, mcp sessions, oauth)
                        │            │
                   event bus    <config dir>/servers.json
 ```
@@ -116,6 +119,13 @@ npx @hodor-ai/mcp-decoy
 - `<config dir>/runtime.json` advertises a running instance to future CLI
   subcommands and the TUI, and prevents two instances from sharing a config
   directory.
+- A server switched to OAuth is gated on `/s/:server/mcp` with SDK v2's
+  `verifyBearerToken`/`bearerAuthChallengeResponse`, backed by the OAuth store's
+  `verify`. Those SDK v2 helpers only recognize their own `OAuthError`, so the
+  verifier passed to them wraps whatever `store.verify` throws (SDK v1's error
+  classes) into SDK v2's `OAuthError` — otherwise a rejected token answers `500`
+  instead of `401`. The MCP listener's CORS config exposes `WWW-Authenticate` so
+  browser clients can read the challenge.
 
 ## Layering
 
@@ -144,10 +154,12 @@ src/
   server/
     cli.ts            # bin entry: parse flags, print banner, call main.start()
     main.ts           # start(options) → { close() }
-    mcp-app.ts        # Hono app for /s/:server/mcp
+    mcp-app.ts        # Hono app for /s/:server/mcp and the OAuth AS routes
     ui-app.ts         # Hono app: middleware, /api/v1, static + SPA fallback
     api/              # /api/v1 route modules per resource, problem+json
     servers/ tools/ templates/ logs/ mcp/ config/ runtime/
+    oauth/            # OAuthStore: DCR, consent, codes, tokens — no Hono
+    oauth-http/       # provider, routes, consent page, gate — the only Hono-aware OAuth code
     events.ts, errors.ts
   ui/
     index.html, main.tsx, styles.css

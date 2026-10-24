@@ -1,7 +1,13 @@
-import { type LogEntry } from '@/shared/api';
+import { httpExchangeSchema, type LogEntry } from '@/shared/api';
 
 /** Label of the kind tag shown next to the method. */
-export type LogTag = 'request' | 'result' | 'notify' | 'error' | 'invalid';
+export type LogTag =
+  | 'request'
+  | 'result'
+  | 'notify'
+  | 'error'
+  | 'invalid'
+  | 'http';
 
 /**
  * Tag shown for an entry's kind.
@@ -20,6 +26,8 @@ export function tagOf(entry: LogEntry): LogTag {
       return 'error';
     case 'invalid':
       return 'invalid';
+    case 'http':
+      return 'http';
   }
 }
 
@@ -81,6 +89,9 @@ export function prettyJSON(entry: LogEntry): string {
  * @param entry - A log entry.
  */
 export function noteOf(entry: LogEntry): string {
+  if (entry.kind === 'http') {
+    return httpNoteOf(entry);
+  }
   const message = parsedMessage(entry);
   if (!isRecord(message)) {
     return entry.kind === 'invalid' ? 'not JSON-RPC' : '';
@@ -119,6 +130,50 @@ export function noteOf(entry: LogEntry): string {
     return result.isError === true ? 'isError' : '';
   }
   return '';
+}
+
+/**
+ * Summarizes an `http`-kind entry, e.g. `401 invalid_token`, `200 consent
+ * page`, `302 approved` or `201 client "Claude"`.
+ *
+ * @param entry - An `http`-kind entry.
+ */
+function httpNoteOf(entry: LogEntry): string {
+  const parsed = httpExchangeSchema.safeParse(parsedMessage(entry));
+  if (!parsed.success) {
+    return '';
+  }
+  const { request, response } = parsed.data;
+  const status = response.status ?? 0;
+  const path = (request.method ?? '').split(' ').at(1) ?? '';
+  const body = response.body;
+
+  if (path.startsWith('/consent/')) {
+    const location =
+      typeof response.headers.location === 'string'
+        ? response.headers.location
+        : '';
+    const decision = location.includes('error=access_denied')
+      ? 'denied'
+      : location.includes('code=')
+        ? 'approved'
+        : '';
+    return decision === '' ? String(status) : `${status} ${decision}`;
+  }
+  if (path === '/authorize' && status === 200) {
+    return `${status} consent page`;
+  }
+  if (
+    path === '/register' &&
+    isRecord(body) &&
+    typeof body.client_name === 'string'
+  ) {
+    return `${status} client "${body.client_name}"`;
+  }
+  if (isRecord(body) && typeof body.error === 'string') {
+    return `${status} ${body.error}`;
+  }
+  return String(status);
 }
 
 /**

@@ -3,13 +3,17 @@ import { z } from 'zod';
 /** Which way a message travelled. `in` is client → server. */
 export type LogDirection = 'in' | 'out';
 
-/** JSON-RPC message kind. `invalid` is a body that isn't a JSON-RPC message. */
+/**
+ * JSON-RPC message kind. `invalid` is a body that isn't a JSON-RPC message.
+ * `http` is an OAuth HTTP exchange, not a JSON-RPC message.
+ */
 export type LogKind =
   | 'request'
   | 'response'
   | 'error'
   | 'notification'
-  | 'invalid';
+  | 'invalid'
+  | 'http';
 
 /** One JSON-RPC message captured on a server, in either direction. */
 export type LogEntry = {
@@ -50,7 +54,7 @@ export const logEntrySchema: z.ZodType<LogEntry> = z.strictObject({
     .enum(['in', 'out'])
     .describe('`in` is client → server, `out` is server → client.'),
   kind: z
-    .enum(['request', 'response', 'error', 'notification', 'invalid'])
+    .enum(['request', 'response', 'error', 'notification', 'invalid', 'http'])
     .describe('JSON-RPC message kind.'),
   method: z
     .string()
@@ -168,6 +172,55 @@ export const logEvictedSchema: z.ZodType<LogEvicted> = z.strictObject({
     .number()
     .int()
     .describe('Id of the entry the server dropped to make room.'),
+});
+
+/** One side of an `HTTPExchange`. */
+export type HTTPMessage = {
+  /** Status code; absent on the request side. */
+  status?: number;
+  /** Method and path, e.g. `POST /token`; absent on the response side. */
+  method?: string;
+  /** URL; absent on the response side. */
+  url?: string;
+  /** Headers, lower-cased names. */
+  headers: Record<string, string>;
+  /**
+   * Body. Form bodies decode to an object; HTML bodies become
+   * `"(HTML, N bytes)"`; a JSON body is its parsed value; anything else is
+   * the raw text.
+   */
+  body?: unknown;
+};
+
+const httpMessageSchema: z.ZodType<HTTPMessage> = z.strictObject({
+  status: z.number().int().optional().describe('Status code.'),
+  method: z
+    .string()
+    .optional()
+    .describe('Method and path, e.g. `POST /token`.'),
+  url: z.string().optional().describe('URL.'),
+  headers: z
+    .record(z.string(), z.string())
+    .describe('Headers, lower-cased names.'),
+  body: z
+    .unknown()
+    .optional()
+    .describe(
+      'Body. Form bodies decode to an object; HTML bodies become `"(HTML, N bytes)"`.',
+    ),
+});
+
+/** The `raw` payload of an `http`-kind `LogEntry`: one OAuth HTTP exchange. */
+export type HTTPExchange = {
+  /** The request MCP Decoy received. */
+  request: HTTPMessage;
+  /** The response MCP Decoy sent. */
+  response: HTTPMessage;
+};
+
+export const httpExchangeSchema: z.ZodType<HTTPExchange> = z.strictObject({
+  request: httpMessageSchema.describe('The request MCP Decoy received.'),
+  response: httpMessageSchema.describe('The response MCP Decoy sent.'),
 });
 
 /** SSE event names sent by `GET /api/v1/servers/{server}/logs/stream`. */

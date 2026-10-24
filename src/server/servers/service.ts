@@ -1,7 +1,11 @@
+import { randomBytes } from 'node:crypto';
+
 import { ConflictError, NotFoundError } from '@/server/errors';
 import { type MCPDecoyEvents, type EventBus } from '@/server/events';
 import {
   type CreateServerRequest,
+  type ServerAuthConfig,
+  type ServerAuthInput,
   type ServerConfig,
   type ServerSummary,
   type UpdateServerRequest,
@@ -22,6 +26,10 @@ export type ServersServiceDeps = {
   sessionCount: (server: string) => number;
   /** Streamable HTTP endpoint of a server. */
   mcpUrl: (server: string) => string;
+  /** Number of live OAuth access and refresh tokens of a server. */
+  tokenCount: (server: string) => number;
+  /** Generates a client ID or secret. Defaults to a random base64url string. */
+  randomSecret?: () => string;
   /** Current time. */
   now?: () => Date;
 };
@@ -52,9 +60,11 @@ export type ServersService = {
    */
   create(input: CreateServerRequest): Promise<ServerSummary>;
   /**
-   * Updates any subset of a server's name, `serverInfo` and instructions.
-   * Renaming moves the server and announces it, which closes its sessions.
-   * Live sessions keep the identity they were opened with.
+   * Updates any subset of a server's name, `serverInfo`, instructions and
+   * authentication. Renaming moves the server and announces it, which closes
+   * its sessions. A change of authentication state announces
+   * `serverAuthChanged`, which also closes its sessions. Live sessions keep
+   * the identity they were opened with.
    * @throws {NotFoundError} When it doesn't exist.
    * @throws {ConflictError} When renaming onto an existing server.
    */
@@ -76,6 +86,8 @@ export function createServersService({
   events,
   sessionCount,
   mcpUrl,
+  tokenCount,
+  randomSecret = () => randomBytes(32).toString('base64url'),
   now = () => new Date(),
 }: ServersServiceDeps): ServersService {
   const summarize = (server: ServerConfig): ServerSummary => ({
@@ -89,6 +101,10 @@ export function createServersService({
     toolCount: server.tools.length,
     publishedToolCount: server.tools.filter((tool) => tool.published).length,
     sessionCount: sessionCount(server.name),
+    auth:
+      server.auth === undefined
+        ? { mode: 'none' }
+        : { ...server.auth, tokenCount: tokenCount(server.name) },
   });
 
   const requireServer = (name: string): ServerConfig => {
@@ -99,6 +115,33 @@ export function createServersService({
     return server;
   };
 
+  /** Resolves a requested auth state against the current one. */
+  const resolveAuth = (
+    current: ServerAuthConfig | undefined,
+    input: ServerAuthInput | undefined,
+  ): ServerAuthConfig | undefined => {
+    if (input === undefined) {
+      return current;
+    }
+    if (input.mode === 'none') {
+      return undefined;
+    }
+    if (current !== undefined) {
+      return { ...current, redirectUris: input.redirectUris ?? [] };
+    }
+    return {
+      mode: 'oauth',
+      clientId: randomSecret(),
+      clientSecret: randomSecret(),
+      redirectUris: input.redirectUris ?? [],
+    };
+  };
+
+  const authChanged = (
+    before: ServerAuthConfig | undefined,
+    after: ServerAuthConfig | undefined,
+  ): boolean => JSON.stringify(before) !== JSON.stringify(after);
+
   return {
     list: () => repository.list().map(summarize),
     get: (name) => summarize(requireServer(name)),
@@ -108,11 +151,12 @@ export function createServersService({
       requireServer(name);
     },
 
-    async create({ name, serverInfo, instructions }) {
+    async create({ name, serverInfo, instructions, auth }) {
       const created = await repository.update((servers) => {
         if (servers.some((server) => server.name === name)) {
           throw new ConflictError(`A server named "${name}" already exists`);
         }
+        const resolvedAuth = resolveAuth(undefined, auth);
         const server: ServerConfig = {
           name,
           serverInfo: {
@@ -123,6 +167,7 @@ export function createServersService({
             ? {}
             : { instructions }),
           tools: [],
+          ...(resolvedAuth === undefined ? {} : { auth: resolvedAuth }),
           createdAt: now().toISOString(),
         };
         return { servers: [...servers, server], result: server };
@@ -131,38 +176,59 @@ export function createServersService({
       return summarize(created);
     },
 
-    async update(name, { name: newName = name, serverInfo, instructions }) {
-      const updated = await repository.update((servers) => {
-        const current = servers.find((server) => server.name === name);
-        if (current === undefined) {
-          throw new NotFoundError(`No server named "${name}"`);
-        }
-        if (
-          newName !== name &&
-          servers.some((server) => server.name === newName)
-        ) {
-          throw new ConflictError(`A server named "${newName}" already exists`);
-        }
-        const { instructions: previous, ...rest } = current;
-        const kept = instructions ?? previous;
-        const server: ServerConfig = {
-          ...rest,
-          name: newName,
-          serverInfo: {
-            name: serverInfo?.name ?? current.serverInfo.name,
-            version: serverInfo?.version ?? current.serverInfo.version,
-          },
-          ...(kept === undefined || kept === '' ? {} : { instructions: kept }),
-        };
-        return {
-          servers: servers.map((candidate) =>
-            candidate === current ? server : candidate,
-          ),
-          result: server,
-        };
-      });
+    async update(
+      name,
+      { name: newName = name, serverInfo, instructions, auth },
+    ) {
+      const { server: updated, authDidChange } = await repository.update(
+        (servers) => {
+          const current = servers.find((server) => server.name === name);
+          if (current === undefined) {
+            throw new NotFoundError(`No server named "${name}"`);
+          }
+          if (
+            newName !== name &&
+            servers.some((server) => server.name === newName)
+          ) {
+            throw new ConflictError(
+              `A server named "${newName}" already exists`,
+            );
+          }
+          const {
+            instructions: previous,
+            auth: previousAuth,
+            ...rest
+          } = current;
+          const kept = instructions ?? previous;
+          const nextAuth = resolveAuth(previousAuth, auth);
+          const server: ServerConfig = {
+            ...rest,
+            name: newName,
+            serverInfo: {
+              name: serverInfo?.name ?? current.serverInfo.name,
+              version: serverInfo?.version ?? current.serverInfo.version,
+            },
+            ...(kept === undefined || kept === ''
+              ? {}
+              : { instructions: kept }),
+            ...(nextAuth === undefined ? {} : { auth: nextAuth }),
+          };
+          return {
+            servers: servers.map((candidate) =>
+              candidate === current ? server : candidate,
+            ),
+            result: {
+              server,
+              authDidChange: authChanged(previousAuth, nextAuth),
+            },
+          };
+        },
+      );
       if (updated.name !== name) {
         events.emit('serverRenamed', { from: name, to: updated.name });
+      }
+      if (authDidChange) {
+        events.emit('serverAuthChanged', { server: updated.name });
       }
       return summarize(updated);
     },

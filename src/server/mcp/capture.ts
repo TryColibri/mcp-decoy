@@ -1,5 +1,10 @@
 import { type LogStore } from '@/server/logs';
-import { type LogDirection, type LogEntry, type LogKind } from '@/shared/api';
+import {
+  type HTTPExchange,
+  type LogDirection,
+  type LogEntry,
+  type LogKind,
+} from '@/shared/api';
 
 /** Where a message was seen. */
 export type CaptureOrigin = {
@@ -20,6 +25,12 @@ export type Capture = {
   outgoing(origin: CaptureOrigin, message: unknown): LogEntry;
   /** Records the JSON body of an HTTP error response that bypassed the transport's `send`. */
   outgoingBody(origin: CaptureOrigin, body: string): LogEntry[];
+  /** Records one OAuth HTTP exchange. */
+  http(
+    origin: CaptureOrigin,
+    exchange: HTTPExchange,
+    durationMs: number,
+  ): LogEntry;
   /** Forgets unanswered requests of a session. */
   forgetSession(server: string, sessionId: string): void;
 };
@@ -134,6 +145,18 @@ export function createCapture(
     outgoing: (origin, message) =>
       record(origin, 'out', message, JSON.stringify(message)),
     outgoingBody: (origin, body) => recordBody(origin, 'out', body),
+    http: (origin, exchange, durationMs) =>
+      store.append({
+        at: clock.now().toISOString(),
+        server: origin.server,
+        sessionId: origin.sessionId,
+        direction: 'in',
+        kind: 'http',
+        method: exchange.request.method ?? null,
+        jsonrpcId: null,
+        durationMs,
+        raw: JSON.stringify(exchange),
+      }),
     forgetSession(server, sessionId) {
       const prefix = JSON.stringify([server, sessionId]).slice(0, -1);
       for (const key of pending.keys()) {
