@@ -1,7 +1,9 @@
+import { Radio } from '@base-ui/react/radio';
+import { RadioGroup } from '@base-ui/react/radio-group';
 import { type ComponentProps, useId } from 'react';
 import { twMerge } from 'tailwind-merge';
 
-import { serverNameSchema } from '@/shared/api';
+import { type ServerAuthInput, serverNameSchema } from '@/shared/api';
 import { CopyButton } from '@/ui/components/copy-button';
 import { tw } from '@/ui/tw';
 
@@ -17,6 +19,10 @@ export type ServerFormValues = {
   version: string;
   /** `instructions`. */
   instructions: string;
+  /** Authentication mode. */
+  authMode: 'none' | 'oauth';
+  /** Redirect URIs of the pre-registered OAuth client, one per line. */
+  redirectUris: string;
 };
 
 /** Result of `checkServerName`. */
@@ -50,6 +56,28 @@ export function checkServerName(
       name === ''
         ? null
         : (parsed.error.issues.at(0)?.message ?? 'Invalid name'),
+  };
+}
+
+/**
+ * Builds the `auth` request field from the form's authentication fields.
+ *
+ * @param values - `authMode` and `redirectUris` of the form.
+ */
+export function authInputOf({
+  authMode,
+  redirectUris,
+}: Pick<ServerFormValues, 'authMode' | 'redirectUris'>): ServerAuthInput {
+  if (authMode === 'none') {
+    return { mode: 'none' };
+  }
+  const uris = redirectUris
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line !== '');
+  return {
+    mode: 'oauth',
+    ...(uris.length === 0 ? {} : { redirectUris: uris }),
   };
 }
 
@@ -92,6 +120,10 @@ export function ServerFields({
     infoVersion: useId(),
     instructions: useId(),
     instructionsHint: useId(),
+    authNone: useId(),
+    authOAuth: useId(),
+    redirectUris: useId(),
+    redirectUrisHint: useId(),
   };
   const slug = values.name === '' ? 'my-server' : values.name;
   const nameInvalid = nameError !== null || fieldErrors.name !== undefined;
@@ -221,6 +253,74 @@ export function ServerFields({
           }}
           aria-describedby={ids.instructionsHint}
         />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <p className="m-0 text-[13px] font-semibold text-ink-700">
+          Authentication
+        </p>
+        <RadioGroup
+          value={values.authMode}
+          onValueChange={(authMode: ServerFormValues['authMode']) => {
+            onChange({ ...values, authMode });
+          }}
+          className="flex flex-col gap-2"
+        >
+          <label
+            htmlFor={ids.authNone}
+            className="flex items-center gap-2 text-sm text-ink-900"
+          >
+            <Radio.Root
+              id={ids.authNone}
+              value="none"
+              className="flex size-4 items-center justify-center rounded-full border border-paper-300 bg-white data-checked:border-ink-900"
+            >
+              <Radio.Indicator className="size-2 rounded-full bg-ink-900" />
+            </Radio.Root>
+            None
+          </label>
+          <label
+            htmlFor={ids.authOAuth}
+            className="flex items-center gap-2 text-sm text-ink-900"
+          >
+            <Radio.Root
+              id={ids.authOAuth}
+              value="oauth"
+              className="flex size-4 items-center justify-center rounded-full border border-paper-300 bg-white data-checked:border-ink-900"
+            >
+              <Radio.Indicator className="size-2 rounded-full bg-ink-900" />
+            </Radio.Root>
+            OAuth 2.1
+          </label>
+        </RadioGroup>
+        {values.authMode === 'oauth' && (
+          <div className="flex flex-col gap-1.5 pt-1.5">
+            <p className="m-0 text-[13px] font-semibold text-ink-700">
+              <label htmlFor={ids.redirectUris}>
+                Pre-registered client redirect URIs
+              </label>{' '}
+              <span
+                id={ids.redirectUrisHint}
+                className="text-xs font-normal text-ink-500"
+              >
+                One per line. Leave empty to only allow Dynamic Client
+                Registration.
+              </span>
+            </p>
+            <textarea
+              id={ids.redirectUris}
+              rows={2}
+              className="box-border min-h-16 w-full resize-y rounded-lg border border-paper-300 bg-white px-3 py-2.5 font-mono text-sm text-ink-900"
+              value={values.redirectUris}
+              onChange={(event) => {
+                onChange({ ...values, redirectUris: event.target.value });
+              }}
+              placeholder="http://localhost:33418/callback"
+              spellCheck={false}
+              aria-describedby={ids.redirectUrisHint}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

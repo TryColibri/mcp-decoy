@@ -13,6 +13,7 @@ import {
 import { Button, ButtonLink } from '@/ui/components/button';
 import { serverEndpoint } from '@/ui/components/endpoint';
 import {
+  authInputOf,
   checkServerName,
   ServerFields,
   type ServerFormValues,
@@ -30,6 +31,8 @@ export function NewServerPage() {
     infoName: '',
     version: '',
     instructions: '',
+    authMode: 'none',
+    redirectUris: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [serverErrors, setServerErrors] = useState<
@@ -65,6 +68,9 @@ export function NewServerPage() {
             name,
             ...(Object.keys(serverInfo).length === 0 ? {} : { serverInfo }),
             ...(instructions.trim() === '' ? {} : { instructions }),
+            ...(values.authMode === 'none'
+              ? {}
+              : { auth: authInputOf(values) }),
           },
         }),
       );

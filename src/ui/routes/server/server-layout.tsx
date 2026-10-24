@@ -20,6 +20,8 @@ import { EditServerDialog } from '@/ui/components/edit-server-dialog';
 import { EndpointPill } from '@/ui/components/endpoint-pill';
 import { SessionsPill } from '@/ui/components/sessions-pill';
 
+import { OAuthPopover } from './oauth-popover';
+
 /** What the server layout hands to its tabs. */
 export type ServerOutletContext = {
   /** The server shown by the layout, kept fresh by polling. */
@@ -64,6 +66,7 @@ export function ServerLayout() {
             {server.name}
           </h1>
           <EndpointPill url={server.mcpUrl} />
+          <OAuthPopover server={server} />
           <SessionsPill count={server.sessionCount} long />
           <div className="ml-auto flex gap-3">
             <EditServerButton server={server} />

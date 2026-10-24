@@ -229,6 +229,39 @@ Logs live in memory only and are lost when MCP Decoy exits. MCP Decoy keeps the
 newest 10,000 messages across all servers. To change the limit, use
 `--log-limit`.
 
+## Testing OAuth clients
+
+Real MCP servers increasingly require OAuth 2.1, and that flow is where clients
+break most. Switch a server to OAuth in its edit dialog, and MCP Decoy acts as
+both the resource server and an authorization server for it: RFC 9728
+protected-resource metadata, RFC 8414 discovery, Dynamic Client Registration,
+PKCE, and RFC 8707 resource indicators, all handled by `@hono/mcp`'s
+authorization-server router.
+
+- Your client discovers the authorization server from the `401` challenge,
+  registers (or uses the pre-registered client below), and opens MCP Decoy's
+  consent page. **Approve** issues a code; **Deny** redirects the client with
+  `error=access_denied`.
+- Every server on OAuth also has one pre-registered confidential client, shown
+  with its ID and secret in the server's OAuth pill. It authenticates with
+  `client_secret_post` only — send `client_id` and `client_secret` in the token
+  request body, not as `Authorization: Basic`. Give it redirect URIs to use it;
+  with none, only Dynamic Client Registration works.
+- Click **Revoke tokens** to invalidate every access and refresh token of a
+  server. The client's next request gets a `401` and must re-authorize.
+- The **Logs** tab interleaves OAuth HTTP exchanges with JSON-RPC traffic, so
+  you can watch the whole handshake in one place.
+
+OAuth state — registered clients, codes and tokens — lives in memory only, like
+logs; a restart forgets it, though a server's pre-registered client survives in
+`servers.json`.
+
+The authorization server's issuer must be `https:`, or `http:` on `localhost` or
+`127.0.0.1`. An MCP Decoy reachable only over plain HTTP on a LAN address (for
+example, started with `--host 0.0.0.0`) can't host it. Point your client at
+`localhost` instead, or put a tunnel in front of the MCP port (see "Need a
+public URL?" next to the endpoint) and use the tunnel's HTTPS URL.
+
 ## Options
 
 Pass options after the command, as in `mcp-decoy --mcp-port 7000`. The following
@@ -283,6 +316,7 @@ The following table lists the endpoints:
 | `DELETE /servers/{server}/tools/{tool}`        | Delete a tool.                                                          |
 | `GET /servers/{server}/sessions`               | List live sessions.                                                     |
 | `DELETE /servers/{server}/sessions/{session}`  | Close a session.                                                        |
+| `DELETE /servers/{server}/oauth/tokens`        | Revoke every access and refresh token of a server on OAuth.             |
 | `GET /servers/{server}/logs?q=&cursor=&limit=` | List log entries, newest first, with cursor pagination.                 |
 | `DELETE /servers/{server}/logs`                | Clear the logs of a server.                                             |
 | `GET /servers/{server}/logs/stream?after=&q=`  | Stream new log entries as server-sent events.                           |

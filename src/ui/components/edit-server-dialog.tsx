@@ -14,6 +14,7 @@ import {
 import { Button, buttonClasses } from '@/ui/components/button';
 import { serverEndpoint } from '@/ui/components/endpoint';
 import {
+  authInputOf,
   checkServerName,
   ServerFields,
   type ServerFormValues,
@@ -39,6 +40,9 @@ const valuesOf = (server: ServerSummary): ServerFormValues => ({
   infoName: server.serverInfo.name,
   version: server.serverInfo.version,
   instructions: server.instructions ?? '',
+  authMode: server.auth.mode,
+  redirectUris:
+    server.auth.mode === 'oauth' ? server.auth.redirectUris.join('\n') : '',
 });
 
 /** The fields that differ from `server`, as an update request. */
@@ -51,12 +55,17 @@ const changesOf = (
     ...(values.infoName === before.infoName ? {} : { name: values.infoName }),
     ...(values.version === before.version ? {} : { version: values.version }),
   };
+  const authChanged =
+    values.authMode !== before.authMode ||
+    (values.authMode === 'oauth' &&
+      values.redirectUris !== before.redirectUris);
   return {
     ...(values.name === before.name ? {} : { name: values.name }),
     ...(Object.keys(serverInfo).length === 0 ? {} : { serverInfo }),
     ...(values.instructions === before.instructions
       ? {}
       : { instructions: values.instructions }),
+    ...(authChanged ? { auth: authInputOf(values) } : {}),
   };
 };
 
@@ -84,6 +93,7 @@ export function EditServerDialog({
   const changes = changesOf(server, values);
   const changed = Object.keys(changes).length > 0;
   const renaming = changes.name !== undefined;
+  const authChanging = changes.auth !== undefined;
   const { valid, error: nameError } = checkServerName(
     values.name,
     servers
@@ -152,6 +162,12 @@ export function EditServerDialog({
                 Renaming changes the endpoint URL. Live sessions are closed and
                 clients must reconnect to the new URL. Logs are kept.
               </Dialog.Description>
+            )}
+            {authChanging && (
+              <p className="m-0 text-[13px]/relaxed text-ink-600">
+                Changing authentication closes live sessions. Clients must
+                reconnect and, for OAuth, re-authorize.
+              </p>
             )}
             {formError !== null && (
               <p role="alert" className="m-0 text-[13px] text-red-800">

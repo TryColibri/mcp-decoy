@@ -35,7 +35,16 @@ const createHarness = (): Harness => {
       throw error;
     },
   });
-  return { services, app: createMCPApp(services.sessions) };
+  return {
+    services,
+    app: createMCPApp({
+      sessions: services.sessions,
+      oauth: services.oauth,
+      findServer: (name) => services.servers.findConfig(name),
+      listServers: services.listServerConfigs,
+      capture: services.capture,
+    }),
+  };
 };
 
 const connect = async (
