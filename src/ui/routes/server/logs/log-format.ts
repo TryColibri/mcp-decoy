@@ -361,6 +361,31 @@ const errorText = (error: Record<string, unknown> | undefined): string =>
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+/** A request URL taken apart. */
+export type SplitURL = {
+  /** The URL without its query string and fragment. */
+  base: string;
+  /** Query parameters in order; a repeated name appears once per value. */
+  query: Array<[name: string, value: string]>;
+};
+
+/**
+ * Splits a request URL into its address and decoded query parameters.
+ *
+ * @param url - A request URL, absolute or not.
+ */
+export function splitURL(url: string): SplitURL {
+  const [withoutFragment = ''] = url.split('#');
+  const separator = withoutFragment.indexOf('?');
+  if (separator === -1) {
+    return { base: withoutFragment, query: [] };
+  }
+  return {
+    base: withoutFragment.slice(0, separator),
+    query: [...new URLSearchParams(withoutFragment.slice(separator + 1))],
+  };
+}
+
 /**
  * URL of the Logs tab with `id` selected.
  *

@@ -256,6 +256,42 @@ describe('MessageDetail', () => {
       );
     });
 
+    it('shows the query parameters destructured before the headers, not in the request line', async () => {
+      renderDetail(
+        httpEntry(
+          httpFact({
+            ...exchange,
+            request: {
+              ...exchange.request,
+              url: 'http://127.0.0.1:6280/s/weather/mcp?city=Paris&tag=a&tag=b%20c',
+            },
+          }),
+        ),
+      );
+      await userEvent.click(screen.getByRole('tab', { name: 'Request' }));
+
+      expect(
+        screen.getByText('POST http://127.0.0.1:6280/s/weather/mcp'),
+      ).toBeInTheDocument();
+      expect(screen.getByText('city').nextElementSibling).toHaveTextContent(
+        'Paris',
+      );
+      expect(screen.getAllByText('tag')).toHaveLength(2);
+      expect(screen.getByText('b c')).toBeInTheDocument();
+      expect(
+        screen
+          .getByText('Query parameters')
+          .compareDocumentPosition(screen.getByText('x-request-header')),
+      ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+
+    it('has no query section when the URL has no query', async () => {
+      renderDetail(httpEntry(exchange));
+      await userEvent.click(screen.getByRole('tab', { name: 'Request' }));
+
+      expect(screen.queryByText('Query parameters')).not.toBeInTheDocument();
+    });
+
     it('shows the body of an OAuth exchange request', async () => {
       renderDetail(
         httpEntry(
@@ -365,6 +401,27 @@ describe('MessageDetail', () => {
       );
       expect(screen.getByText('URL').nextElementSibling).toHaveTextContent(
         'http://127.0.0.1:6280/s/weather/mcp',
+      );
+    });
+  });
+
+  describe('of an exchange with a query', () => {
+    it('leaves the query out of the overview URL', async () => {
+      renderDetail(
+        httpEntry(
+          httpFact({
+            ...exchange,
+            request: {
+              ...exchange.request,
+              url: 'http://127.0.0.1:6280/s/weather/mcp?city=Paris',
+            },
+          }),
+        ),
+      );
+      await userEvent.click(screen.getByRole('tab', { name: 'Overview' }));
+
+      expect(screen.getByText('URL').nextElementSibling).toHaveTextContent(
+        /^http:\/\/127\.0\.0\.1:6280\/s\/weather\/mcp$/,
       );
     });
   });

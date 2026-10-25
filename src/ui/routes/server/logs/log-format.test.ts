@@ -16,6 +16,7 @@ import {
   noteOf,
   prettyBody,
   sessionOf,
+  splitURL,
   statusOf,
   tookOf,
   typeOf,
@@ -359,5 +360,36 @@ describe('prettyBody', () => {
       '{\n  "grant_type": "authorization_code"\n}',
     );
     expect(prettyBody([1])).toBe('[\n  1\n]');
+  });
+});
+
+describe('splitURL', () => {
+  it('returns the URL and no parameters when there is no query', () => {
+    expect(splitURL('http://h/s/demo/mcp')).toEqual({
+      base: 'http://h/s/demo/mcp',
+      query: [],
+    });
+  });
+
+  it('decodes the parameters in order and keeps repeated names', () => {
+    expect(splitURL('http://h/p?a=1&b=x%20y&a=2')).toEqual({
+      base: 'http://h/p',
+      query: [
+        ['a', '1'],
+        ['b', 'x y'],
+        ['a', '2'],
+      ],
+    });
+  });
+
+  it('drops the fragment', () => {
+    expect(splitURL('http://h/p?a=1#top')).toEqual({
+      base: 'http://h/p',
+      query: [['a', '1']],
+    });
+  });
+
+  it('keeps a parameter without a value', () => {
+    expect(splitURL('/p?flag').query).toEqual([['flag', '']]);
   });
 });

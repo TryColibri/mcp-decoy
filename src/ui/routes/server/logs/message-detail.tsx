@@ -23,6 +23,7 @@ import {
   logsPath,
   nameOf,
   parsedMessage,
+  splitURL,
   statusOf,
   tookOf,
   typeOf,
@@ -256,11 +257,13 @@ function CarriedItems({ items, empty, server }: CarriedSectionProps) {
 function HTTPRequestPanel({ entry, server }: HTTPPanelProps) {
   const { request } = entry.exchange;
   const { sent } = useCarried({ entry, server });
+  const { base, query } = splitURL(request.url);
   return (
     <div className="flex flex-col gap-4">
       <HeadersView
-        line={`${request.method} ${request.url}`}
+        line={`${request.method} ${base}`}
         headers={request.headers}
+        query={query}
       />
       {entry.exchange.endpoint === 'mcp' ? (
         <Section title="Messages sent">
@@ -325,7 +328,7 @@ function HTTPOverviewPanel({ entry }: HTTPOverviewPanelProps) {
   return (
     <FactList
       facts={[
-        ['URL', exchange.request.url],
+        ['URL', splitURL(exchange.request.url).base],
         ['Method', exchange.request.method],
         [
           'Status',
