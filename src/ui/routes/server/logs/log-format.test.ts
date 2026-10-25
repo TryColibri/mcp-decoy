@@ -218,9 +218,9 @@ describe('tookOf', () => {
     const message = request('tools/list');
     const exchange = httpFact();
 
-    expect(tookOf(mcpEntry(message, replyFact(message, {})))).toBe('12 ms');
+    expect(tookOf(mcpEntry(message, replyFact(message, {})))).toBe('12ms');
     expect(tookOf(httpEntry(exchange))).toBe('streaming');
-    expect(tookOf(httpEntry(exchange, httpEndFact(exchange)))).toBe('5000 ms');
+    expect(tookOf(httpEntry(exchange, httpEndFact(exchange)))).toBe('5s');
     expect(tookOf(mcpEntry(message))).toBe('');
   });
 });

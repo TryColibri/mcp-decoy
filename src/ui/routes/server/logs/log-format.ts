@@ -1,3 +1,5 @@
+import { default as prettyMilliseconds, type Options } from 'pretty-ms';
+
 import {
   type HTTPEntry,
   type LogEntry,
@@ -137,6 +139,11 @@ const mcpStatusOf = (entry: MCPEntry): EntryStatus => {
     : { label: 'ok', tone: 'ok' };
 };
 
+const DURATION_FORMAT: Options = {
+  secondsDecimalDigits: 3,
+  unitCount: 2,
+};
+
 /**
  * What the Took column shows: the duration, `streaming` while an event stream
  * is open, or nothing.
@@ -145,7 +152,7 @@ const mcpStatusOf = (entry: MCPEntry): EntryStatus => {
  */
 export function tookOf(entry: LogEntry): string {
   if (entry.durationMs !== null) {
-    return `${entry.durationMs} ms`;
+    return prettyMilliseconds(entry.durationMs, DURATION_FORMAT);
   }
   return entry.type === 'http' && entry.state === 'streaming'
     ? 'streaming'

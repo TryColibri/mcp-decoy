@@ -224,7 +224,7 @@ describe('MessageDetail', () => {
       expect(
         within(
           screen.getByRole('heading', { name: 'tools/list' }).parentElement!,
-        ).getByText(/12 ms/),
+        ).getByText(/12ms/),
       ).toBeInTheDocument();
 
       await userEvent.click(
