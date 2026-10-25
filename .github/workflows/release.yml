@@ -2,6 +2,10 @@ name: Release
 
 on:
   workflow_call:
+    secrets:
+      RELEASE_DEPLOY_KEY:
+        description: Private half of the deploy key that bypasses the `main` ruleset.
+        required: true
     outputs:
       version:
         description: Version semantic-release released, empty if it released nothing.
