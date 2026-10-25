@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef } from 'react';
+import { type ComponentProps, memo, useEffect, useRef } from 'react';
 import { twMerge } from 'tailwind-merge';
 
 import { type LogEntry } from '@/shared/api';
@@ -44,23 +44,30 @@ export type MessageListProps = {
 };
 
 const grids: Record<MessageListLayout, string> = {
-  full: tw`grid w-full grid-cols-[104px_minmax(0,1.4fr)_104px_92px_minmax(0,1fr)_56px_84px] items-center gap-2 px-4`,
+  full: tw`grid w-full grid-cols-[104px_44px_104px_minmax(0,1.4fr)_92px_minmax(0,1fr)_56px_84px] items-center gap-2 px-4`,
   compact: tw`grid w-full grid-cols-[104px_minmax(0,1fr)] items-center gap-2 px-4`,
 };
 
 const typeStyles: Record<LogType, string> = {
   http: tw`bg-purple-50 text-purple-900`,
   oauth: tw`bg-purple-50 text-purple-900`,
-  request: tw`bg-blue-100 text-blue-900`,
-  'server request': tw`bg-blue-100 text-blue-900`,
-  'client notify': tw`bg-paper-100 text-ink-700`,
-  'server notify': tw`bg-paper-100 text-ink-700`,
+  request: tw`bg-teal-100 text-teal-900`,
+  'server request': tw`bg-teal-100 text-teal-900`,
+  'client notify': tw`bg-amber-100 text-amber-900`,
+  'server notify': tw`bg-amber-100 text-amber-900`,
   'client result': tw`bg-green-50 text-green-900`,
   'server result': tw`bg-green-50 text-green-900`,
   'client error': tw`bg-red-50 text-red-800`,
   'server error': tw`bg-red-50 text-red-800`,
-  invalid: tw`bg-red-50 text-red-800`,
+  invalid: tw`bg-orange-100 text-orange-900`,
 };
+
+const layerStyles: Record<LogEntry['type'], string> = {
+  http: tw`bg-purple-50 text-purple-900`,
+  mcp: tw`bg-blue-100 text-blue-900`,
+};
+
+const methodStyle = tw`bg-paper-100 text-ink-700`;
 
 const statusTextStyles: Record<StatusTone, string> = {
   ok: tw`text-green-900`,
@@ -122,7 +129,7 @@ export function MessageList({
       ref={scrollRef}
       className="relative max-h-[60dvh] min-h-80 overflow-auto lg:max-h-none lg:min-h-0 lg:flex-1"
     >
-      <div className={layout === 'full' ? 'min-w-180' : undefined}>
+      <div className={layout === 'full' ? 'min-w-220' : undefined}>
         <div
           className={twMerge(
             grids[layout],
@@ -130,10 +137,15 @@ export function MessageList({
           )}
         >
           <span>Time</span>
+          {layout === 'full' && (
+            <>
+              <span>Layer</span>
+              <span>Kind</span>
+            </>
+          )}
           <span>Name</span>
           {layout === 'full' && (
             <>
-              <span>Type</span>
               <span>Status</span>
               <span>Summary</span>
               <span>Session</span>
@@ -212,15 +224,23 @@ type FullColumnsProps = {
   entry: LogEntry;
 };
 
-// Every column after Time in the full layout.
+// Every column after Time in the full layout: Layer, Kind (the HTTP method or
+// the MCP message type), then Name onwards.
 function FullColumns({ entry }: FullColumnsProps) {
   const sessionId = sessionOf(entry);
   return (
     <>
-      <span className="truncate font-mono font-medium">{nameOf(entry)}</span>
       <span>
-        <TypeChip type={typeOf(entry)} />
+        <Pill className={layerStyles[entry.type]}>{entry.type}</Pill>
       </span>
+      <span>
+        {entry.type === 'http' ? (
+          <Pill className={methodStyle}>{entry.exchange.request.method}</Pill>
+        ) : (
+          <TypeChip type={typeOf(entry)} />
+        )}
+      </span>
+      <span className="truncate font-mono font-medium">{nameOf(entry)}</span>
       <span>
         <StatusText status={statusOf(entry)} />
       </span>
@@ -241,15 +261,19 @@ export type TypeChipProps = {
 
 /** A small colored label for an entry's type. */
 export function TypeChip({ type }: TypeChipProps) {
+  return <Pill className={typeStyles[type]}>{type}</Pill>;
+}
+
+/** A small rounded label; the caller's classes set its colors. */
+function Pill({ className, ...rest }: ComponentProps<'span'>) {
   return (
     <span
       className={twMerge(
         'rounded-sm px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap',
-        typeStyles[type],
+        className,
       )}
-    >
-      {type}
-    </span>
+      {...rest}
+    />
   );
 }
 
