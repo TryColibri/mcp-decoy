@@ -18,6 +18,8 @@ jobs:
       issues: write
       pull-requests: write
     uses: ./.github/workflows/release.yml
+    secrets:
+      RELEASE_DEPLOY_KEY: ${{ secrets.RELEASE_DEPLOY_KEY }}
   publish:
     needs: release
     if: needs.release.outputs.version != ''
