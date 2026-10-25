@@ -3,13 +3,13 @@ import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 
 import { ValidationError } from '@/server/errors';
-import { type LogEvent, type LogsService } from '@/server/logs';
+import { type LogStreamEvent, type LogsService } from '@/server/logs';
 import {
   LOG_PAGE_DEFAULT_LIMIT,
   LOG_STREAM_EVENTS,
-  type LogEntry,
   logEntrySchema,
   logEvictedSchema,
+  logFactSchema,
   logPageQuerySchema,
   logPageSchema,
   logStreamQuerySchema,
@@ -22,7 +22,9 @@ import { validationHook } from './problems';
 const HEARTBEAT_MS = 15_000;
 
 /**
- * `/api/v1/servers/{server}/logs`, `…/logs/stream` and `…/logs/export`.
+ * `/api/v1/servers/{server}/logs`, `…/logs/{id}`, `…/logs/stream` and
+ * `…/logs/export`. Entries are identified by the id of their anchor fact; the
+ * stream and its `Last-Event-ID` speak in fact ids.
  *
  * @param logs - The logs service.
  */
@@ -34,6 +36,7 @@ export function createLogsRoutes(logs: LogsService) {
       (c) => {
         const {
           q,
+          carriedBy,
           cursor,
           limit = LOG_PAGE_DEFAULT_LIMIT,
         } = c.req.valid('query');
@@ -49,6 +52,7 @@ export function createLogsRoutes(logs: LogsService) {
         }
         const page = logs.page(c.req.param('server'), {
           text: q,
+          carriedBy,
           beforeId,
           limit,
         });
@@ -59,6 +63,7 @@ export function createLogsRoutes(logs: LogsService) {
             nextCursor:
               page.more && last !== undefined ? encodeCursor(last.id) : null,
             total: page.total,
+            after: page.after,
           }),
           200,
         );
@@ -82,15 +87,16 @@ export function createLogsRoutes(logs: LogsService) {
           ? lastEventID
           : (after ?? 0);
 
-        // Subscribe and read the backlog in the same tick, so nothing is
-        // missed or sent twice.
-        const queue: LogEvent[] = [];
+        const queue: LogStreamEvent[] = [];
         let wake: (() => void) | undefined;
-        const unsubscribe = logs.subscribe(server, { text: q }, (event) => {
-          queue.push(event);
-          wake?.();
-        });
-        const backlog = logs.after(server, afterId, q);
+        const unsubscribe = logs.stream(
+          server,
+          { text: q, afterId },
+          (event) => {
+            queue.push(event);
+            wake?.();
+          },
+        );
 
         return streamSSE(c, async (stream) => {
           stream.onAbort(() => {
@@ -98,21 +104,33 @@ export function createLogsRoutes(logs: LogsService) {
             wake?.();
           });
 
-          const writeEntry = async (entry: LogEntry) =>
-            stream.writeSSE({
-              event: LOG_STREAM_EVENTS.entry,
-              id: String(entry.id),
-              data: JSON.stringify(logEntrySchema.parse(entry)),
-            });
+          const writeEvent = async (event: LogStreamEvent) => {
+            if (event.type === 'fact') {
+              await stream.writeSSE({
+                event: LOG_STREAM_EVENTS.fact,
+                // A late anchor has no id, so a reconnect resumes before the
+                // attachment that made it match.
+                ...(event.late ? {} : { id: String(event.fact.id) }),
+                data: JSON.stringify(logFactSchema.parse(event.fact)),
+              });
+            } else if (event.type === 'evicted') {
+              await stream.writeSSE({
+                event: LOG_STREAM_EVENTS.evicted,
+                data: JSON.stringify(logEvictedSchema.parse({ id: event.id })),
+              });
+            } else {
+              await stream.writeSSE({
+                event: LOG_STREAM_EVENTS.cleared,
+                data: '{}',
+              });
+            }
+          };
 
           const heartbeat = setInterval(() => {
             void stream.write(': heartbeat\n\n');
           }, HEARTBEAT_MS);
 
           try {
-            for (const entry of backlog) {
-              await writeEntry(entry);
-            }
             while (!stream.aborted) {
               const event = queue.shift();
               if (event === undefined) {
@@ -120,20 +138,8 @@ export function createLogsRoutes(logs: LogsService) {
                   wake = resolve;
                 });
                 wake = undefined;
-              } else if (event.type === 'entry') {
-                await writeEntry(event.entry);
-              } else if (event.type === 'evicted') {
-                await stream.writeSSE({
-                  event: LOG_STREAM_EVENTS.evicted,
-                  data: JSON.stringify(
-                    logEvictedSchema.parse({ id: event.entry.id }),
-                  ),
-                });
               } else {
-                await stream.writeSSE({
-                  event: LOG_STREAM_EVENTS.cleared,
-                  data: '{}',
-                });
+                await writeEvent(event);
               }
             }
           } finally {
@@ -143,6 +149,13 @@ export function createLogsRoutes(logs: LogsService) {
         });
       },
     )
+    .get('/:server/logs/:id{[0-9]+}', (c) => {
+      const entry = logs.get(
+        c.req.param('server'),
+        Number.parseInt(c.req.param('id'), 10),
+      );
+      return c.json(logEntrySchema.parse(entry), 200);
+    })
     .get('/:server/logs/export', (c) => {
       const server = c.req.param('server');
       const lines = logs

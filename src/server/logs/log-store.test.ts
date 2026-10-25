@@ -1,248 +1,469 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { type LogEntry } from '@/shared/api';
+import {
+  type HTTPEndFact,
+  type HTTPFact,
+  type MCPFact,
+  type NoReplyFact,
+} from '@/shared/api';
 
-import { createRingBufferLogStore, type LogStore, matches } from './log-store';
+import {
+  createRingBufferLogStore,
+  type LogEvent,
+  type LogStore,
+  matches,
+} from './log-store';
 
-const entry = (
-  server: string,
-  method: string,
-  raw = `{"method":"${method}"}`,
-): Omit<LogEntry, 'id'> => ({
+const base = (server: string) => ({
   at: '2026-10-21T12:00:00.000Z',
   server,
   sessionId: 's1',
-  direction: 'in',
+});
+
+const http = (
+  server: string,
+  fields: Partial<Omit<HTTPFact, 'id'>> = {},
+): Omit<HTTPFact, 'id'> => ({
+  ...base(server),
+  type: 'http',
+  endpoint: 'mcp',
+  request: {
+    method: 'POST',
+    url: `http://127.0.0.1:6280/s/${server}/mcp`,
+    headers: { 'content-type': 'application/json' },
+    truncated: false,
+  },
+  response: { status: 200, headers: {}, stream: true, truncated: false },
+  durationMs: 1,
+  ...fields,
+});
+
+const httpEnd = (
+  server: string,
+  exchange: number,
+): Omit<HTTPEndFact, 'id'> => ({
+  ...base(server),
+  type: 'http-end',
+  exchange,
+  state: 'complete',
+  durationMs: 5,
+  events: 1,
+});
+
+const mcp = (
+  server: string,
+  method: string | null,
+  fields: Partial<Omit<MCPFact, 'id'>> = {},
+): Omit<MCPFact, 'id'> => ({
+  ...base(server),
+  type: 'mcp',
+  from: 'client',
   kind: 'request',
   method,
   jsonrpcId: 1,
+  raw: `{"method":"${method}"}`,
+  truncated: false,
+  carriedBy: null,
+  sse: null,
+  replyTo: null,
   durationMs: null,
-  raw,
+  ...fields,
 });
+
+const noReply = (server: string, replyTo: number): Omit<NoReplyFact, 'id'> => ({
+  ...base(server),
+  type: 'no-reply',
+  replyTo,
+  reason: 'exchange-ended',
+});
+
+const idsOf = (facts: Array<{ id: number }>) => facts.map((fact) => fact.id);
 
 describe('createRingBufferLogStore', () => {
   let store: LogStore;
 
   beforeEach(() => {
-    store = createRingBufferLogStore(3);
+    store = createRingBufferLogStore(100);
   });
 
   describe('append', () => {
-    it('assigns monotonic ids across servers', () => {
-      const a = store.append(entry('a', 'one'));
-      const b = store.append(entry('b', 'two'));
+    it('assigns increasing ids across servers', () => {
+      const first = store.append(mcp('a', 'ping'));
+      const second = store.append(mcp('b', 'ping'));
 
-      expect([a.id, b.id]).toEqual([1, 2]);
+      expect([first.id, second.id]).toEqual([1, 2]);
     });
 
-    it('evicts the oldest entry once the global cap is reached', () => {
-      store.append(entry('a', 'one'));
-      store.append(entry('b', 'two'));
-      store.append(entry('a', 'three'));
-      store.append(entry('a', 'four'));
-
-      expect(
-        store.query({ server: 'a', limit: 10 }).map((e) => e.method),
-      ).toEqual(['four', 'three']);
-      expect(store.query({ server: 'b', limit: 10 })).toHaveLength(1);
-    });
-  });
-
-  describe('append events', () => {
-    it('tells only the evicted entry’s server about the eviction', () => {
+    it('notifies subscribers of the fact`s server only', () => {
       const listenerA = vi.fn();
       const listenerB = vi.fn();
-      const first = store.append(entry('a', 'one'));
-      store.append(entry('b', 'two'));
-      store.append(entry('b', 'three'));
       store.subscribe('a', listenerA);
       store.subscribe('b', listenerB);
 
-      const appended = store.append(entry('b', 'four'));
+      const fact = store.append(mcp('a', 'ping'));
 
-      expect(listenerA).toHaveBeenCalledExactlyOnceWith({
-        type: 'evicted',
-        entry: first,
-      });
-      expect(listenerB).toHaveBeenCalledExactlyOnceWith({
-        type: 'entry',
-        entry: appended,
-      });
+      expect(listenerA).toHaveBeenCalledExactlyOnceWith({ type: 'fact', fact });
+      expect(listenerB).not.toHaveBeenCalled();
     });
+  });
 
-    it('sends the eviction before the new entry of the same server', () => {
-      const listener = vi.fn();
-      const first = store.append(entry('a', 'one'));
-      store.append(entry('a', 'two'));
-      store.append(entry('a', 'three'));
-      store.subscribe('a', listener);
+  describe('lastId', () => {
+    it('is 0 before the first fact and then the highest id', () => {
+      expect(store.lastId()).toBe(0);
 
-      const appended = store.append(entry('a', 'four'));
+      store.append(mcp('a', 'ping'));
+      store.append(mcp('b', 'ping'));
 
-      expect(listener.mock.calls).toEqual([
-        [{ type: 'evicted', entry: first }],
-        [{ type: 'entry', entry: appended }],
-      ]);
+      expect(store.lastId()).toBe(2);
     });
+  });
 
-    it('does not evict while the buffer has room', () => {
-      const listener = vi.fn();
-      store.subscribe('a', listener);
+  describe('get', () => {
+    it('finds a stored fact by id', () => {
+      const fact = store.append(mcp('a', 'ping'));
 
-      store.append(entry('a', 'one'));
+      expect(store.get(fact.id)).toBe(fact);
+      expect(store.get(99)).toBeUndefined();
+    });
+  });
 
-      expect(listener).toHaveBeenCalledExactlyOnceWith(
-        expect.objectContaining({ type: 'entry' }),
+  describe('attachmentOf', () => {
+    it('finds the attachment of an anchor', () => {
+      const exchange = store.append(http('a'));
+      const end = store.append(httpEnd('a', exchange.id));
+      const request = store.append(mcp('a', 'tools/list'));
+      const reply = store.append(
+        mcp('a', null, {
+          from: 'server',
+          kind: 'response',
+          replyTo: request.id,
+        }),
       );
+      const unanswered = store.append(mcp('a', 'ping'));
+
+      expect(store.attachmentOf(exchange.id)).toBe(end);
+      expect(store.attachmentOf(request.id)).toBe(reply);
+      expect(store.attachmentOf(unanswered.id)).toBeUndefined();
+    });
+
+    it('keeps the first of two attachments', () => {
+      const request = store.append(mcp('a', 'ping'));
+      const first = store.append(noReply('a', request.id));
+      store.append(noReply('a', request.id));
+
+      expect(store.attachmentOf(request.id)).toBe(first);
     });
   });
 
-  describe('count', () => {
-    beforeEach(() => {
-      store = createRingBufferLogStore(100);
-      store.append(entry('a', 'initialize'));
-      store.append(entry('a', 'tools/list'));
-      store.append(entry('b', 'tools/list'));
-      store.append(entry('a', 'tools/call', '{"name":"Get_Forecast"}'));
+  describe('anchors', () => {
+    it('lists only anchors, newest first, of one server', () => {
+      const exchange = store.append(http('a'));
+      store.append(httpEnd('a', exchange.id));
+      const request = store.append(mcp('a', 'tools/list'));
+      store.append(
+        mcp('a', null, {
+          from: 'server',
+          kind: 'response',
+          replyTo: request.id,
+        }),
+      );
+      store.append(mcp('b', 'ping'));
+      const notification = store.append(
+        mcp('a', 'notifications/x', { kind: 'notification' }),
+      );
+
+      const anchors = store.anchors({ server: 'a', limit: 10 });
+
+      expect(idsOf(anchors)).toEqual([
+        notification.id,
+        request.id,
+        exchange.id,
+      ]);
     });
 
-    it('counts the entries of one server', () => {
-      expect(store.count({ server: 'a' })).toBe(3);
-      expect(store.count({ server: 'b' })).toBe(1);
-      expect(store.count({ server: 'none' })).toBe(0);
+    it('pages with beforeId and limit', () => {
+      const facts = [1, 2, 3, 4].map(() => store.append(mcp('a', 'ping')));
+
+      const page = store.anchors({
+        server: 'a',
+        beforeId: facts[3].id,
+        limit: 2,
+      });
+
+      expect(idsOf(page)).toEqual([facts[2].id, facts[1].id]);
     });
 
-    it('counts only entries matching the text, like query', () => {
-      expect(store.count({ server: 'a', text: 'TOOLS/' })).toBe(2);
-      expect(store.count({ server: 'a', text: 'get_forecast' })).toBe(1);
-      expect(store.count({ server: 'a', text: 'nothing' })).toBe(0);
-      expect(store.count({ server: 'a', text: '' })).toBe(3);
+    it('matches an entry when its anchor matches', () => {
+      store.append(mcp('a', 'tools/list'));
+      const call = store.append(mcp('a', 'tools/call'));
+
+      const found = store.anchors({ server: 'a', text: 'CALL', limit: 10 });
+
+      expect(idsOf(found)).toEqual([call.id]);
+    });
+
+    it('matches an entry when its attachment matches', () => {
+      const request = store.append(mcp('a', 'tools/call'));
+      store.append(
+        mcp('a', null, {
+          from: 'server',
+          kind: 'response',
+          replyTo: request.id,
+          raw: '{"result":"needle"}',
+        }),
+      );
+      store.append(mcp('a', 'tools/call'));
+
+      const found = store.anchors({ server: 'a', text: 'needle', limit: 10 });
+
+      expect(idsOf(found)).toEqual([request.id]);
+    });
+
+    it('matches http facts by URL, headers and bodies', () => {
+      const byURL = store.append(http('a'));
+      const byHeader = store.append(
+        http('a', {
+          request: {
+            method: 'GET',
+            url: 'http://x/y',
+            headers: { 'x-trace': 'abc123' },
+            truncated: false,
+          },
+        }),
+      );
+      const byBody = store.append(
+        http('a', {
+          request: {
+            method: 'POST',
+            url: 'http://x/z',
+            headers: {},
+            body: { note: 'say "hi"' },
+            truncated: false,
+          },
+        }),
+      );
+
+      expect(
+        idsOf(store.anchors({ server: 'a', text: '/s/a/mcp', limit: 10 })),
+      ).toEqual([byURL.id]);
+      expect(
+        idsOf(store.anchors({ server: 'a', text: 'abc123', limit: 10 })),
+      ).toEqual([byHeader.id]);
+      expect(
+        idsOf(store.anchors({ server: 'a', text: 'say "hi"', limit: 10 })),
+      ).toEqual([byBody.id]);
+    });
+
+    it('matches carriedBy through the anchor and through the attachment', () => {
+      const exchange = store.append(http('a'));
+      const direct = store.append(
+        mcp('a', 'notifications/x', {
+          kind: 'notification',
+          carriedBy: exchange.id,
+        }),
+      );
+      const request = store.append(mcp('a', 'tools/list', { carriedBy: 999 }));
+      store.append(
+        mcp('a', null, {
+          from: 'server',
+          kind: 'response',
+          replyTo: request.id,
+          carriedBy: exchange.id,
+        }),
+      );
+      store.append(mcp('a', 'ping', { carriedBy: 999 }));
+
+      const found = store.anchors({
+        server: 'a',
+        carriedBy: exchange.id,
+        limit: 10,
+      });
+
+      expect(idsOf(found)).toEqual([request.id, direct.id]);
+    });
+
+    it('never matches http entries by carriedBy', () => {
+      const exchange = store.append(http('a'));
+
+      expect(
+        store.anchors({ server: 'a', carriedBy: exchange.id, limit: 10 }),
+      ).toEqual([]);
     });
   });
 
-  describe('query', () => {
+  describe('countAnchors', () => {
+    it('counts matching anchors only', () => {
+      const exchange = store.append(http('a'));
+      store.append(httpEnd('a', exchange.id));
+      store.append(mcp('a', 'ping'));
+      store.append(mcp('b', 'ping'));
+
+      expect(store.countAnchors({ server: 'a' })).toBe(2);
+      expect(store.countAnchors({ server: 'a', text: 'PING' })).toBe(1);
+      expect(store.countAnchors({ server: 'c' })).toBe(0);
+    });
+  });
+
+  describe('factsAfter', () => {
+    it('lists facts of every type of one server, oldest first', () => {
+      const exchange = store.append(http('a'));
+      store.append(mcp('b', 'ping'));
+      const end = store.append(httpEnd('a', exchange.id));
+      const request = store.append(mcp('a', 'ping'));
+
+      expect(idsOf(store.factsAfter('a', 0))).toEqual([
+        exchange.id,
+        end.id,
+        request.id,
+      ]);
+      expect(idsOf(store.factsAfter('a', end.id))).toEqual([request.id]);
+    });
+  });
+
+  describe('eviction', () => {
     beforeEach(() => {
-      store = createRingBufferLogStore(100);
-      store.append(entry('a', 'initialize'));
-      store.append(entry('a', 'tools/list'));
-      store.append(entry('b', 'tools/list'));
-      store.append(entry('a', 'tools/call', '{"name":"Get_Forecast"}'));
+      store = createRingBufferLogStore(3);
     });
 
-    it('returns entries of one server, newest first', () => {
-      expect(store.query({ server: 'a', limit: 10 }).map((e) => e.id)).toEqual([
-        4, 2, 1,
+    it('drops an anchor before its attachment and leaves no orphan in reads', () => {
+      const request = store.append(mcp('a', 'tools/list'));
+      const reply = store.append(
+        mcp('a', null, {
+          from: 'server',
+          kind: 'response',
+          replyTo: request.id,
+        }),
+      );
+      const other = store.append(mcp('a', 'ping'));
+      const listener = vi.fn();
+      store.subscribe('a', listener);
+
+      const next = store.append(mcp('a', 'ping'));
+
+      expect(listener).toHaveBeenCalledWith({
+        type: 'evicted',
+        fact: request,
+        attachment: reply,
+      });
+      expect(store.get(request.id)).toBeUndefined();
+      expect(store.attachmentOf(request.id)).toBeUndefined();
+      expect(idsOf(store.anchors({ server: 'a', limit: 10 }))).toEqual([
+        next.id,
+        other.id,
       ]);
+      expect(store.countAnchors({ server: 'a' })).toBe(2);
     });
 
-    it('honors limit', () => {
-      expect(store.query({ server: 'a', limit: 1 }).map((e) => e.id)).toEqual([
-        4,
-      ]);
-    });
+    it('reports an evicted attachment without one of its own', () => {
+      const request = store.append(mcp('a', 'ping'));
+      const reply = store.append(noReply('a', request.id));
+      store.append(mcp('a', 'ping'));
+      store.append(mcp('a', 'ping'));
+      const events: LogEvent[] = [];
+      store.subscribe('a', (event) => events.push(event));
 
-    it('filters by afterId and beforeId', () => {
-      expect(
-        store.query({ server: 'a', afterId: 1, limit: 10 }).map((e) => e.id),
-      ).toEqual([4, 2]);
-      expect(
-        store.query({ server: 'a', beforeId: 4, limit: 10 }).map((e) => e.id),
-      ).toEqual([2, 1]);
-    });
+      store.append(mcp('a', 'ping'));
 
-    it('searches method and raw case-insensitively', () => {
-      expect(
-        store
-          .query({ server: 'a', text: 'TOOLS/', limit: 10 })
-          .map((e) => e.id),
-      ).toEqual([4, 2]);
-      expect(
-        store
-          .query({ server: 'a', text: 'get_forecast', limit: 10 })
-          .map((e) => e.id),
-      ).toEqual([4]);
+      expect(events[0]).toEqual({
+        type: 'evicted',
+        fact: reply,
+        attachment: undefined,
+      });
+      expect(store.attachmentOf(request.id)).toBeUndefined();
     });
   });
 
   describe('clear', () => {
-    it('drops only the given server and notifies its subscribers', () => {
-      store.append(entry('a', 'one'));
-      store.append(entry('b', 'two'));
+    it('drops one server`s facts and indexes and notifies', () => {
+      const request = store.append(mcp('a', 'ping'));
+      store.append(noReply('a', request.id));
+      const kept = store.append(mcp('b', 'ping'));
       const listener = vi.fn();
       store.subscribe('a', listener);
 
       store.clear('a');
 
-      expect(store.query({ server: 'a', limit: 10 })).toEqual([]);
-      expect(store.query({ server: 'b', limit: 10 })).toHaveLength(1);
       expect(listener).toHaveBeenCalledExactlyOnceWith({ type: 'cleared' });
+      expect(store.get(request.id)).toBeUndefined();
+      expect(store.attachmentOf(request.id)).toBeUndefined();
+      expect(store.anchors({ server: 'a', limit: 10 })).toEqual([]);
+      expect(idsOf(store.anchors({ server: 'b', limit: 10 }))).toEqual([
+        kept.id,
+      ]);
+      expect(store.lastId()).toBe(3);
     });
 
-    it('keeps accepting entries afterwards', () => {
-      store.append(entry('a', 'one'));
+    it('keeps the ring buffer working afterwards', () => {
+      store = createRingBufferLogStore(2);
+      store.append(mcp('a', 'ping'));
+      store.append(mcp('b', 'ping'));
       store.clear('a');
-      store.append(entry('a', 'two'));
-      store.append(entry('a', 'three'));
-      store.append(entry('a', 'four'));
-      store.append(entry('a', 'five'));
 
-      expect(
-        store.query({ server: 'a', limit: 10 }).map((e) => e.method),
-      ).toEqual(['five', 'four', 'three']);
+      store.append(mcp('b', 'one'));
+      const last = store.append(mcp('b', 'two'));
+
+      expect(store.anchors({ server: 'b', limit: 10 })[0]).toBe(last);
+      expect(store.countAnchors({ server: 'b' })).toBe(2);
     });
   });
 
   describe('rename', () => {
-    it('moves the entries of a server and keeps their ids', () => {
-      store.append(entry('a', 'one'));
-      store.append(entry('b', 'two'));
-      store.append(entry('a', 'three'));
+    it('reassigns facts and keeps lookups consistent', () => {
+      const request = store.append(mcp('old', 'ping'));
+      const reply = store.append(noReply('old', request.id));
+      store.append(mcp('other', 'ping'));
 
-      store.rename('a', 'c');
+      store.rename('old', 'new');
 
-      expect(store.query({ server: 'a', limit: 10 })).toEqual([]);
-      expect(
-        store.query({ server: 'c', limit: 10 }).map((e) => [e.id, e.server]),
-      ).toEqual([
-        [3, 'c'],
-        [1, 'c'],
+      expect(store.anchors({ server: 'old', limit: 10 })).toEqual([]);
+      expect(store.anchors({ server: 'new', limit: 10 })).toEqual([
+        expect.objectContaining({ id: request.id, server: 'new' }),
       ]);
-      expect(store.query({ server: 'b', limit: 10 })).toHaveLength(1);
+      expect(store.attachmentOf(request.id)).toEqual({
+        ...reply,
+        server: 'new',
+      });
+      expect(store.get(request.id)).toMatchObject({ server: 'new' });
+      expect(idsOf(store.factsAfter('new', 0))).toEqual([request.id, reply.id]);
     });
   });
 
   describe('subscribe', () => {
-    it('delivers new entries of the server until unsubscribed', () => {
+    it('stops notifying after unsubscribing', () => {
       const listener = vi.fn();
       const unsubscribe = store.subscribe('a', listener);
 
-      const appended = store.append(entry('a', 'one'));
-      store.append(entry('b', 'two'));
       unsubscribe();
-      store.append(entry('a', 'three'));
+      store.append(mcp('a', 'ping'));
 
-      expect(listener).toHaveBeenCalledExactlyOnceWith({
-        type: 'entry',
-        entry: appended,
-      });
+      expect(listener).not.toHaveBeenCalled();
     });
   });
 });
 
 describe('matches', () => {
-  const logEntry: LogEntry = {
-    id: 1,
-    ...entry('a', 'tools/call', '{"name":"Get_Forecast"}'),
-  };
+  it('matches mcp facts by method and raw JSON, ignoring case', () => {
+    const request: MCPFact = {
+      id: 1,
+      ...mcp('a', 'tools/call', { raw: '{"x":"Needle"}' }),
+    };
 
-  it('matches method and raw case-insensitively', () => {
-    expect(matches(logEntry, 'TOOLS/CALL')).toBe(true);
-    expect(matches(logEntry, 'get_forecast')).toBe(true);
-    expect(matches(logEntry, 'initialize')).toBe(false);
+    expect(matches(request, 'TOOLS')).toBe(true);
+    expect(matches(request, 'needle')).toBe(true);
+    expect(matches(request, 'other')).toBe(false);
   });
 
-  it('matches everything without text', () => {
-    expect(matches(logEntry)).toBe(true);
-    expect(matches(logEntry, '')).toBe(true);
+  it('matches everything with empty or missing text', () => {
+    const request: MCPFact = { id: 1, ...mcp('a', 'ping') };
+
+    expect(matches(request)).toBe(true);
+    expect(matches(request, '')).toBe(true);
+  });
+
+  it('matches attachments only with empty text', () => {
+    const end: HTTPEndFact = { id: 2, ...httpEnd('a', 1) };
+
+    expect(matches(end, 'a')).toBe(false);
+    expect(matches(end, '')).toBe(true);
   });
 });

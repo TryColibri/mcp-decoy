@@ -5,7 +5,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createMCPApp } from '@/server/mcp-app';
 import { createServices, type Services } from '@/server/services';
-import { type InstanceInfo } from '@/shared/api';
+import {
+  type HTTPEntry,
+  type InstanceInfo,
+  logEntrySchema,
+} from '@/shared/api';
 
 const INSTANCE: InstanceInfo = {
   version: '0.0.0-test',
@@ -489,16 +493,54 @@ describe('OAuth routes', () => {
   });
 
   describe('http log entries', () => {
-    it('records one http entry per OAuth exchange', async () => {
+    const httpEntries = (server: string) =>
+      harness.services.logs
+        .all(server)
+        .filter((entry): entry is HTTPEntry => entry.type === 'http');
+
+    it('records one entry per OAuth exchange', async () => {
       await registerDCRClient(harness.app, 'http://localhost:9999/cb');
 
-      const entries = harness.services.logs.all('weather');
-      const httpEntries = entries.filter((entry) => entry.kind === 'http');
-      expect(httpEntries.length).toBeGreaterThan(0);
-      expect(httpEntries[0]?.method).toBe('POST /register');
+      const entries = httpEntries('weather');
+
+      expect(entries).toHaveLength(1);
+      expect(entries[0]).toMatchObject({
+        state: 'complete',
+        end: null,
+        durationMs: expect.any(Number),
+        exchange: {
+          endpoint: 'oauth',
+          request: {
+            method: 'POST',
+            url: 'http://localhost:6280/register',
+            body: { client_name: 'Test Client' },
+          },
+          response: { status: 201, stream: false },
+        },
+      });
+      expect(() => logEntrySchema.parse(entries[0])).not.toThrow();
     });
 
-    it('records a gate rejection as POST /mcp with the session ID', async () => {
+    it('records one entry per attributed server', async () => {
+      await harness.services.servers.create({ name: 'echo' });
+      await harness.services.servers.update('echo', {
+        auth: { mode: 'oauth', redirectUris: ['http://localhost:9999/cb'] },
+      });
+
+      await registerDCRClient(harness.app, 'http://localhost:9999/cb');
+
+      const weather = httpEntries('weather');
+      const echo = httpEntries('echo');
+      expect(weather).toHaveLength(1);
+      expect(echo).toHaveLength(1);
+      expect(weather[0]?.id).not.toBe(echo[0]?.id);
+      expect(echo[0]?.exchange).toMatchObject({
+        server: 'echo',
+        request: { url: 'http://localhost:6280/register' },
+      });
+    });
+
+    it('records a gate rejection as an mcp exchange with the session ID', async () => {
       const response = await harness.app.request(
         'http://localhost:6280/s/weather/mcp',
         {
@@ -513,15 +555,25 @@ describe('OAuth routes', () => {
       );
       expect(response.status).toBe(401);
 
-      const entries = harness.services.logs
-        .all('weather')
-        .filter((entry) => entry.kind === 'http');
-      expect(entries).toContainEqual(
-        expect.objectContaining({
-          method: 'POST /mcp',
-          sessionId: 'fake-session',
-        }),
-      );
+      expect(httpEntries('weather')).toMatchObject([
+        {
+          state: 'complete',
+          exchange: {
+            endpoint: 'mcp',
+            sessionId: 'fake-session',
+            request: {
+              method: 'POST',
+              url: 'http://localhost:6280/s/weather/mcp',
+            },
+            response: {
+              status: 401,
+              headers: {
+                'www-authenticate': expect.stringContaining('Bearer'),
+              },
+            },
+          },
+        },
+      ]);
     });
   });
 

@@ -1,4 +1,10 @@
-export { type Capture, type CaptureOrigin, createCapture } from './capture';
+export {
+  type BeginParams,
+  type Capture,
+  type CaptureOrigin,
+  createCapture,
+  type Exchange,
+} from './capture';
 export {
   createSessionManager,
   type SessionManager,

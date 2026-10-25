@@ -6,7 +6,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createMCPApp } from '@/server/mcp-app';
 import { createServices, type Services } from '@/server/services';
-import { type InstanceInfo, type LogEntry } from '@/shared/api';
+import {
+  type HTTPEntry,
+  type InstanceInfo,
+  type LogEntry,
+  logEntrySchema,
+  type MCPEntry,
+} from '@/shared/api';
+import { factsOf } from '@/shared/logs';
 
 const INSTANCE: InstanceInfo = {
   version: '0.0.0-test',
@@ -67,12 +74,71 @@ const connect = async (
   return { client, transport };
 };
 
+const mcpEntriesOf = (entries: LogEntry[]) =>
+  entries.filter((entry): entry is MCPEntry => entry.type === 'mcp');
+
+const httpEntriesOf = (entries: LogEntry[]) =>
+  entries.filter((entry): entry is HTTPEntry => entry.type === 'http');
+
+/** MCP entries reduced to who sent what and how it ended. */
 const summarize = (entries: LogEntry[]) =>
-  entries.map((entry) => ({
-    direction: entry.direction,
-    kind: entry.kind,
-    method: entry.method,
+  mcpEntriesOf(entries).map((entry) => ({
+    from: entry.message.from,
+    kind: entry.message.kind,
+    method: entry.message.method,
+    reply:
+      entry.reply === null
+        ? null
+        : entry.reply.type === 'mcp'
+          ? entry.reply.kind
+          : entry.reply.type,
+    state: entry.state,
   }));
+
+const ACCEPT = 'application/json, text/event-stream';
+
+const INITIALIZE = {
+  jsonrpc: '2.0',
+  id: 1,
+  method: 'initialize',
+  params: {
+    protocolVersion: '2025-06-18',
+    capabilities: {},
+    clientInfo: { name: 'raw-client', version: '0.0.1' },
+  },
+};
+
+const postTo = (
+  { app }: Harness,
+  body: unknown,
+  headers: Record<string, string> = {},
+) =>
+  app.request('/s/weather/mcp', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      accept: ACCEPT,
+      ...headers,
+    },
+    body: JSON.stringify(body),
+  });
+
+/** Opens a session without a standalone stream and returns its ID. */
+const openRawSession = async (harness: Harness): Promise<string> => {
+  const response = await postTo(harness, INITIALIZE);
+  await response.text();
+  const sessionId = response.headers.get('mcp-session-id');
+  if (sessionId === null) {
+    throw new Error('No session ID');
+  }
+  const initialized = await postTo(
+    harness,
+    { jsonrpc: '2.0', method: 'notifications/initialized' },
+    { 'mcp-session-id': sessionId },
+  );
+  await initialized.text();
+  return sessionId;
+};
 
 const waitFor = async (check: () => boolean) => {
   await vi.waitFor(() => {
@@ -152,42 +218,49 @@ describe('mcpApp', () => {
       });
 
       const entries = services.logs.all('weather');
+      const answered = (from: 'client' | 'server', method: string) => ({
+        from,
+        kind: 'request',
+        method,
+        reply: 'response',
+        state: 'complete',
+      });
       expect(summarize(entries)).toEqual([
-        { direction: 'in', kind: 'request', method: 'initialize' },
-        { direction: 'out', kind: 'response', method: 'initialize' },
+        answered('client', 'initialize'),
         {
-          direction: 'in',
+          from: 'client',
           kind: 'notification',
           method: 'notifications/initialized',
+          reply: null,
+          state: 'complete',
         },
-        { direction: 'in', kind: 'request', method: 'tools/list' },
-        { direction: 'out', kind: 'response', method: 'tools/list' },
+        answered('client', 'tools/list'),
         {
-          direction: 'out',
+          from: 'server',
           kind: 'notification',
           method: 'notifications/tools/list_changed',
+          reply: null,
+          state: 'complete',
         },
-        { direction: 'in', kind: 'request', method: 'tools/list' },
-        { direction: 'out', kind: 'response', method: 'tools/list' },
-        { direction: 'in', kind: 'request', method: 'tools/call' },
-        { direction: 'out', kind: 'response', method: 'tools/call' },
-        { direction: 'in', kind: 'request', method: 'tools/call' },
-        { direction: 'out', kind: 'error', method: 'tools/call' },
+        answered('client', 'tools/list'),
+        answered('client', 'tools/call'),
+        { ...answered('client', 'tools/call'), reply: 'error' },
       ]);
       const sessionId = transport.sessionId;
       expect(sessionId).toEqual(expect.any(String));
       for (const entry of entries) {
-        expect(entry.sessionId).toBe(sessionId);
+        for (const fact of factsOf(entry)) {
+          expect(fact.sessionId).toBe(sessionId);
+        }
+        expect(() => logEntrySchema.parse(entry)).not.toThrow();
       }
-      for (const entry of entries.filter(
-        (candidate) =>
-          candidate.kind === 'response' || candidate.kind === 'error',
+      for (const entry of mcpEntriesOf(entries).filter(
+        (candidate) => candidate.message.kind === 'request',
       )) {
         expect(entry.durationMs).toEqual(expect.any(Number));
       }
-      expect(entries.map((entry) => entry.id)).toEqual(
-        entries.map((entry) => entry.id).sort((a, b) => a - b),
-      );
+      const ids = entries.map((entry) => entry.id);
+      expect(ids).toEqual([...ids].sort((a, b) => a - b));
 
       expect(services.sessions.list('weather')).toEqual([
         expect.objectContaining({
@@ -200,6 +273,219 @@ describe('mcpApp', () => {
       await services.servers.delete('weather');
       await services.servers.create({ name: 'weather' });
       await expect(client.listTools()).rejects.toThrow(/404|Session not found/);
+    });
+  });
+
+  describe('HTTP exchanges', () => {
+    const entryOf = (entries: LogEntry[], method: string) => {
+      const found = mcpEntriesOf(entries).find(
+        (entry) => entry.message.method === method,
+      );
+      if (found === undefined) {
+        throw new Error(`No ${method} entry`);
+      }
+      return found;
+    };
+
+    it('records initialize as a completed exchange that carried its request and reply', async () => {
+      await connect(harness, 'weather');
+
+      const entries = harness.services.logs.all('weather');
+      const initialize = entryOf(entries, 'initialize');
+      const exchange = httpEntriesOf(entries).find(
+        (entry) => entry.id === initialize.message.carriedBy,
+      );
+
+      expect(exchange).toMatchObject({
+        state: 'complete',
+        exchange: {
+          endpoint: 'mcp',
+          request: {
+            method: 'POST',
+            url: 'http://localhost:6280/s/weather/mcp',
+            headers: {
+              accept: expect.stringContaining('text/event-stream'),
+              'content-type': expect.stringContaining('application/json'),
+            },
+            body: { method: 'initialize' },
+          },
+          response: {
+            status: 200,
+            stream: true,
+            headers: {
+              'content-type': expect.stringContaining('text/event-stream'),
+              'mcp-session-id': expect.any(String),
+            },
+          },
+        },
+        end: { state: 'complete', events: 1 },
+      });
+      expect(initialize.reply).toMatchObject({
+        type: 'mcp',
+        carriedBy: initialize.message.carriedBy,
+        sse: { event: 'message' },
+      });
+    });
+
+    it('records the CORS headers of the response', async () => {
+      await connect(harness, 'weather');
+
+      const [first] = httpEntriesOf(harness.services.logs.all('weather'));
+
+      expect(first.exchange.response?.headers).toMatchObject({
+        'access-control-allow-origin': '*',
+        'access-control-expose-headers':
+          expect.stringContaining('mcp-session-id'),
+      });
+    });
+
+    it('records notifications/initialized as a client notification answered with 202', async () => {
+      await connect(harness, 'weather');
+
+      const entries = harness.services.logs.all('weather');
+      const initialized = entryOf(entries, 'notifications/initialized');
+      const exchange = httpEntriesOf(entries).find(
+        (entry) => entry.id === initialized.message.carriedBy,
+      );
+
+      expect(initialized).toMatchObject({
+        message: { from: 'client', kind: 'notification' },
+        reply: null,
+        state: 'complete',
+      });
+      expect(exchange).toMatchObject({
+        state: 'complete',
+        exchange: { response: { status: 202, stream: false } },
+      });
+    });
+
+    it('keeps the standalone GET streaming and carries pushed notifications on it', async () => {
+      const onListChanged = vi.fn();
+      await connect(harness, 'weather', { onListChanged });
+      await harness.services.tools.create('weather', {
+        name: 'get_forecast',
+        published: true,
+      });
+      await waitFor(() => onListChanged.mock.calls.length === 1);
+
+      const entries = harness.services.logs.all('weather');
+      const get = httpEntriesOf(entries).find(
+        (entry) => entry.exchange.request.method === 'GET',
+      );
+      const notification = entryOf(entries, 'notifications/tools/list_changed');
+
+      expect(get).toMatchObject({
+        state: 'streaming',
+        end: null,
+        durationMs: null,
+        exchange: { response: { status: 200, stream: true } },
+      });
+      expect(notification.message).toMatchObject({
+        from: 'server',
+        carriedBy: get?.id,
+        sse: { event: 'message' },
+      });
+      const carried = harness.services.logs.page('weather', {
+        carriedBy: get?.id,
+        limit: 10,
+      });
+      expect(carried.items.map((entry) => entry.id)).toEqual([notification.id]);
+    });
+
+    it('marks a notification as not sent when no standalone stream is open', async () => {
+      const sessionId = await openRawSession(harness);
+
+      await harness.services.tools.create('weather', {
+        name: 'late',
+        published: true,
+      });
+
+      await vi.waitFor(() => {
+        expect(
+          mcpEntriesOf(harness.services.logs.all('weather')).find(
+            (entry) =>
+              entry.message.method === 'notifications/tools/list_changed',
+          )?.message,
+        ).toMatchObject({
+          from: 'server',
+          carriedBy: null,
+          sse: null,
+          sessionId,
+        });
+      });
+    });
+
+    it('ends the GET as aborted when its body is cancelled', async () => {
+      const sessionId = await openRawSession(harness);
+      const response = await harness.app.request('/s/weather/mcp', {
+        headers: { accept: 'text/event-stream', 'mcp-session-id': sessionId },
+      });
+
+      await response.body?.cancel();
+
+      await vi.waitFor(() => {
+        const get = httpEntriesOf(harness.services.logs.all('weather')).find(
+          (entry) => entry.exchange.request.method === 'GET',
+        );
+        expect(get).toMatchObject({
+          state: 'aborted',
+          end: { state: 'aborted', events: 0 },
+        });
+      });
+    });
+
+    it('records the status and JSON body of an unknown-session error', async () => {
+      await postTo(
+        harness,
+        { jsonrpc: '2.0', id: 1, method: 'tools/list' },
+        { 'mcp-session-id': 'nope' },
+      );
+
+      const entries = harness.services.logs.all('weather');
+      const list = entryOf(entries, 'tools/list');
+      const exchange = httpEntriesOf(entries).find(
+        (entry) => entry.id === list.message.carriedBy,
+      );
+
+      expect(exchange?.exchange.response).toMatchObject({
+        status: 404,
+        stream: false,
+        headers: { 'content-type': 'application/json' },
+        body: { error: { message: 'Session not found' } },
+      });
+      expect(list).toMatchObject({
+        state: 'complete',
+        reply: { kind: 'error', carriedBy: exchange?.id },
+      });
+    });
+
+    it('records a gated request as a 401 with the challenge and no reply', async () => {
+      await harness.services.servers.update('weather', {
+        auth: { mode: 'oauth' },
+      });
+
+      const response = await postTo(harness, INITIALIZE);
+
+      expect(response.status).toBe(401);
+      const entries = harness.services.logs.all('weather');
+      expect(httpEntriesOf(entries)).toMatchObject([
+        {
+          state: 'complete',
+          exchange: {
+            response: {
+              status: 401,
+              headers: {
+                'www-authenticate': expect.stringContaining('Bearer'),
+                'access-control-allow-origin': '*',
+              },
+            },
+          },
+        },
+      ]);
+      expect(entryOf(entries, 'initialize')).toMatchObject({
+        state: 'aborted',
+        reply: { type: 'no-reply', reason: 'exchange-ended' },
+      });
     });
   });
 
@@ -281,8 +567,20 @@ describe('mcpApp', () => {
       });
 
       expect(summarize(harness.services.logs.all('weather'))).toEqual([
-        { direction: 'in', kind: 'invalid', method: null },
-        { direction: 'out', kind: 'error', method: null },
+        {
+          from: 'client',
+          kind: 'invalid',
+          method: null,
+          reply: null,
+          state: 'complete',
+        },
+        {
+          from: 'server',
+          kind: 'error',
+          method: null,
+          reply: null,
+          state: 'complete',
+        },
       ]);
     });
 
@@ -340,7 +638,11 @@ describe('mcpApp', () => {
       expect(services.logs.all('forecast').length).toBeGreaterThanOrEqual(
         logged,
       );
-      expect(services.logs.all('forecast').at(0)?.server).toBe('forecast');
+      for (const entry of services.logs.all('forecast')) {
+        expect(factsOf(entry).every((fact) => fact.server === 'forecast')).toBe(
+          true,
+        );
+      }
       const fresh = await connect(harness, 'forecast');
       await expect(fresh.client.listTools()).resolves.toBeDefined();
     });
@@ -361,11 +663,22 @@ describe('mcpApp', () => {
 
       await expect(client.listTools()).resolves.toEqual({ tools: [] });
       expect(
-        summarize(harness.services.logs.all('weather')).slice(0, 3),
+        summarize(harness.services.logs.all('weather')).slice(0, 2),
       ).toEqual([
-        { direction: 'in', kind: 'request', method: 'server/discover' },
-        { direction: 'out', kind: 'error', method: 'server/discover' },
-        { direction: 'in', kind: 'request', method: 'initialize' },
+        {
+          from: 'client',
+          kind: 'request',
+          method: 'server/discover',
+          reply: 'error',
+          state: 'complete',
+        },
+        {
+          from: 'client',
+          kind: 'request',
+          method: 'initialize',
+          reply: 'response',
+          state: 'complete',
+        },
       ]);
     });
   });

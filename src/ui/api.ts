@@ -3,6 +3,7 @@ import useSWR, { type SWRConfiguration } from 'swr';
 import {
   type FieldError,
   type InstanceInfo,
+  type LogEntry,
   type OAuthToken,
   type Problem,
   problemSchema,
@@ -108,6 +109,7 @@ export const keys = {
   tools: (server: string) => `servers/${server}/tools`,
   sessions: (server: string) => `servers/${server}/sessions`,
   logs: (server: string) => `servers/${server}/logs`,
+  logEntry: (server: string, id: number) => `servers/${server}/logs/${id}`,
   oauthTokens: (server: string) => `servers/${server}/oauth/tokens`,
 } as const;
 
@@ -180,5 +182,59 @@ export function useOAuthTokens(server: string, enabled: boolean) {
         )
       ).items,
     { refreshInterval: POLL_MS },
+  );
+}
+
+/** Whether an entry can still change, so it is worth polling. */
+const unsettled = (entry: LogEntry | undefined): boolean =>
+  entry?.state === 'pending' || entry?.state === 'streaming';
+
+/**
+ * `GET /api/v1/servers/{server}/logs/{id}`: an entry by the id of its anchor.
+ * Pass `null` as `id` to fetch nothing. Polled while the entry is `pending` or
+ * `streaming`.
+ */
+export function useLogEntry(server: string, id: number | null) {
+  return useSWR<LogEntry, ApiError>(
+    id === null ? null : keys.logEntry(server, id),
+    async () =>
+      unwrap(
+        client.servers[':server'].logs[':id{[0-9]+}'].$get({
+          param: { server, id: String(id) },
+        }),
+      ),
+    {
+      refreshInterval: (latest) => (unsettled(latest) ? POLL_MS : 0),
+      shouldRetryOnError: false,
+    },
+  );
+}
+
+/**
+ * `GET /api/v1/servers/{server}/logs?carriedBy={httpId}`: the entries with a
+ * fact the HTTP exchange carried, newest first. Pass `null` as `httpId` to
+ * fetch nothing. Polled while `streaming` is true, since the exchange is
+ * still carrying.
+ */
+export function useCarriedEntries(
+  server: string,
+  httpId: number | null,
+  streaming: boolean,
+) {
+  return useSWR<LogEntry[], ApiError>(
+    httpId === null ? null : `${keys.logs(server)}?carriedBy=${httpId}`,
+    async () =>
+      (
+        await unwrap(
+          client.servers[':server'].logs.$get({
+            param: { server },
+            query: { carriedBy: String(httpId), limit: '1000' },
+          }),
+        )
+      ).items,
+    {
+      refreshInterval: streaming ? POLL_MS : 0,
+      shouldRetryOnError: false,
+    },
   );
 }

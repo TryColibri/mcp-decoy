@@ -5,25 +5,29 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type LogEntry } from '@/shared/api';
 
+import { mcpEntry, mcpFact, noReplyFact, replyFact } from './log-fixtures';
 import {
+  emptyLive,
+  fold,
+  type FoldView,
+  type LiveState,
   MAX_ENTRIES,
   PAGE_SIZE,
-  prependEntries,
+  refold,
   useLogStream,
 } from './use-log-stream';
 
-const entry = (id: number): LogEntry => ({
-  id,
-  at: '2026-10-21T12:00:00.000Z',
-  server: 'weather',
-  sessionId: 's1',
-  direction: 'in',
-  kind: 'request',
-  method: 'tools/list',
-  jsonrpcId: id,
-  durationMs: null,
-  raw: `{"jsonrpc":"2.0","id":${id},"method":"tools/list"}`,
-});
+const anchor = (id: number) =>
+  mcpFact({
+    id,
+    kind: 'request',
+    jsonrpcId: id,
+    raw: `{"jsonrpc":"2.0","id":${id},"method":"tools/list"}`,
+  });
+
+const entry = (id: number): LogEntry => mcpEntry(anchor(id));
+
+const fact = (id: number) => anchor(id);
 
 /** A controllable stand-in for the browser's EventSource. */
 class FakeEventSource {
@@ -68,15 +72,30 @@ const urlOf = (input: RequestInfo | URL | undefined): string =>
 /** The server's log, as pages of three: [6, 5, 4] then [3, 2, 1]; or empty once cleared. */
 const pageOf = (url: URL, cleared: boolean) => {
   if (cleared) {
-    return { items: [], nextCursor: null, total: 0 };
+    return { items: [], nextCursor: null, total: 0, after: 6 };
   }
   const filtered = url.searchParams.get('q') !== null;
   if (filtered) {
-    return { items: [entry(5), entry(2)], nextCursor: null, total: 2 };
+    return {
+      items: [entry(5), entry(2)],
+      nextCursor: null,
+      total: 2,
+      after: 6,
+    };
   }
   return url.searchParams.get('cursor') === 'older'
-    ? { items: [entry(3), entry(2), entry(1)], nextCursor: null, total: 6 }
-    : { items: [entry(6), entry(5), entry(4)], nextCursor: 'older', total: 6 };
+    ? {
+        items: [entry(3), entry(2), entry(1)],
+        nextCursor: null,
+        total: 6,
+        after: 6,
+      }
+    : {
+        items: [entry(6), entry(5), entry(4)],
+        nextCursor: 'older',
+        total: 6,
+        after: 6,
+      };
 };
 
 const wrapper = ({ children }: { children: ReactNode }) => (
@@ -95,18 +114,127 @@ const lastSource = () => {
 
 const ids = (entries: LogEntry[]) => entries.map((e) => e.id);
 
-describe('prependEntries', () => {
-  it('prepends newer entries, newest first', () => {
-    expect(ids(prependEntries([entry(1)], [entry(2), entry(3)]))).toEqual([
-      3, 2, 1,
-    ]);
+const view = (loaded: LogEntry[], hasOlder = false): FoldView => ({
+  pageEntries: new Map(loaded.map((item) => [item.id, item])),
+  oldestLoadedId: loaded.at(-1)?.id ?? null,
+  hasOlder,
+});
+
+const foldAll = (
+  state: LiveState,
+  facts: Array<ReturnType<typeof fact>>,
+  v: FoldView,
+) => facts.reduce((current, item) => fold(current, item, v), state);
+
+describe('fold', () => {
+  it('inserts and counts a new anchor', () => {
+    const state = fold(emptyLive('l'), fact(7), view([entry(6)]));
+
+    expect([...state.entries.keys()]).toEqual([7]);
+    expect([...state.counted]).toEqual([7]);
   });
 
-  it('skips entries a reconnect replays', () => {
-    const items = [entry(2), entry(1)];
+  it('is idempotent', () => {
+    const v = view([entry(6)]);
+    const request = fact(7);
+    const reply = replyFact(request, {});
 
-    expect(prependEntries(items, [entry(2)])).toBe(items);
-    expect(ids(prependEntries(items, [entry(1), entry(3)]))).toEqual([3, 2, 1]);
+    const once = foldAll(emptyLive('l'), [request, reply], v);
+    const twice = foldAll(once, [request, reply], v);
+
+    expect(twice).toBe(once);
+    expect(twice.entries.get(7)).toMatchObject({ state: 'complete' });
+  });
+
+  it('counts an anchor an older page already holds, without inserting it', () => {
+    const state = fold(emptyLive('l'), fact(5), view([entry(6), entry(5)]));
+
+    expect(state.entries.size).toBe(0);
+    expect([...state.counted]).toEqual([5]);
+  });
+
+  it('inserts a late anchor older than the loaded entries once every page is loaded', () => {
+    const state = fold(emptyLive('l'), fact(2), view([entry(6), entry(4)]));
+
+    expect([...state.entries.keys()]).toEqual([2]);
+    expect(state.dropped).toEqual([]);
+  });
+
+  it('drops an anchor below the oldest loaded entry while older pages exist', () => {
+    const late = fact(2);
+
+    const state = fold(emptyLive('l'), late, view([entry(6), entry(4)], true));
+
+    expect(state.entries.size).toBe(0);
+    expect(state.dropped).toEqual([late]);
+    expect([...state.counted]).toEqual([2]);
+  });
+
+  it('patches the entry of a loaded anchor with its attachment', () => {
+    const request = fact(7);
+    const reply = replyFact(request, {});
+
+    const state = fold(emptyLive('l'), reply, view([mcpEntry(request)]));
+
+    expect(state.entries.get(7)).toMatchObject({
+      state: 'complete',
+      reply: { id: reply.id },
+    });
+    expect(state.counted.size).toBe(0);
+  });
+
+  it('keeps an attachment whose anchor is not loaded', () => {
+    const request = fact(7);
+    const end = noReplyFact(request);
+
+    const state = fold(emptyLive('l'), end, view([entry(6)]));
+
+    expect(state.dropped).toEqual([end]);
+    expect(state.entries.size).toBe(0);
+  });
+
+  it('ignores an attachment of an evicted anchor', () => {
+    const request = fact(7);
+    const base = { ...emptyLive('l'), evicted: new Set([7]) };
+
+    const state = fold(base, noReplyFact(request), view([mcpEntry(request)]));
+
+    expect(state.entries.size).toBe(0);
+  });
+});
+
+describe('refold', () => {
+  it('applies dropped facts newer than a page once their anchor is loaded', () => {
+    const request = fact(7);
+    const reply = replyFact(request, {});
+    const dropped = fold(emptyLive('l'), reply, view([entry(6)]));
+
+    const state = refold(dropped, 6, view([mcpEntry(request), entry(6)]));
+
+    expect(state.dropped).toEqual([]);
+    expect(state.entries.get(7)).toMatchObject({ state: 'complete' });
+  });
+
+  it('leaves facts the page already covers', () => {
+    const request = fact(7);
+    const dropped = fold(
+      emptyLive('l'),
+      noReplyFact(request),
+      view([entry(6)]),
+    );
+
+    expect(refold(dropped, 99, view([entry(6)]))).toBe(dropped);
+  });
+
+  it('keeps facts that still have nowhere to go', () => {
+    const request = fact(7);
+    const dropped = fold(
+      emptyLive('l'),
+      noReplyFact(request),
+      view([entry(6)]),
+    );
+
+    expect(refold(dropped, 0, view([entry(6)])).dropped).toHaveLength(1);
   });
 });
 
@@ -155,8 +283,8 @@ describe('useLogStream', () => {
 
     act(() => {
       lastSource().emit('open');
-      lastSource().emit('entry', JSON.stringify(entry(7)));
-      lastSource().emit('entry', JSON.stringify(entry(7)));
+      lastSource().emit('fact', JSON.stringify(fact(7)));
+      lastSource().emit('fact', JSON.stringify(fact(7)));
     });
 
     await waitFor(() => {
@@ -176,7 +304,7 @@ describe('useLogStream', () => {
     expect(result.current.total).toBe(2);
     await waitFor(() => {
       expect(lastSource().url).toBe(
-        '/api/v1/servers/weather/logs/stream?after=5&q=tools%2Fcall',
+        '/api/v1/servers/weather/logs/stream?after=6&q=tools%2Fcall',
       );
     });
   });
@@ -207,7 +335,7 @@ describe('useLogStream', () => {
     });
 
     act(() => {
-      lastSource().emit('entry', JSON.stringify(entry(7)));
+      lastSource().emit('fact', JSON.stringify(fact(7)));
       lastSource().emit('evicted', JSON.stringify({ id: 4 }));
       lastSource().emit('evicted', JSON.stringify({ id: 1 }));
     });
@@ -229,8 +357,8 @@ describe('useLogStream', () => {
       result.current.pause();
     });
     act(() => {
-      lastSource().emit('entry', JSON.stringify(entry(7)));
-      lastSource().emit('entry', JSON.stringify(entry(8)));
+      lastSource().emit('fact', JSON.stringify(fact(7)));
+      lastSource().emit('fact', JSON.stringify(fact(8)));
     });
 
     expect(result.current.pending).toBe(2);
@@ -248,13 +376,136 @@ describe('useLogStream', () => {
     expect(result.current.total).toBe(8);
   });
 
+  it('does not count a replayed anchor twice', async () => {
+    const { result } = render();
+    await waitFor(() => {
+      expect(FakeEventSource.instances).toHaveLength(1);
+    });
+
+    act(() => {
+      lastSource().emit('fact', JSON.stringify(fact(7)));
+      lastSource().emit('fact', JSON.stringify(fact(7)));
+    });
+
+    await waitFor(() => {
+      expect(ids(result.current.entries)).toEqual([7, 6, 5, 4]);
+    });
+    expect(result.current.total).toBe(7);
+  });
+
+  it('patches a page entry with an attachment, even while paused', async () => {
+    const { result } = render();
+    await waitFor(() => {
+      expect(FakeEventSource.instances).toHaveLength(1);
+    });
+    act(() => {
+      result.current.pause();
+    });
+
+    act(() => {
+      lastSource().emit(
+        'fact',
+        JSON.stringify(noReplyFact(fact(6), 'session-closed')),
+      );
+    });
+
+    await waitFor(() => {
+      expect(result.current.entries[0]).toMatchObject({
+        id: 6,
+        state: 'aborted',
+      });
+    });
+    expect(result.current.pending).toBe(0);
+  });
+
+  it('inserts a late anchor in sorted order and counts it', async () => {
+    const { result } = render();
+    await waitFor(() => {
+      expect(FakeEventSource.instances).toHaveLength(1);
+    });
+    // A late anchor arrives after a newer one: it still lands in id order.
+    act(() => {
+      lastSource().emit('fact', JSON.stringify(fact(8)));
+      lastSource().emit('fact', JSON.stringify(fact(7)));
+    });
+
+    await waitFor(() => {
+      expect(ids(result.current.entries)).toEqual([8, 7, 6, 5, 4]);
+    });
+    expect(result.current.total).toBe(8);
+  });
+
+  it('does not count a late anchor as new above while paused', async () => {
+    const { result } = render();
+    await waitFor(() => {
+      expect(FakeEventSource.instances).toHaveLength(1);
+    });
+    act(() => {
+      result.current.pause();
+    });
+
+    act(() => {
+      lastSource().emit('fact', JSON.stringify(fact(2)));
+      lastSource().emit('fact', JSON.stringify(fact(7)));
+    });
+
+    expect(result.current.pending).toBe(1);
+    expect(ids(result.current.entries)).toEqual([6, 5, 4]);
+  });
+
+  it('applies an attachment that arrived while paused for a buffered anchor on resume', async () => {
+    const { result } = render();
+    await waitFor(() => {
+      expect(FakeEventSource.instances).toHaveLength(1);
+    });
+    act(() => {
+      result.current.pause();
+    });
+    const request = fact(7);
+    act(() => {
+      lastSource().emit('fact', JSON.stringify(request));
+      lastSource().emit('fact', JSON.stringify(replyFact(request, {})));
+    });
+
+    act(() => {
+      result.current.resume();
+    });
+
+    await waitFor(() => {
+      expect(result.current.entries[0]).toMatchObject({
+        id: 7,
+        state: 'complete',
+      });
+    });
+  });
+
+  it('keeps a streamed anchor counted when a later older page holds it', async () => {
+    const { result } = render();
+    await waitFor(() => {
+      expect(result.current.hasOlder).toBe(true);
+    });
+    act(() => {
+      lastSource().emit('fact', JSON.stringify(fact(2)));
+    });
+
+    act(() => {
+      result.current.loadOlder();
+    });
+
+    await waitFor(() => {
+      expect(ids(result.current.entries)).toEqual([6, 5, 4, 3, 2, 1]);
+    });
+    // The first page counted 6; anchor 2 was counted from the stream too.
+    expect(result.current.total).toBe(7);
+  });
+
   it('empties everything when the log is cleared', async () => {
     const { result } = render();
     await waitFor(() => {
       expect(FakeEventSource.instances).toHaveLength(1);
     });
     act(() => {
-      lastSource().emit('entry', JSON.stringify(entry(7)));
+      lastSource().emit('fact', JSON.stringify(fact(7)));
     });
 
     cleared = true;
@@ -267,9 +518,10 @@ describe('useLogStream', () => {
     });
     expect(result.current.total).toBe(0);
     expect(result.current.hasOlder).toBe(false);
+    // The server's ids keep counting after a clear.
     await waitFor(() => {
       expect(lastSource().url).toBe(
-        '/api/v1/servers/weather/logs/stream?after=0',
+        '/api/v1/servers/weather/logs/stream?after=6',
       );
     });
   });
@@ -324,7 +576,7 @@ describe('useLogStream', () => {
     });
     act(() => {
       for (let id = 100; id <= 100 + MAX_ENTRIES; id++) {
-        lastSource().emit('entry', JSON.stringify(entry(id)));
+        lastSource().emit('fact', JSON.stringify(fact(id)));
       }
     });
 

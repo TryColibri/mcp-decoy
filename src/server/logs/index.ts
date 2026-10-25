@@ -1,16 +1,20 @@
 export {
   createRingBufferLogStore,
-  type LogCountQuery,
+  type LogAnchorFilter,
+  type LogAnchorQuery,
   type LogEvent,
-  type LogQuery,
   type LogStore,
   matches,
+  type NewLogFact,
 } from './log-store';
 export {
   createLogsService,
   type LogPageParams,
   type LogPageResult,
-  type LogSubscribeParams,
   type LogsService,
   type LogsServiceDeps,
+  type LogStreamEvent,
+  type LogStreamItem,
+  type LogStreamParams,
+  streamItemsFor,
 } from './service';
