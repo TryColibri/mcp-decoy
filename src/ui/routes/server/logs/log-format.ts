@@ -353,3 +353,19 @@ const errorText = (error: Record<string, unknown> | undefined): string =>
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * URL of the Logs tab with `id` selected.
+ *
+ * @param server - Server name.
+ * @param id - Anchor id of the entry to show; omit for the bare list.
+ * @param tab - Detail tab to open, as the URL fragment; omit to keep the
+ * current one.
+ */
+export const logsPath = (server: string, id?: number, tab?: string): string => {
+  const base = `/servers/${encodeURIComponent(server)}/logs`;
+  if (id === undefined) {
+    return base;
+  }
+  return tab === undefined ? `${base}/${id}` : `${base}/${id}#${tab}`;
+};

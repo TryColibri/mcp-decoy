@@ -1,11 +1,13 @@
 import { PauseIcon, PlayIcon } from '@phosphor-icons/react';
 import { useEffect, useId, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router';
 
 import { client, unwrapEmpty, useLogEntry } from '@/ui/api';
 import { Button, buttonClasses } from '@/ui/components/button';
 import { tw } from '@/ui/tw';
 
 import { useServerContext } from '../server-layout';
+import { logsPath } from './log-format';
 import { MessageDetail } from './message-detail';
 import { MessageList } from './message-list';
 import { useDebouncedValue } from './use-debounced-value';
@@ -21,15 +23,32 @@ const messagesWithDetail = tw`hidden min-w-0 flex-col border-r border-paper-200 
 
 const numberFormat = new Intl.NumberFormat();
 
-/** `/servers/:server/logs`: every HTTP exchange and JSON-RPC message, live. */
+// An entry that isn't a plain anchor id in the URL selects nothing.
+const parseEntryId = (param: string | undefined): number | null =>
+  param !== undefined && /^\d+$/.test(param) ? Number(param) : null;
+
+/**
+ * `/servers/:server/logs/:entry?`: every HTTP exchange and JSON-RPC message,
+ * live, and the detail of `:entry`. Selecting an entry pushes a history entry,
+ * so the back button returns to the previous selection.
+ */
 export function LogsPage() {
   const { server } = useServerContext();
   const searchId = useId();
   const [search, setSearch] = useState('');
   const query = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
   const stream = useLogStream(server.name, query);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const navigate = useNavigate();
+  const { hash } = useLocation();
+  const { entry: entryParam } = useParams();
+  const selectedId = parseEntryId(entryParam);
   const [clearError, setClearError] = useState<string | null>(null);
+
+  const listPath = logsPath(server.name);
+  // Picking a row keeps the detail tab, which is the URL fragment.
+  const select = (id: number) => {
+    void navigate({ pathname: logsPath(server.name, id), hash });
+  };
 
   // A link can point at an entry the list hasn't loaded, or that the search
   // filters out; fetch it by id then.
@@ -52,14 +71,14 @@ export function LogsPage() {
     }
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !event.defaultPrevented) {
-        setSelectedId(null);
+        void navigate(listPath);
       }
     };
     document.addEventListener('keydown', closeOnEscape);
     return () => {
       document.removeEventListener('keydown', closeOnEscape);
     };
-  }, [open]);
+  }, [open, navigate, listPath]);
 
   const clear = async () => {
     setClearError(null);
@@ -69,7 +88,7 @@ export function LogsPage() {
           param: { server: server.name },
         }),
       );
-      setSelectedId(null);
+      void navigate(listPath, { replace: true });
       stream.reset();
     } catch (caught) {
       setClearError(caught instanceof Error ? caught.message : String(caught));
@@ -114,7 +133,7 @@ export function LogsPage() {
         loadingOlder={stream.loadingOlder}
         selectedId={selectedId}
         onLoadOlder={stream.loadOlder}
-        onSelect={setSelectedId}
+        onSelect={select}
       />
     );
   }
@@ -184,9 +203,8 @@ export function LogsPage() {
             entry={selected}
             entries={stream.entries}
             server={server.name}
-            onSelect={setSelectedId}
             onClose={() => {
-              setSelectedId(null);
+              void navigate(listPath);
             }}
           />
         )}

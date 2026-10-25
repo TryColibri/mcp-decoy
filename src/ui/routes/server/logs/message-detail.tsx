@@ -1,6 +1,7 @@
 import { Tabs } from '@base-ui/react/tabs';
 import { XIcon } from '@phosphor-icons/react';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router';
 
 import {
   type HTTPEntry,
@@ -13,12 +14,13 @@ import { Button } from '@/ui/components/button';
 import { tw } from '@/ui/tw';
 
 import { BodyView } from './body-view';
-import { EventsView } from './events-view';
+import { CarriedList, type CarriedItem } from './carried-list';
 import { HeadersView } from './headers-view';
 import {
   atOf,
   formatTime,
   isPair,
+  logsPath,
   nameOf,
   parsedMessage,
   statusOf,
@@ -35,13 +37,11 @@ export type MessageDetailProps = {
   entries: LogEntry[];
   /** Server name, to fetch the entries an exchange carried. */
   server: string;
-  /** Selects another entry, by anchor id. */
-  onSelect: (id: number) => void;
   /** Closes the pane. */
   onClose: () => void;
 };
 
-const TABS = ['request', 'response', 'overview'] as const;
+const TABS = ['overview', 'request', 'response'] as const;
 
 type DetailTab = (typeof TABS)[number];
 
@@ -68,7 +68,7 @@ const labelOf = (tab: DetailTab, entry: LogEntry): string => {
 
 const tabClasses = tw`-mb-px cursor-pointer border-0 border-b-2 border-solid border-transparent bg-transparent px-3 py-2.5 font-sans text-[13px] font-medium text-ink-600 hover:text-ink-900 data-active:border-blue-700 data-active:text-ink-900`;
 const panelClasses = tw`min-h-0 flex-1 overflow-auto p-4.5 outline-none`;
-const linkClasses = tw`cursor-pointer border-0 bg-transparent p-0 text-left font-mono text-[13px] text-blue-700 underline hover:text-blue-900`;
+const linkClasses = tw`font-mono text-[13px] text-blue-700 underline hover:text-blue-900`;
 
 /**
  * Right pane of the Logs tab, like Chrome's Network panel: a header bar and
@@ -78,14 +78,16 @@ export function MessageDetail({
   entry,
   entries,
   server,
-  onSelect,
   onClose,
 }: MessageDetailProps) {
-  // The chosen tab survives switching entries; an entry without it shows its
-  // first tab.
-  const [chosen, setChosen] = useState<DetailTab | null>(null);
+  // The tab is the URL fragment, so a link can open an entry on a given tab
+  // and the choice survives switching entries; an entry without the tab shows
+  // its first one.
+  const { hash } = useLocation();
+  const navigate = useNavigate();
+  const chosen = hash.slice(1);
   const tabs = tabsOf(entry);
-  const active = chosen !== null && tabs.includes(chosen) ? chosen : tabs[0];
+  const active = tabs.find((tab) => tab === chosen) ?? tabs[0];
   const took = tookOf(entry);
 
   return (
@@ -118,7 +120,7 @@ export function MessageDetail({
         value={active}
         onValueChange={(value) => {
           if (isDetailTab(value)) {
-            setChosen(value);
+            void navigate({ hash: value }, { replace: true });
           }
         }}
         className="flex min-h-0 flex-1 flex-col"
@@ -133,13 +135,7 @@ export function MessageDetail({
 
         {tabs.map((tab) => (
           <Tabs.Panel key={tab} value={tab} className={panelClasses}>
-            <Panel
-              tab={tab}
-              entry={entry}
-              entries={entries}
-              server={server}
-              onSelect={onSelect}
-            />
+            <Panel tab={tab} entry={entry} entries={entries} server={server} />
           </Tabs.Panel>
         ))}
       </Tabs.Root>
@@ -152,24 +148,15 @@ type PanelProps = {
   entry: LogEntry;
   entries: LogEntry[];
   server: string;
-  onSelect: (id: number) => void;
 };
 
-function Panel({ tab, entry, entries, server, onSelect }: PanelProps) {
+function Panel({ tab, entry, entries, server }: PanelProps) {
   if (entry.type === 'http') {
     switch (tab) {
       case 'request':
-        return (
-          <HTTPRequestPanel entry={entry} server={server} onSelect={onSelect} />
-        );
+        return <HTTPRequestPanel entry={entry} server={server} />;
       case 'response':
-        return (
-          <HTTPResponsePanel
-            entry={entry}
-            server={server}
-            onSelect={onSelect}
-          />
-        );
+        return <HTTPResponsePanel entry={entry} server={server} />;
       case 'overview':
         return <HTTPOverviewPanel entry={entry} />;
     }
@@ -181,7 +168,7 @@ function Panel({ tab, entry, entries, server, onSelect }: PanelProps) {
       return <MCPResponsePanel entry={entry} />;
     case 'overview':
       return (
-        <MCPOverviewPanel entry={entry} entries={entries} onSelect={onSelect} />
+        <MCPOverviewPanel entry={entry} entries={entries} server={server} />
       );
   }
 }
@@ -222,80 +209,76 @@ function Section({ title, children }: SectionProps) {
 type HTTPPanelProps = {
   entry: HTTPEntry;
   server: string;
-  onSelect: (id: number) => void;
 };
 
 // The messages an exchange carried: loaded on demand, and polled while a
 // stream is still open.
-const useCarried = ({ entry, server }: Omit<HTTPPanelProps, 'onSelect'>) => {
+const useCarried = ({ entry, server }: HTTPPanelProps) => {
   const { data } = useCarriedEntries(
     server,
     entry.exchange.endpoint === 'mcp' ? entry.id : null,
     entry.state === 'streaming',
   );
-  const carried = data ?? [];
-  const mcp = carried.filter(
-    (candidate): candidate is MCPEntry => candidate.type === 'mcp',
-  );
-  const carriedFacts = mcp.flatMap((candidate) =>
-    candidate.reply?.type === 'mcp'
-      ? [candidate.message, candidate.reply]
-      : [candidate.message],
-  );
+  const items = (data ?? [])
+    .filter((candidate): candidate is MCPEntry => candidate.type === 'mcp')
+    .flatMap((candidate): CarriedItem[] =>
+      candidate.reply?.type === 'mcp'
+        ? [
+            { entry: candidate, fact: candidate.message },
+            { entry: candidate, fact: candidate.reply },
+          ]
+        : [{ entry: candidate, fact: candidate.message }],
+    )
+    .filter(({ fact }) => fact.carriedBy === entry.id)
+    .toSorted((a, b) => a.fact.id - b.fact.id);
   return {
-    clientEntries: mcp.filter(
-      ({ message }) =>
-        message.from === 'client' && message.carriedBy === entry.id,
-    ),
-    serverFacts: carriedFacts
-      .filter((fact) => fact.from === 'server' && fact.carriedBy === entry.id)
-      .toSorted((a, b) => a.id - b.id),
+    sent: items.filter(({ fact }) => fact.from === 'client'),
+    received: items.filter(({ fact }) => fact.from === 'server'),
   };
 };
 
-function HTTPRequestPanel({ entry, server, onSelect }: HTTPPanelProps) {
+type CarriedSectionProps = {
+  items: CarriedItem[];
+  empty: string;
+  server: string;
+};
+
+function CarriedItems({ items, empty, server }: CarriedSectionProps) {
+  return items.length === 0 ? (
+    <p className="m-0 text-sm text-ink-500">{empty}</p>
+  ) : (
+    <CarriedList items={items} server={server} />
+  );
+}
+
+// The body of an MCP exchange is the messages it carried, which their own
+// entries show; only other exchanges (OAuth) show their body here.
+function HTTPRequestPanel({ entry, server }: HTTPPanelProps) {
   const { request } = entry.exchange;
-  const { clientEntries } = useCarried({ entry, server });
+  const { sent } = useCarried({ entry, server });
   return (
     <div className="flex flex-col gap-4">
       <HeadersView
         line={`${request.method} ${request.url}`}
         headers={request.headers}
       />
-      <Section title="Body">
-        <BodyView body={request.body} copyLabel="Copy request body" />
-        {request.truncated && <TruncatedNote />}
-      </Section>
-      {entry.exchange.endpoint === 'mcp' && (
+      {entry.exchange.endpoint === 'mcp' ? (
         <Section title="Messages sent">
-          {clientEntries.length === 0 ? (
-            <p className="m-0 text-sm text-ink-500">None.</p>
-          ) : (
-            <ul className="m-0 flex list-none flex-col gap-1 p-0">
-              {clientEntries.map((carried) => (
-                <li key={carried.id}>
-                  <button
-                    type="button"
-                    className={linkClasses}
-                    onClick={() => {
-                      onSelect(carried.id);
-                    }}
-                  >
-                    {nameOf(carried)}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+          <CarriedItems items={sent} empty="None." server={server} />
+        </Section>
+      ) : (
+        <Section title="Body">
+          <BodyView body={request.body} copyLabel="Copy request body" />
+          {request.truncated && <TruncatedNote />}
         </Section>
       )}
     </div>
   );
 }
 
-function HTTPResponsePanel({ entry, server, onSelect }: HTTPPanelProps) {
+function HTTPResponsePanel({ entry, server }: HTTPPanelProps) {
   const { response } = entry.exchange;
-  const { serverFacts } = useCarried({ entry, server });
+  const { received } = useCarried({ entry, server });
   if (response === null) {
     return (
       <p className="m-0 text-sm text-ink-500">
@@ -303,20 +286,24 @@ function HTTPResponsePanel({ entry, server, onSelect }: HTTPPanelProps) {
       </p>
     );
   }
-  const events = entry.end?.events ?? serverFacts.length;
+  const events = entry.end?.events ?? received.length;
+  const open = entry.state === 'streaming' ? ' (open)' : '';
+  const title = response.stream
+    ? `Event stream: ${events} ${events === 1 ? 'event' : 'events'}${open}`
+    : 'Messages received';
   return (
     <div className="flex flex-col gap-4">
       <HeadersView
         line={`HTTP ${response.status}`}
         headers={response.headers}
       />
-      {response.stream ? (
-        <Section
-          title={`Event stream: ${events} ${events === 1 ? 'event' : 'events'}${
-            entry.state === 'streaming' ? ' (open)' : ''
-          }`}
-        >
-          <EventsView facts={serverFacts} onSelect={onSelect} />
+      {entry.exchange.endpoint === 'mcp' ? (
+        <Section title={title}>
+          <CarriedItems
+            items={received}
+            empty={response.stream ? 'No events yet.' : 'None.'}
+            server={server}
+          />
         </Section>
       ) : (
         <Section title="Body">
@@ -406,10 +393,10 @@ function TruncatedNote() {
 type MCPOverviewPanelProps = {
   entry: MCPEntry;
   entries: LogEntry[];
-  onSelect: (id: number) => void;
+  server: string;
 };
 
-function MCPOverviewPanel({ entry, entries, onSelect }: MCPOverviewPanelProps) {
+function MCPOverviewPanel({ entry, entries, server }: MCPOverviewPanelProps) {
   const { message, reply } = entry;
   const took = tookOf(entry);
 
@@ -424,15 +411,16 @@ function MCPOverviewPanel({ entry, entries, onSelect }: MCPOverviewPanelProps) {
       {fact.carriedBy === null ? (
         <span className="font-mono text-red-800">not sent</span>
       ) : (
-        <button
-          type="button"
+        <Link
+          to={logsPath(
+            server,
+            fact.carriedBy,
+            fact.from === 'client' ? 'request' : 'response',
+          )}
           className={linkClasses}
-          onClick={() => {
-            onSelect(fact.carriedBy ?? 0);
-          }}
         >
           {exchangeNameOf(fact.carriedBy)}
-        </button>
+        </Link>
       )}
       {fact.sse !== null && (
         <span className="font-mono text-xs text-ink-600">

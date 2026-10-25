@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type LogEntry } from '@/shared/api';
@@ -77,7 +78,6 @@ const notification = mcpFact({
 const tabNames = () => screen.getAllByRole('tab').map((tab) => tab.textContent);
 
 describe('MessageDetail', () => {
-  const mockOnSelect = vi.fn<(id: number) => void>();
   const mockOnClose = vi.fn<() => void>();
 
   const renderDetail = (
@@ -85,14 +85,15 @@ describe('MessageDetail', () => {
     props: Partial<MessageDetailProps> = {},
   ) =>
     render(
-      <MessageDetail
-        entry={entry}
-        entries={[entry]}
-        server="weather"
-        onSelect={mockOnSelect}
-        onClose={mockOnClose}
-        {...props}
-      />,
+      <MemoryRouter>
+        <MessageDetail
+          entry={entry}
+          entries={[entry]}
+          server="weather"
+          onClose={mockOnClose}
+          {...props}
+        />
+      </MemoryRouter>,
     );
 
   beforeEach(() => {
@@ -101,41 +102,60 @@ describe('MessageDetail', () => {
   });
 
   describe('tabs', () => {
-    it('are Request, Response and Overview for an exchange', () => {
+    it('are Overview, Request and Response for an exchange', () => {
       renderDetail(httpEntry(exchange));
 
-      expect(tabNames()).toEqual(['Request', 'Response', 'Overview']);
+      expect(tabNames()).toEqual(['Overview', 'Request', 'Response']);
     });
 
-    it('are Request, Response and Overview for a pair', () => {
+    it('are Overview, Request and Response for a pair', () => {
       renderDetail(mcpEntry(request, reply));
 
-      expect(tabNames()).toEqual(['Request', 'Response', 'Overview']);
+      expect(tabNames()).toEqual(['Overview', 'Request', 'Response']);
     });
 
-    it('are Message and Overview for an unpaired message', () => {
+    it('are Overview and Message for an unpaired message', () => {
       renderDetail(mcpEntry(notification));
 
-      expect(tabNames()).toEqual(['Message', 'Overview']);
+      expect(tabNames()).toEqual(['Overview', 'Message']);
     });
 
     it('open the first tab at first, then keep the chosen one across selections', async () => {
       const pair = mcpEntry(request, reply);
       const { rerender } = renderDetail(pair);
-      expect(screen.getByRole('tab', { name: 'Request' })).toHaveAttribute(
+      expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute(
         'aria-selected',
         'true',
       );
 
       await userEvent.click(screen.getByRole('tab', { name: 'Response' }));
       rerender(
-        <MessageDetail
-          entry={httpEntry(exchange)}
-          entries={[]}
-          server="weather"
-          onSelect={mockOnSelect}
-          onClose={mockOnClose}
-        />,
+        <MemoryRouter>
+          <MessageDetail
+            entry={httpEntry(exchange)}
+            entries={[]}
+            server="weather"
+            onClose={mockOnClose}
+          />
+        </MemoryRouter>,
+      );
+
+      expect(screen.getByRole('tab', { name: 'Response' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+    });
+
+    it('open the tab named by the URL fragment', () => {
+      render(
+        <MemoryRouter initialEntries={['/servers/weather/logs/100#response']}>
+          <MessageDetail
+            entry={mcpEntry(request, reply)}
+            entries={[]}
+            server="weather"
+            onClose={mockOnClose}
+          />
+        </MemoryRouter>,
       );
 
       expect(screen.getByRole('tab', { name: 'Response' })).toHaveAttribute(
@@ -152,13 +172,14 @@ describe('MessageDetail', () => {
       await userEvent.click(screen.getByRole('tab', { name: 'Message' }));
 
       rerender(
-        <MessageDetail
-          entry={pair}
-          entries={[pair]}
-          server="weather"
-          onSelect={mockOnSelect}
-          onClose={mockOnClose}
-        />,
+        <MemoryRouter>
+          <MessageDetail
+            entry={pair}
+            entries={[pair]}
+            server="weather"
+            onClose={mockOnClose}
+          />
+        </MemoryRouter>,
       );
 
       expect(screen.getByRole('tab', { name: 'Request' })).toHaveAttribute(
@@ -174,16 +195,17 @@ describe('MessageDetail', () => {
       await userEvent.click(screen.getByRole('tab', { name: 'Response' }));
 
       rerender(
-        <MessageDetail
-          entry={unpaired}
-          entries={[unpaired]}
-          server="weather"
-          onSelect={mockOnSelect}
-          onClose={mockOnClose}
-        />,
+        <MemoryRouter>
+          <MessageDetail
+            entry={unpaired}
+            entries={[unpaired]}
+            server="weather"
+            onClose={mockOnClose}
+          />
+        </MemoryRouter>,
       );
 
-      expect(screen.getByRole('tab', { name: 'Message' })).toHaveAttribute(
+      expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute(
         'aria-selected',
         'true',
       );
@@ -199,7 +221,11 @@ describe('MessageDetail', () => {
       ).toBeInTheDocument();
       expect(screen.getByText('request')).toBeInTheDocument();
       expect(screen.getByText('ok')).toBeInTheDocument();
-      expect(screen.getByText(/12 ms/)).toBeInTheDocument();
+      expect(
+        within(
+          screen.getByRole('heading', { name: 'tools/list' }).parentElement!,
+        ).getByText(/12 ms/),
+      ).toBeInTheDocument();
 
       await userEvent.click(
         screen.getByRole('button', { name: 'Close details' }),
@@ -209,22 +235,45 @@ describe('MessageDetail', () => {
   });
 
   describe('of an exchange', () => {
-    it('shows the request line, headers and body, and the messages it sent', async () => {
+    it('shows the request line and headers, and links the messages it sent instead of its body', async () => {
       const sent = mcpEntry(request, reply);
       carrying([sent]);
       renderDetail(httpEntry(exchange));
+      await userEvent.click(screen.getByRole('tab', { name: 'Request' }));
 
       expect(
         screen.getByText('POST http://127.0.0.1:6280/s/weather/mcp'),
       ).toBeInTheDocument();
       expect(screen.getByText('x-request-header')).toBeInTheDocument();
-      expect(screen.getByText(/"method": "tools\/list"/)).toBeInTheDocument();
-      await userEvent.click(screen.getByRole('button', { name: 'tools/list' }));
-      expect(mockOnSelect).toHaveBeenCalledExactlyOnceWith(sent.id);
+      expect(screen.queryByText('Body')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/"method": "tools\/list"/),
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole('listitem')).toHaveTextContent('Request');
+      expect(screen.getByRole('link', { name: 'tools/list' })).toHaveAttribute(
+        'href',
+        `/servers/weather/logs/${sent.id}#request`,
+      );
     });
 
-    it('does not list messages for an OAuth exchange', () => {
+    it('shows the body of an OAuth exchange request', async () => {
+      renderDetail(
+        httpEntry(
+          httpFact({
+            ...exchange,
+            endpoint: 'oauth',
+            request: { ...exchange.request, body: { grant: 'oauth-body' } },
+          }),
+        ),
+      );
+      await userEvent.click(screen.getByRole('tab', { name: 'Request' }));
+
+      expect(screen.getByText(/oauth-body/)).toBeInTheDocument();
+    });
+
+    it('does not list messages for an OAuth exchange', async () => {
       renderDetail(httpEntry(httpFact({ ...exchange, endpoint: 'oauth' })));
+      await userEvent.click(screen.getByRole('tab', { name: 'Request' }));
 
       expect(screen.queryByText('Messages sent')).not.toBeInTheDocument();
       expect(mockUseCarriedEntries).toHaveBeenCalledWith(
@@ -234,13 +283,23 @@ describe('MessageDetail', () => {
       );
     });
 
-    it('shows the status line, headers and body of a plain response', async () => {
+    it('shows the status line and headers of a plain response, and links its messages instead of its body', async () => {
+      carrying([mcpEntry(request, reply)]);
       renderDetail(httpEntry(exchange));
 
       await userEvent.click(screen.getByRole('tab', { name: 'Response' }));
 
       expect(screen.getByText('HTTP 200')).toBeInTheDocument();
       expect(screen.getByText('x-response-header')).toBeInTheDocument();
+      expect(screen.queryByText(/plain-body/)).not.toBeInTheDocument();
+      expect(screen.getByText('Messages received')).toBeInTheDocument();
+    });
+
+    it('shows the body of an OAuth exchange response', async () => {
+      renderDetail(httpEntry(httpFact({ ...exchange, endpoint: 'oauth' })));
+
+      await userEvent.click(screen.getByRole('tab', { name: 'Response' }));
+
       expect(screen.getByText(/plain-body/)).toBeInTheDocument();
     });
 
@@ -265,14 +324,16 @@ describe('MessageDetail', () => {
       ).toBeInTheDocument();
       const events = screen.getAllByRole('listitem');
       expect(events).toHaveLength(2);
+      expect(events[0]).toHaveTextContent('Reply');
+      expect(events[0]).toHaveTextContent('tools/list');
       expect(events[0]).toHaveTextContent('event: message · id: 9');
-      expect(events[0]).toHaveTextContent('response');
+      expect(events[1]).toHaveTextContent('Notification');
+      expect(events[1]).toHaveTextContent('notifications/tools/list_changed');
       expect(events[1]).toHaveTextContent('event: message · id: 10');
-      expect(events[1]).toHaveTextContent('notification');
-      await userEvent.click(
-        screen.getAllByRole('button', { name: 'Open entry' })[0],
+      expect(screen.getByRole('link', { name: 'tools/list' })).toHaveAttribute(
+        'href',
+        `/servers/weather/logs/${request.id}#response`,
       );
-      expect(mockOnSelect).toHaveBeenCalledExactlyOnceWith(request.id);
     });
 
     it('uses the event count of an ended stream and drops "(open)"', async () => {
@@ -284,8 +345,9 @@ describe('MessageDetail', () => {
       expect(screen.getByText('Event stream: 4 events')).toBeInTheDocument();
     });
 
-    it('polls the carried entries only while a stream is open', () => {
+    it('polls the carried entries only while a stream is open', async () => {
       renderDetail(httpEntry(stream));
+      await userEvent.click(screen.getByRole('tab', { name: 'Request' }));
 
       expect(mockUseCarriedEntries).toHaveBeenCalledWith('weather', 200, true);
     });
@@ -311,6 +373,7 @@ describe('MessageDetail', () => {
     it('shows the request and the reply as JSON', async () => {
       renderDetail(mcpEntry(request, reply));
 
+      await userEvent.click(screen.getByRole('tab', { name: 'Request' }));
       expect(screen.getByText(/"method": "tools\/list"/)).toBeInTheDocument();
 
       await userEvent.click(screen.getByRole('tab', { name: 'Response' }));
@@ -360,15 +423,17 @@ describe('MessageDetail', () => {
 
       await userEvent.click(screen.getByRole('tab', { name: 'Overview' }));
 
-      const links = screen.getAllByRole('button', {
+      const links = screen.getAllByRole('link', {
         name: /^(POST|GET) \/s\/weather\/mcp$/,
       });
       expect(links.map((link) => link.textContent)).toEqual([
         'POST /s/weather/mcp',
         'GET /s/weather/mcp',
       ]);
-      await userEvent.click(links[1]);
-      expect(mockOnSelect).toHaveBeenCalledExactlyOnceWith(200);
+      expect(links.map((link) => link.getAttribute('href'))).toEqual([
+        '/servers/weather/logs/100#request',
+        '/servers/weather/logs/200#response',
+      ]);
       expect(screen.getByText('event: message · id: 9')).toBeInTheDocument();
     });
 
@@ -378,17 +443,19 @@ describe('MessageDetail', () => {
       await userEvent.click(screen.getByRole('tab', { name: 'Overview' }));
 
       expect(
-        screen.getByRole('button', { name: 'Exchange #100' }),
+        screen.getByRole('link', { name: 'Exchange #100' }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole('button', { name: 'Exchange #200' }),
+        screen.getByRole('link', { name: 'Exchange #200' }),
       ).toBeInTheDocument();
     });
   });
 
   describe('of an unpaired message', () => {
-    it('shows the message', () => {
+    it('shows the message', async () => {
       renderDetail(mcpEntry(notification));
+
+      await userEvent.click(screen.getByRole('tab', { name: 'Message' }));
 
       expect(
         screen.getByText(/notifications\/tools\/list_changed/, {
@@ -411,11 +478,10 @@ describe('MessageDetail', () => {
       renderDetail(entry, { entries: [entry, httpEntry(stream)] });
 
       await userEvent.click(screen.getByRole('tab', { name: 'Overview' }));
-      await userEvent.click(
-        screen.getByRole('button', { name: 'GET /s/weather/mcp' }),
-      );
 
-      expect(mockOnSelect).toHaveBeenCalledExactlyOnceWith(200);
+      expect(
+        screen.getByRole('link', { name: 'GET /s/weather/mcp' }),
+      ).toHaveAttribute('href', '/servers/weather/logs/200#response');
     });
   });
 });
