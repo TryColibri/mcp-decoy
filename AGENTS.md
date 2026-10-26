@@ -159,6 +159,7 @@ src/
     ui-app.ts         # Hono app: middleware, /api/v1, static + SPA fallback
     api/              # /api/v1 route modules per resource, problem+json
     servers/ tools/ templates/ logs/ mcp/ config/ runtime/
+    skill/            # SKILL.md for coding agents + `mcp-decoy skill [install]`; bundled into dist/cli.js with ?raw
     exchange-log.ts   # Hono middleware: records every MCP-listener exchange from the wire (before cors)
     oauth/            # OAuthStore: DCR, consent, codes, tokens — no Hono
     oauth-http/       # provider, routes, consent page, gate — the only Hono-aware OAuth code

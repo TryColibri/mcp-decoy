@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { homedir } from 'node:os';
+import { resolve } from 'node:path';
 import { styleText } from 'node:util';
 
 import { intro, log, outro } from '@clack/prompts';
@@ -7,6 +9,7 @@ import { CLIUsageError, parseCLI, USAGE } from '@/server/cli-options';
 import { InvalidConfigFileError } from '@/server/config';
 import { type Instance, PortInUseError, start, VERSION } from '@/server/main';
 import { AlreadyRunningError } from '@/server/runtime';
+import { installSkill, SKILL } from '@/server/skill';
 
 const run = async () => {
   let command;
@@ -29,6 +32,30 @@ const run = async () => {
   }
   if (command.kind === 'version') {
     console.log(VERSION);
+    return;
+  }
+
+  if (command.kind === 'skill') {
+    process.stdout.write(SKILL);
+    return;
+  }
+  if (command.kind === 'skill-install') {
+    const { path, replaced, linkPath, link } = await installSkill({
+      dir: resolve(command.dir ?? homedir()),
+    });
+    log.success(
+      `${replaced ? 'Updated' : 'Installed'} the MCP Decoy skill: ${path}`,
+    );
+    if (link === 'skipped') {
+      log.warning(
+        `${linkPath} already exists and is not a link, so Claude Code won't load this copy. Remove it and run the command again.`,
+      );
+    } else {
+      log.info(`Linked ${linkPath}`);
+    }
+    log.message(
+      'Your coding agent loads it when you ask it to debug an MCP client.',
+    );
     return;
   }
 

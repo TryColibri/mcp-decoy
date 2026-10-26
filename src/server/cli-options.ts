@@ -21,6 +21,16 @@ export type CLICommand =
       kind: 'version';
     }
   | {
+      /** Print the agent skill to standard output. */
+      kind: 'skill';
+    }
+  | {
+      /** Install the agent skill for coding agents. */
+      kind: 'skill-install';
+      /** Directory that holds `.agents/` and `.claude/`, as given (not yet resolved). Absent: the home directory. */
+      dir?: string;
+    }
+  | {
       /** Start MCP Decoy. */
       kind: 'start';
       /** Port of the MCP listener. */
@@ -53,8 +63,17 @@ export class CLIUsageError extends Error {
 
 /** Usage text printed by `--help`. */
 export const USAGE = `Usage: mcp-decoy [options]
+       mcp-decoy skill [install [--dir <path>]]
 
 A configurable mock MCP server with a live web UI, for debugging MCP clients.
+
+Commands:
+  skill                Print the agent skill that teaches a coding agent to
+                       debug your MCP client with MCP Decoy
+  skill install        Install the skill for all your projects: it goes in
+                       ~/.agents/skills/mcp-decoy, linked from ~/.claude/skills
+                       --dir <path>  Install under <path> instead of your home
+                                     directory, e.g. --dir . for this project
 
 Options:
   --mcp-port <port>    Port of the MCP listener (default ${DEFAULT_MCP_PORT})
@@ -84,12 +103,15 @@ const flagsSchema = z.object({
     .min(100, '--log-limit: must be at least 100'),
 });
 
+const dirSchema = z.string().min(1, '--dir: must not be empty').optional();
+
 const KNOWN_FLAGS = new Set([
   'mcp-port',
   'ui-port',
   'host',
   'config-dir',
   'log-limit',
+  'dir',
   'help',
   'h',
   'version',
@@ -97,6 +119,35 @@ const KNOWN_FLAGS = new Set([
   'dev',
   '_',
 ]);
+
+type ParseSkillParams = {
+  /** Positional arguments after `skill`. */
+  rest: string[];
+  /** Value of `--dir`, if given. */
+  dir: string | undefined;
+  /** Problems found so far; the function adds its own. */
+  problems: string[];
+};
+
+const parseSkill = ({ rest, dir, problems }: ParseSkillParams): CLICommand => {
+  const action = rest.at(0);
+  const extra = rest.slice(1);
+  if (action !== undefined && action !== 'install') {
+    problems.push(`Unknown skill command: ${action}`);
+  }
+  if (extra.length > 0) {
+    problems.push(`Unexpected argument: ${extra.join(' ')}`);
+  }
+  if (action === undefined && dir !== undefined) {
+    problems.push('--dir: only applies to skill install');
+  }
+  if (problems.length > 0) {
+    throw new CLIUsageError(problems);
+  }
+  return action === undefined
+    ? { kind: 'skill' }
+    : { kind: 'skill-install', ...(dir === undefined ? {} : { dir }) };
+};
 
 /**
  * Parses and validates command-line arguments.
@@ -106,7 +157,7 @@ const KNOWN_FLAGS = new Set([
  */
 export function parseCLI(argv: string[]): CLICommand {
   const args = parse(argv, {
-    string: ['mcp-port', 'ui-port', 'host', 'config-dir', 'log-limit'],
+    string: ['mcp-port', 'ui-port', 'host', 'config-dir', 'log-limit', 'dir'],
     boolean: ['help', 'version', 'dev'],
     alias: { h: 'help', v: 'version' },
     default: {
@@ -129,6 +180,20 @@ export function parseCLI(argv: string[]): CLICommand {
     if (!KNOWN_FLAGS.has(key)) {
       problems.push(`Unknown option --${key}`);
     }
+  }
+
+  const dirResult = dirSchema.safeParse(args.dir);
+  if (!dirResult.success) {
+    problems.push(...dirResult.error.issues.map((issue) => issue.message));
+  }
+  const dir = dirResult.success ? dirResult.data : undefined;
+
+  if (args._[0] === 'skill') {
+    return parseSkill({ rest: args._.slice(1).map(String), dir, problems });
+  }
+
+  if (dir !== undefined) {
+    problems.push('--dir: only applies to skill install');
   }
   if (args._.length > 0) {
     problems.push(`Unexpected argument: ${args._.join(' ')}`);
