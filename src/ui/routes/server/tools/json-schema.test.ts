@@ -55,13 +55,34 @@ describe('checkJSONSchema', () => {
         type: 'object',
         properties: { a: { type: 'strng' } },
       }),
-    ).toContain('Not a valid JSON Schema at /properties/a/type');
+    ).toEqual({
+      message: expect.stringContaining(
+        'Not a valid JSON Schema at /properties/a/type',
+      ),
+      path: ['properties', 'a', 'type'],
+    });
+  });
+
+  it('puts array indexes in the path as numbers', () => {
+    expect(
+      checkJSONSchema({ type: 'object', allOf: [{ type: 'strng' }] })?.path,
+    ).toEqual(['allOf', 0, 'type']);
+  });
+
+  it('unescapes the path segments', () => {
+    expect(
+      checkJSONSchema({
+        type: 'object',
+        properties: { 'a/b~c': { type: 'strng' } },
+      })?.path,
+    ).toEqual(['properties', 'a/b~c', 'type']);
   });
 
   it('rejects a keyword with the wrong shape', () => {
-    expect(checkJSONSchema({ type: 'object', required: 'a' })).toBe(
-      'Not a valid JSON Schema at /required: must be array',
-    );
+    expect(checkJSONSchema({ type: 'object', required: 'a' })).toEqual({
+      message: 'Not a valid JSON Schema at /required: must be array',
+      path: ['required'],
+    });
   });
 
   it('rejects an unresolvable $ref', () => {
@@ -70,7 +91,10 @@ describe('checkJSONSchema', () => {
         type: 'object',
         properties: { a: { $ref: '#/$defs/missing' } },
       }),
-    ).toContain('#/$defs/missing');
+    ).toEqual({
+      message: expect.stringContaining('#/$defs/missing'),
+      path: [],
+    });
   });
 
   it('rejects an unknown $schema dialect', () => {
@@ -79,6 +103,9 @@ describe('checkJSONSchema', () => {
         $schema: 'https://example.com/dialect',
         type: 'object',
       }),
-    ).toContain('Not a valid JSON Schema');
+    ).toEqual({
+      message: expect.stringContaining('Not a valid JSON Schema'),
+      path: [],
+    });
   });
 });

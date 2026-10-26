@@ -85,3 +85,43 @@
     outline-color: var(--color-blue-400);
   }
 }
+
+/* Code editors (Monaco). The editor theme is built from these variables at
+   runtime (src/ui/components/code-editor/theme.ts), so a dark theme only has to
+   override them. */
+:root {
+  --code-bg: var(--color-paper-50);
+  --code-fg: var(--color-ink-900);
+  --code-key: var(--color-ink-900);
+  --code-string: var(--color-green-800);
+  --code-number: var(--color-blue-700);
+  --code-literal: var(--color-blue-700);
+  --code-interpolation: var(--color-blue-700);
+  --code-punctuation: var(--color-ink-400);
+  --code-operator: var(--color-orange-700);
+  --code-line-number: var(--color-ink-400);
+  --code-line-number-active: var(--color-ink-700);
+  --code-line-highlight: var(--color-paper-100);
+  --code-cursor: var(--color-ink-900);
+  --code-selection: var(--color-blue-100);
+  --code-selection-inactive: var(--color-paper-200);
+  --code-guide: var(--color-paper-200);
+  --code-guide-active: var(--color-paper-300);
+  --code-bracket-match: var(--color-blue-100);
+  --code-error: var(--color-red-700);
+  --code-widget-bg: white;
+  --code-widget-border: var(--color-paper-200);
+  --code-widget-selected: var(--color-paper-100);
+  --code-focus: var(--color-blue-700);
+}
+
+/* json-e syntax, added as decorations. Unlayered on purpose: Monaco injects
+   its token colors unlayered, which beat any rule in a Tailwind layer. */
+.monaco-editor .code-operator {
+  color: var(--code-operator);
+  font-weight: 600;
+}
+
+.monaco-editor .code-interpolation {
+  color: var(--code-interpolation);
+}

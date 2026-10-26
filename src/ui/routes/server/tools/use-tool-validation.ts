@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { checkInputSchema, checkResponseTemplate } from './tool-form';
+import {
+  checkInputSchema,
+  checkResponseTemplate,
+  type FieldIssue,
+} from './tool-form';
 
 /**
  * After a field is validated, further edits wait this long before the next
@@ -19,9 +23,9 @@ export type ToolValidationParams = {
 /** Live validation of the two JSON fields. */
 export type ToolValidation = {
   /** Why the input schema is invalid, if it is. */
-  inputSchemaError: string | undefined;
-  /** Why the response template is not JSON, if it is not. */
-  responseTemplateError: string | undefined;
+  inputSchemaIssue: FieldIssue | undefined;
+  /** Why the response template is invalid, if it is. */
+  responseTemplateIssue: FieldIssue | undefined;
 };
 
 /**
@@ -39,8 +43,8 @@ export function useToolValidation({
   const settledSchema = useThrottled(inputSchema);
   const settledTemplate = useThrottled(responseTemplate);
   return {
-    inputSchemaError: checkInputSchema(settledSchema),
-    responseTemplateError: checkResponseTemplate(settledTemplate),
+    inputSchemaIssue: checkInputSchema(settledSchema),
+    responseTemplateIssue: checkResponseTemplate(settledTemplate),
   };
 }
 
