@@ -13,9 +13,9 @@ export type ButtonSize = 'large' | 'small';
 const base = tw`inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg font-sans whitespace-nowrap no-underline transition-colors disabled:cursor-not-allowed`;
 
 const variants: Record<ButtonVariant, string> = {
-  primary: tw`border-0 bg-ink-900 font-semibold text-white hover:bg-ink-800 hover:text-white disabled:bg-ink-400`,
-  secondary: tw`border border-paper-300 bg-white font-medium text-ink-900 hover:bg-paper-200 hover:text-ink-900 disabled:text-ink-400`,
-  danger: tw`border border-paper-300 bg-white font-medium text-red-800 hover:bg-red-50 hover:text-red-800 disabled:text-ink-400`,
+  primary: tw`border-0 bg-ink-900 font-semibold text-white hover:bg-ink-800 hover:text-white disabled:bg-ink-400 dark:bg-ink-100 dark:text-ink-900 dark:hover:bg-ink-200 dark:hover:text-ink-900 dark:disabled:bg-ink-600`,
+  secondary: tw`border border-paper-300 bg-white font-medium text-ink-900 hover:bg-paper-200 hover:text-ink-900 disabled:text-ink-400 dark:border-paper-700 dark:bg-paper-900 dark:text-ink-100 dark:hover:bg-paper-800 dark:hover:text-ink-100 dark:disabled:text-ink-500`,
+  danger: tw`border border-paper-300 bg-white font-medium text-red-800 hover:bg-red-50 hover:text-red-800 disabled:text-ink-400 dark:border-paper-700 dark:bg-paper-900 dark:text-red-400 dark:hover:bg-red-950 dark:hover:text-red-400 dark:disabled:text-ink-500`,
 };
 
 const sizes: Record<ButtonSize, string> = {

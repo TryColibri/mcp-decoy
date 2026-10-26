@@ -46,15 +46,15 @@ export type ToolEditorProps = {
   onDeleted: () => Promise<void>;
 };
 
-const fieldLabel = tw`flex flex-col gap-1.5 text-[13px] text-ink-700`;
-const hint = tw`text-xs font-normal text-ink-500`;
-const textarea = tw`box-border w-full rounded-lg border bg-paper-50 px-3.5 py-3 leading-[1.6] text-ink-900`;
+const fieldLabel = tw`flex flex-col gap-1.5 text-[13px] text-ink-700 dark:text-ink-200`;
+const hint = tw`text-xs font-normal text-ink-500 dark:text-ink-400`;
+const textarea = tw`box-border w-full rounded-lg border bg-paper-50 px-3.5 py-3 leading-[1.6] text-ink-900 dark:bg-paper-950 dark:text-ink-100`;
 /** Fixed-size, fills the height left over in its field. */
 const code = tw`${textarea} min-h-0 flex-1 resize-none font-mono text-[12.5px]`;
 const prose = tw`${textarea} resize-y font-sans text-sm`;
 /** Lets two fields side by side share their label row, so the inputs line up. */
 const aligned = tw`@4xl:row-span-2 @4xl:grid @4xl:grid-rows-subgrid`;
-const control = tw`box-border min-h-10 rounded-lg border bg-white px-3 text-sm font-medium text-ink-900`;
+const control = tw`box-border min-h-10 rounded-lg border bg-white px-3 text-sm font-medium text-ink-900 dark:bg-paper-900 dark:text-ink-100`;
 
 const ANNOTATIONS: Array<{ key: keyof ToolAnnotations; tip: string }> = [
   {
@@ -214,8 +214,8 @@ export function ToolEditor({
               className={twMerge(
                 'rounded-full px-2 py-0.5 text-xs font-semibold',
                 tool.published
-                  ? 'bg-green-50 text-green-900'
-                  : 'bg-orange-50 text-orange-800',
+                  ? 'bg-green-50 text-green-900 dark:bg-green-950 dark:text-green-300'
+                  : 'bg-orange-50 text-orange-800 dark:bg-orange-950 dark:text-orange-300',
               )}
             >
               {tool.published ? 'Published' : 'Draft · not published'}
@@ -312,7 +312,7 @@ export function ToolEditor({
             </Field>
           </div>
 
-          <fieldset className="m-0 flex flex-wrap gap-x-6 gap-y-2 border-0 p-0 text-sm text-ink-700">
+          <fieldset className="m-0 flex flex-wrap gap-x-6 gap-y-2 border-0 p-0 text-sm text-ink-700 dark:text-ink-200">
             <legend className="sr-only">Annotations</legend>
             <Tooltip.Provider>
               {ANNOTATIONS.map(({ key, tip }) => (
@@ -334,15 +334,18 @@ export function ToolEditor({
         </div>
       </div>
 
-      <footer className="flex shrink-0 flex-col gap-2 border-t border-paper-200 bg-white px-8 py-3">
+      <footer className="flex shrink-0 flex-col gap-2 border-t border-paper-200 bg-white px-8 py-3 dark:border-paper-800 dark:bg-paper-900">
         {errors.form !== undefined && (
-          <p role="alert" className="m-0 text-[13px] text-red-800">
+          <p
+            role="alert"
+            className="m-0 text-[13px] text-red-800 dark:text-red-400"
+          >
             {errors.form}
           </p>
         )}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
           {actions}
-          <span className="text-[13px] text-ink-600">
+          <span className="text-[13px] text-ink-600 dark:text-ink-300">
             Live, no restart · notifies{' '}
             <strong>
               {sessions} {sessions === 1 ? 'session' : 'sessions'}
@@ -390,7 +393,10 @@ function Field({
       <div className="flex flex-1 flex-col gap-1.5">
         {children}
         {error !== undefined && (
-          <span role="alert" className="text-[13px] font-normal text-red-800">
+          <span
+            role="alert"
+            className="text-[13px] font-normal text-red-800 dark:text-red-400"
+          >
             {error}
           </span>
         )}
@@ -440,9 +446,9 @@ function AnnotationCheckbox({
           <Checkbox.Root
             checked={checked}
             onCheckedChange={onCheckedChange}
-            className="flex size-4 items-center justify-center rounded-sm border border-paper-300 bg-white data-checked:border-ink-900 data-checked:bg-ink-900"
+            className="flex size-4 items-center justify-center rounded-sm border border-paper-300 bg-white data-checked:border-ink-900 data-checked:bg-ink-900 dark:border-paper-700 dark:bg-paper-900 dark:data-checked:border-ink-100 dark:data-checked:bg-ink-100"
           >
-            <Checkbox.Indicator className="flex text-white data-unchecked:hidden">
+            <Checkbox.Indicator className="flex text-white data-unchecked:hidden dark:text-ink-900">
               <CheckIcon size={12} weight="bold" aria-hidden="true" />
             </Checkbox.Indicator>
           </Checkbox.Root>
@@ -450,7 +456,7 @@ function AnnotationCheckbox({
         </Tooltip.Trigger>
         <Tooltip.Portal>
           <Tooltip.Positioner side="top" sideOffset={6}>
-            <Tooltip.Popup className="max-w-72 rounded-lg bg-ink-900 px-3 py-2 text-xs/normal text-white shadow-lg">
+            <Tooltip.Popup className="max-w-72 rounded-lg bg-ink-900 px-3 py-2 text-xs/normal text-white shadow-lg dark:bg-ink-100 dark:text-ink-900">
               {tip}
             </Tooltip.Popup>
           </Tooltip.Positioner>
@@ -486,12 +492,12 @@ function ConfirmButton({
         {children}
       </AlertDialog.Trigger>
       <AlertDialog.Portal>
-        <AlertDialog.Backdrop className="fixed inset-0 bg-ink-900/30" />
-        <AlertDialog.Popup className="fixed top-1/2 left-1/2 flex w-105 max-w-[calc(100vw-2rem)] -translate-1/2 flex-col gap-4 rounded-xl border border-paper-200 bg-white p-6 shadow-xl">
+        <AlertDialog.Backdrop className="fixed inset-0 bg-ink-900/30 dark:bg-black/60" />
+        <AlertDialog.Popup className="fixed top-1/2 left-1/2 flex w-105 max-w-[calc(100vw-2rem)] -translate-1/2 flex-col gap-4 rounded-xl border border-paper-200 bg-white p-6 shadow-xl dark:border-paper-800 dark:bg-paper-900">
           <AlertDialog.Title className="m-0 text-base font-semibold">
             {title}
           </AlertDialog.Title>
-          <AlertDialog.Description className="m-0 text-sm text-ink-600">
+          <AlertDialog.Description className="m-0 text-sm text-ink-600 dark:text-ink-300">
             {description}
           </AlertDialog.Description>
           <div className="flex justify-end gap-3">
@@ -512,7 +518,9 @@ function ConfirmButton({
 }
 
 const borderOf = (error: string | undefined) =>
-  error === undefined ? 'border-paper-300' : 'border-red-700';
+  error === undefined
+    ? 'border-paper-300 dark:border-paper-700'
+    : 'border-red-700 dark:border-red-500';
 
 const describeError = (caught: unknown): ToolFormErrors => {
   if (caught instanceof ApiError && caught.status === 409) {

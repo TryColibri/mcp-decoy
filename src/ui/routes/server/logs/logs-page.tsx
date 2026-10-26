@@ -18,8 +18,8 @@ const SEARCH_DEBOUNCE_MS = 250;
 
 // The message table fills the page until an entry is selected. Then it shrinks
 // to a column beside the detail pane; below `lg` the pane replaces it.
-const messagesAlone = tw`flex min-w-0 flex-1 flex-col bg-white lg:min-h-0`;
-const messagesWithDetail = tw`hidden min-w-0 flex-col border-r border-paper-200 bg-white lg:flex lg:min-h-0 lg:w-80 lg:flex-none`;
+const messagesAlone = tw`flex min-w-0 flex-1 flex-col bg-white lg:min-h-0 dark:bg-paper-900`;
+const messagesWithDetail = tw`hidden min-w-0 flex-col border-r border-paper-200 bg-white lg:flex lg:min-h-0 lg:w-80 lg:flex-none dark:border-paper-800 dark:bg-paper-900`;
 
 const numberFormat = new Intl.NumberFormat();
 
@@ -116,12 +116,19 @@ export function LogsPage() {
   let list;
   if (stream.error !== undefined) {
     list = (
-      <p role="alert" className="m-0 p-4 text-sm text-red-800">
+      <p
+        role="alert"
+        className="m-0 p-4 text-sm text-red-800 dark:text-red-400"
+      >
         Could not load entries: {stream.error.message}
       </p>
     );
   } else if (stream.loading) {
-    list = <p className="m-0 p-4 text-sm text-ink-500">Loading entries…</p>;
+    list = (
+      <p className="m-0 p-4 text-sm text-ink-500 dark:text-ink-400">
+        Loading entries…
+      </p>
+    );
   } else if (stream.entries.length === 0) {
     list = <EmptyMessages server={server.mcpUrl} searching={query !== ''} />;
   } else {
@@ -140,7 +147,7 @@ export function LogsPage() {
 
   return (
     <>
-      <div className="flex shrink-0 flex-wrap items-center gap-2.5 border-b border-paper-200 bg-white px-6 py-3">
+      <div className="flex shrink-0 flex-wrap items-center gap-2.5 border-b border-paper-200 bg-white px-6 py-3 dark:border-paper-800 dark:bg-paper-900">
         <label htmlFor={searchId} className="sr-only">
           Search entries by method, URL or text
         </label>
@@ -152,7 +159,7 @@ export function LogsPage() {
             setSearch(event.target.value);
           }}
           placeholder="Search method, URL or any text"
-          className="box-border min-h-9 min-w-0 flex-[1_1_280px] rounded-lg border border-paper-300 bg-white px-3 font-mono text-[13px] text-ink-900"
+          className="box-border min-h-9 min-w-0 flex-[1_1_280px] rounded-lg border border-paper-300 bg-white px-3 font-mono text-[13px] text-ink-900 dark:border-paper-700 dark:bg-paper-900 dark:text-ink-100"
         />
         <div className="ml-auto flex flex-wrap gap-2">
           {stream.paused ? (
@@ -178,7 +185,10 @@ export function LogsPage() {
           </a>
         </div>
         {clearError !== null && (
-          <p role="alert" className="m-0 w-full text-[13px] text-red-800">
+          <p
+            role="alert"
+            className="m-0 w-full text-[13px] text-red-800 dark:text-red-400"
+          >
             {clearError}
           </p>
         )}
@@ -192,7 +202,7 @@ export function LogsPage() {
           {list}
           <div
             aria-live="polite"
-            className="mt-auto flex shrink-0 flex-wrap justify-between gap-3 border-t border-paper-100 px-4 py-2.5 text-xs text-ink-500"
+            className="mt-auto flex shrink-0 flex-wrap justify-between gap-3 border-t border-paper-100 px-4 py-2.5 text-xs text-ink-500 dark:border-paper-800 dark:text-ink-400"
           >
             <span>{status}</span>
           </div>
@@ -220,15 +230,21 @@ type EmptyMessagesProps = {
 
 function EmptyMessages({ server, searching }: EmptyMessagesProps) {
   if (searching) {
-    return <p className="m-0 p-4 text-sm text-ink-500">No entries match.</p>;
+    return (
+      <p className="m-0 p-4 text-sm text-ink-500 dark:text-ink-400">
+        No entries match.
+      </p>
+    );
   }
   return (
     <div className="flex flex-col gap-2 p-6">
       <h2 className="m-0 text-[15px] font-semibold">Waiting for traffic</h2>
-      <p className="m-0 max-w-prose text-sm/relaxed text-ink-600">
+      <p className="m-0 max-w-prose text-sm/relaxed text-ink-600 dark:text-ink-300">
         Point your MCP client at{' '}
-        <span className="font-mono wrap-anywhere text-ink-900">{server}</span>.
-        Every HTTP exchange and JSON-RPC message shows up here as it happens.
+        <span className="font-mono wrap-anywhere text-ink-900 dark:text-ink-100">
+          {server}
+        </span>
+        . Every HTTP exchange and JSON-RPC message shows up here as it happens.
       </p>
     </div>
   );

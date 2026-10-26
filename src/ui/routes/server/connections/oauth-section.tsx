@@ -22,7 +22,7 @@ export function OAuthSection({ server }: OAuthSectionProps) {
   if (auth.mode === 'none') {
     return (
       <Section title="OAuth" actions={<OAuthSwitch server={server} />}>
-        <p className="m-0 text-sm/relaxed text-ink-600">
+        <p className="m-0 text-sm/relaxed text-ink-600 dark:text-ink-300">
           This server is open: any client can connect without authenticating.
           Turn on OAuth to require it.
         </p>
@@ -34,7 +34,7 @@ export function OAuthSection({ server }: OAuthSectionProps) {
 
   return (
     <Section title="OAuth" actions={<OAuthSwitch server={server} />}>
-      <p className="m-0 text-sm/relaxed text-ink-600">
+      <p className="m-0 text-sm/relaxed text-ink-600 dark:text-ink-300">
         The pre-registered client authenticates with{' '}
         <code className="font-mono">client_secret_post</code>. Dynamic Client
         Registration is also available.
@@ -62,7 +62,7 @@ type FieldLabelProps = {
 
 function FieldLabel({ children }: FieldLabelProps) {
   return (
-    <span className="text-xs font-semibold text-ink-500 uppercase">
+    <span className="text-xs font-semibold text-ink-500 uppercase dark:text-ink-400">
       {children}
     </span>
   );
@@ -77,8 +77,8 @@ function Field({ label, value }: FieldProps) {
   return (
     <div className="flex flex-col gap-1">
       <FieldLabel>{label}</FieldLabel>
-      <div className="flex items-start gap-2 rounded-lg bg-paper-100 py-1.5 pr-1.5 pl-3">
-        <span className="min-w-0 flex-1 py-0.5 font-mono text-[13px] wrap-anywhere text-ink-900">
+      <div className="flex items-start gap-2 rounded-lg bg-paper-100 py-1.5 pr-1.5 pl-3 dark:bg-paper-800">
+        <span className="min-w-0 flex-1 py-0.5 font-mono text-[13px] wrap-anywhere text-ink-900 dark:text-ink-100">
           {value}
         </span>
         <CopyButton

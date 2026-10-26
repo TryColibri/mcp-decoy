@@ -17,8 +17,8 @@ export type TokensSectionProps = {
   server: ServerSummary;
 };
 
-const th = tw`border-b border-paper-200 px-3 py-2.5 text-left text-xs font-semibold tracking-wide whitespace-nowrap text-ink-500 uppercase`;
-const td = tw`border-b border-paper-100 p-3 align-middle text-sm whitespace-nowrap`;
+const th = tw`border-b border-paper-200 px-3 py-2.5 text-left text-xs font-semibold tracking-wide whitespace-nowrap text-ink-500 uppercase dark:border-paper-800 dark:text-ink-400`;
+const td = tw`border-b border-paper-100 p-3 align-middle text-sm whitespace-nowrap dark:border-paper-800`;
 
 /** Every live access and refresh token of a server, revocable one by one or all at once. */
 export function TokensSection({ server }: TokensSectionProps) {
@@ -26,13 +26,13 @@ export function TokensSection({ server }: TokensSectionProps) {
 
   const body =
     error !== undefined ? (
-      <p role="alert" className="m-0 text-sm text-red-800">
+      <p role="alert" className="m-0 text-sm text-red-800 dark:text-red-400">
         Could not load tokens: {error.message}
       </p>
     ) : tokens === undefined ? (
-      <p className="m-0 text-sm text-ink-500">Loading…</p>
+      <p className="m-0 text-sm text-ink-500 dark:text-ink-400">Loading…</p>
     ) : tokens.length === 0 ? (
-      <p className="m-0 text-sm/relaxed text-ink-600">
+      <p className="m-0 text-sm/relaxed text-ink-600 dark:text-ink-300">
         No live tokens. A client gets some once it completes the OAuth flow.
       </p>
     ) : (
@@ -56,7 +56,7 @@ type TokenTableProps = {
 
 function TokenTable({ server, tokens }: TokenTableProps) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-paper-200 bg-white">
+    <div className="overflow-x-auto rounded-lg border border-paper-200 bg-white dark:border-paper-800 dark:bg-paper-900">
       <table className="w-full border-collapse">
         <thead>
           <tr>
@@ -126,7 +126,10 @@ function TokenRow({ server, token }: TokenRowProps) {
       </td>
       <td className={`${td} text-right`}>
         {error !== null && (
-          <span role="alert" className="mr-3 text-[13px] text-red-800">
+          <span
+            role="alert"
+            className="mr-3 text-[13px] text-red-800 dark:text-red-400"
+          >
             {error}
           </span>
         )}
@@ -208,18 +211,21 @@ function RevokeTokensButton({ server }: RevokeTokensButtonProps) {
         Revoke all
       </AlertDialog.Trigger>
       <AlertDialog.Portal>
-        <AlertDialog.Backdrop className="fixed inset-0 bg-ink-900/30" />
-        <AlertDialog.Popup className="fixed top-1/2 left-1/2 flex w-105 max-w-[calc(100vw-2rem)] -translate-1/2 flex-col gap-4 rounded-xl border border-paper-200 bg-white p-6 shadow-xl">
+        <AlertDialog.Backdrop className="fixed inset-0 bg-ink-900/30 dark:bg-black/60" />
+        <AlertDialog.Popup className="fixed top-1/2 left-1/2 flex w-105 max-w-[calc(100vw-2rem)] -translate-1/2 flex-col gap-4 rounded-xl border border-paper-200 bg-white p-6 shadow-xl dark:border-paper-800 dark:bg-paper-900">
           <AlertDialog.Title className="m-0 text-base font-semibold">
             Revoke every token?
           </AlertDialog.Title>
-          <AlertDialog.Description className="m-0 text-sm/relaxed text-ink-600">
+          <AlertDialog.Description className="m-0 text-sm/relaxed text-ink-600 dark:text-ink-300">
             Every access and refresh token of “{server}” is invalidated.
             Connected clients get 401 on their next request and must
             re-authorize. This can’t be undone.
           </AlertDialog.Description>
           {error !== null && (
-            <p role="alert" className="m-0 text-[13px] text-red-800">
+            <p
+              role="alert"
+              className="m-0 text-[13px] text-red-800 dark:text-red-400"
+            >
               {error}
             </p>
           )}

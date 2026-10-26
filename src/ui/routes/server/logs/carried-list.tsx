@@ -22,7 +22,7 @@ export type CarriedListProps = {
   server: string;
 };
 
-const linkClasses = tw`font-mono text-[13px] text-blue-700 underline hover:text-blue-900`;
+const linkClasses = tw`font-mono text-[13px] text-blue-700 underline hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300`;
 
 const labelOf = ({ kind }: MCPFact): string => {
   switch (kind) {
@@ -51,11 +51,13 @@ export type CarriedRowProps = {
 /** One row of a `CarriedRows` list: a label, the content and the SSE fields. */
 export function CarriedRow({ label, sse, children }: CarriedRowProps) {
   return (
-    <li className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-paper-100 px-3 py-2 first:border-t-0">
-      <span className="w-24 shrink-0 text-xs text-ink-600">{label}</span>
+    <li className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-paper-100 px-3 py-2 first:border-t-0 dark:border-paper-800">
+      <span className="w-24 shrink-0 text-xs text-ink-600 dark:text-ink-300">
+        {label}
+      </span>
       {children}
       {sse !== null && (
-        <span className="ml-8 font-mono text-xs text-ink-600">
+        <span className="ml-8 font-mono text-xs text-ink-600 dark:text-ink-300">
           event: {sse.event ?? '—'} · id: {sse.id ?? '—'}
         </span>
       )}
@@ -72,7 +74,7 @@ export type CarriedRowsProps = {
 /** The bordered frame around a list of `CarriedRow`s. */
 export function CarriedRows({ children }: CarriedRowsProps) {
   return (
-    <ul className="m-0 flex list-none flex-col overflow-hidden rounded-lg border border-paper-200 p-0 text-[13px]">
+    <ul className="m-0 flex list-none flex-col overflow-hidden rounded-lg border border-paper-200 p-0 text-[13px] dark:border-paper-800">
       {children}
     </ul>
   );

@@ -16,18 +16,20 @@ export type BodyViewProps = {
  */
 export function BodyView({ body, copyLabel = 'Copy body' }: BodyViewProps) {
   if (body === undefined) {
-    return <p className="m-0 text-sm text-ink-500">No body</p>;
+    return (
+      <p className="m-0 text-sm text-ink-500 dark:text-ink-400">No body</p>
+    );
   }
   const text = prettyBody(body);
   return (
     <div className="relative">
-      <pre className="m-0 min-h-24 overflow-x-auto rounded-lg bg-ink-900 py-4 pr-12 pl-4.5 font-mono text-[12.5px] leading-[1.6] whitespace-pre text-paper-200">
+      <pre className="m-0 min-h-24 overflow-x-auto rounded-lg bg-ink-900 py-4 pr-12 pl-4.5 font-mono text-[12.5px] leading-[1.6] whitespace-pre text-paper-200 dark:border dark:border-ink-800 dark:bg-ink-950">
         {text}
       </pre>
       <CopyButton
         text={text}
         label={copyLabel}
-        className="absolute top-2 right-2 text-paper-200 hover:bg-ink-700"
+        className="absolute top-2 right-2 text-paper-200 hover:bg-ink-700 dark:text-paper-200 dark:hover:bg-ink-800"
       />
     </div>
   );

@@ -60,11 +60,17 @@ export function OAuthSwitch({ server }: OAuthSwitchProps) {
   return (
     <div className="flex items-center gap-3">
       {error !== null && !confirming && (
-        <span role="alert" className="text-[13px] text-red-800">
+        <span
+          role="alert"
+          className="text-[13px] text-red-800 dark:text-red-400"
+        >
           {error}
         </span>
       )}
-      <span id={labelId} className="text-sm font-medium text-ink-900">
+      <span
+        id={labelId}
+        className="text-sm font-medium text-ink-900 dark:text-ink-100"
+      >
         {enabled ? 'OAuth enabled' : 'OAuth disabled'}
       </span>
       <Switch.Root
@@ -72,24 +78,27 @@ export function OAuthSwitch({ server }: OAuthSwitchProps) {
         onCheckedChange={toggle}
         disabled={saving}
         aria-labelledby={labelId}
-        className="inline-flex h-6 w-10 shrink-0 cursor-pointer items-center rounded-full border-0 bg-ink-400 p-0.5 transition-colors data-checked:bg-ink-900 data-disabled:cursor-not-allowed data-disabled:opacity-60"
+        className="inline-flex h-6 w-10 shrink-0 cursor-pointer items-center rounded-full border-0 bg-ink-400 p-0.5 transition-colors data-checked:bg-ink-900 data-disabled:cursor-not-allowed data-disabled:opacity-60 dark:bg-ink-600 dark:data-checked:bg-ink-100"
       >
-        <Switch.Thumb className="size-5 rounded-full bg-white shadow-sm transition-transform data-checked:translate-x-4" />
+        <Switch.Thumb className="size-5 rounded-full bg-white shadow-sm transition-transform data-checked:translate-x-4 dark:bg-paper-900" />
       </Switch.Root>
       <AlertDialog.Root open={confirming} onOpenChange={setConfirming}>
         <AlertDialog.Portal>
-          <AlertDialog.Backdrop className="fixed inset-0 bg-ink-900/30" />
-          <AlertDialog.Popup className="fixed top-1/2 left-1/2 flex w-105 max-w-[calc(100vw-2rem)] -translate-1/2 flex-col gap-4 rounded-xl border border-paper-200 bg-white p-6 shadow-xl">
+          <AlertDialog.Backdrop className="fixed inset-0 bg-ink-900/30 dark:bg-black/60" />
+          <AlertDialog.Popup className="fixed top-1/2 left-1/2 flex w-105 max-w-[calc(100vw-2rem)] -translate-1/2 flex-col gap-4 rounded-xl border border-paper-200 bg-white p-6 shadow-xl dark:border-paper-800 dark:bg-paper-900">
             <AlertDialog.Title className="m-0 text-base font-semibold">
               Turn off OAuth for “{server.name}”?
             </AlertDialog.Title>
-            <AlertDialog.Description className="m-0 text-sm/relaxed text-ink-600">
+            <AlertDialog.Description className="m-0 text-sm/relaxed text-ink-600 dark:text-ink-300">
               The server becomes open. Its client credentials are deleted, every
               token is revoked and live sessions are closed. Turning OAuth back
               on generates new credentials.
             </AlertDialog.Description>
             {error !== null && (
-              <p role="alert" className="m-0 text-[13px] text-red-800">
+              <p
+                role="alert"
+                className="m-0 text-[13px] text-red-800 dark:text-red-400"
+              >
                 {error}
               </p>
             )}

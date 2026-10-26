@@ -72,9 +72,9 @@ const labelOf = (tab: DetailTab, entry: LogEntry): string => {
   return entry.type === 'mcp' && !isPair(entry) ? 'Message' : 'Request';
 };
 
-const tabClasses = tw`-mb-px cursor-pointer border-0 border-b-2 border-solid border-transparent bg-transparent px-3 py-2.5 font-sans text-[13px] font-medium text-ink-600 hover:text-ink-900 data-active:border-blue-700 data-active:text-ink-900`;
+const tabClasses = tw`-mb-px cursor-pointer border-0 border-b-2 border-solid border-transparent bg-transparent px-3 py-2.5 font-sans text-[13px] font-medium text-ink-600 hover:text-ink-900 data-active:border-blue-700 data-active:text-ink-900 dark:text-ink-300 dark:hover:text-ink-100 dark:data-active:border-blue-400 dark:data-active:text-ink-100`;
 const panelClasses = tw`min-h-0 flex-1 overflow-auto p-4.5 outline-none`;
-const linkClasses = tw`font-mono text-[13px] text-blue-700 underline hover:text-blue-900`;
+const linkClasses = tw`font-mono text-[13px] text-blue-700 underline hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300`;
 
 /**
  * Right pane of the Logs tab, like Chrome's Network panel: a header bar and
@@ -99,13 +99,13 @@ export function MessageDetail({
   return (
     <aside
       aria-label="Entry detail"
-      className="relative box-border flex min-w-0 flex-1 flex-col bg-white lg:min-h-0"
+      className="relative box-border flex min-w-0 flex-1 flex-col bg-white lg:min-h-0 dark:bg-paper-900"
     >
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-paper-100 px-4.5 py-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-paper-100 px-4.5 py-3 dark:border-paper-800">
         <h2 className="m-0 font-mono text-sm font-medium">{nameOf(entry)}</h2>
         <TypeChip type={typeOf(entry)} />
         <StatusText status={statusOf(entry)} />
-        <span className="text-xs text-ink-600">
+        <span className="text-xs text-ink-600 dark:text-ink-300">
           {formatTime(atOf(entry))}
           {took === '' ? '' : ` · ${took}`}
         </span>
@@ -131,7 +131,7 @@ export function MessageDetail({
         }}
         className="flex min-h-0 flex-1 flex-col"
       >
-        <Tabs.List className="flex shrink-0 gap-1 border-b border-paper-100 px-3">
+        <Tabs.List className="flex shrink-0 gap-1 border-b border-paper-100 px-3 dark:border-paper-800">
           {tabs.map((tab) => (
             <Tabs.Tab key={tab} value={tab} className={tabClasses}>
               {labelOf(tab, entry)}
@@ -188,8 +188,10 @@ function FactList({ facts }: FactListProps) {
     <dl className="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-[13px]">
       {facts.map(([name, value]) => (
         <div key={name} className="col-span-2 grid grid-cols-subgrid">
-          <dt className="text-ink-600">{name}</dt>
-          <dd className="m-0 font-mono wrap-anywhere text-ink-900">{value}</dd>
+          <dt className="text-ink-600 dark:text-ink-300">{name}</dt>
+          <dd className="m-0 font-mono wrap-anywhere text-ink-900 dark:text-ink-100">
+            {value}
+          </dd>
         </div>
       ))}
     </dl>
@@ -204,7 +206,7 @@ type SectionProps = {
 function Section({ title, children }: SectionProps) {
   return (
     <section className="flex flex-col gap-2">
-      <h3 className="m-0 text-xs font-semibold tracking-wide text-ink-500 uppercase">
+      <h3 className="m-0 text-xs font-semibold tracking-wide text-ink-500 uppercase dark:text-ink-400">
         {title}
       </h3>
       {children}
@@ -251,7 +253,7 @@ type CarriedSectionProps = {
 
 function CarriedItems({ items, empty, server }: CarriedSectionProps) {
   return items.length === 0 ? (
-    <p className="m-0 text-sm text-ink-500">{empty}</p>
+    <p className="m-0 text-sm text-ink-500 dark:text-ink-400">{empty}</p>
   ) : (
     <CarriedList items={items} server={server} />
   );
@@ -289,7 +291,7 @@ function HTTPResponsePanel({ entry, server }: HTTPPanelProps) {
   const { received } = useCarried({ entry, server });
   if (response === null) {
     return (
-      <p className="m-0 text-sm text-ink-500">
+      <p className="m-0 text-sm text-ink-500 dark:text-ink-400">
         No response: the client left before headers.
       </p>
     );
@@ -360,12 +362,14 @@ function MCPResponsePanel({ entry }: MCPEntryPanelProps) {
   const { reply } = entry;
   if (reply === null) {
     return (
-      <p className="m-0 text-sm text-ink-500">Waiting for the response…</p>
+      <p className="m-0 text-sm text-ink-500 dark:text-ink-400">
+        Waiting for the response…
+      </p>
     );
   }
   if (reply.type === 'no-reply') {
     return (
-      <p className="m-0 text-sm text-ink-500">
+      <p className="m-0 text-sm text-ink-500 dark:text-ink-400">
         No response:{' '}
         {reply.reason === 'session-closed'
           ? 'the session closed.'
@@ -392,7 +396,7 @@ function MessageBody({ fact, copyLabel }: MessageBodyProps) {
 
 function TruncatedNote() {
   return (
-    <p className="m-0 text-xs text-ink-500">
+    <p className="m-0 text-xs text-ink-500 dark:text-ink-400">
       Cut at 1 MiB: only the beginning was kept.
     </p>
   );
@@ -416,7 +420,9 @@ function MCPOverviewPanel({ entry, entries, server }: MCPOverviewPanelProps) {
   const carriedBy = (label: string, fact: MCPFact) => (
     <CarriedRow key={fact.id} label={label} sse={fact.sse}>
       {fact.carriedBy === null ? (
-        <span className="font-mono text-red-800">not sent</span>
+        <span className="font-mono text-red-800 dark:text-red-400">
+          not sent
+        </span>
       ) : (
         <Link
           to={logsPath(

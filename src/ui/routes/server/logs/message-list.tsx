@@ -49,38 +49,38 @@ const grids: Record<MessageListLayout, string> = {
 };
 
 const typeStyles: Record<LogType, string> = {
-  http: tw`bg-purple-50 text-purple-900`,
-  oauth: tw`bg-purple-50 text-purple-900`,
-  request: tw`bg-teal-100 text-teal-900`,
-  'server request': tw`bg-teal-100 text-teal-900`,
-  'client notify': tw`bg-amber-100 text-amber-900`,
-  'server notify': tw`bg-amber-100 text-amber-900`,
-  'client result': tw`bg-green-50 text-green-900`,
-  'server result': tw`bg-green-50 text-green-900`,
-  'client error': tw`bg-red-50 text-red-800`,
-  'server error': tw`bg-red-50 text-red-800`,
-  invalid: tw`bg-orange-100 text-orange-900`,
+  http: tw`bg-purple-50 text-purple-900 dark:bg-purple-950 dark:text-purple-300`,
+  oauth: tw`bg-purple-50 text-purple-900 dark:bg-purple-950 dark:text-purple-300`,
+  request: tw`bg-teal-100 text-teal-900 dark:bg-teal-950 dark:text-teal-300`,
+  'server request': tw`bg-teal-100 text-teal-900 dark:bg-teal-950 dark:text-teal-300`,
+  'client notify': tw`bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300`,
+  'server notify': tw`bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300`,
+  'client result': tw`bg-green-50 text-green-900 dark:bg-green-950 dark:text-green-300`,
+  'server result': tw`bg-green-50 text-green-900 dark:bg-green-950 dark:text-green-300`,
+  'client error': tw`bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-400`,
+  'server error': tw`bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-400`,
+  invalid: tw`bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-300`,
 };
 
 const layerStyles: Record<LogEntry['type'], string> = {
-  http: tw`bg-purple-50 text-purple-900`,
-  mcp: tw`bg-blue-100 text-blue-900`,
+  http: tw`bg-purple-50 text-purple-900 dark:bg-purple-950 dark:text-purple-300`,
+  mcp: tw`bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300`,
 };
 
-const methodStyle = tw`bg-paper-100 text-ink-700`;
+const methodStyle = tw`bg-paper-100 text-ink-700 dark:bg-paper-800 dark:text-ink-200`;
 
 const statusTextStyles: Record<StatusTone, string> = {
-  ok: tw`text-green-900`,
-  error: tw`text-red-800`,
-  neutral: tw`text-ink-600`,
-  pending: tw`text-ink-500`,
+  ok: tw`text-green-900 dark:text-green-300`,
+  error: tw`text-red-800 dark:text-red-400`,
+  neutral: tw`text-ink-600 dark:text-ink-300`,
+  pending: tw`text-ink-500 dark:text-ink-400`,
 };
 
 const statusDotStyles: Record<StatusTone, string> = {
-  ok: tw`bg-green-700`,
-  error: tw`bg-red-700`,
-  neutral: tw`bg-ink-400`,
-  pending: tw`bg-paper-300`,
+  ok: tw`bg-green-700 dark:bg-green-500`,
+  error: tw`bg-red-700 dark:bg-red-500`,
+  neutral: tw`bg-ink-400 dark:bg-ink-600`,
+  pending: tw`bg-paper-300 dark:bg-paper-700`,
 };
 
 /** How far before the end of the list older entries start loading. */
@@ -133,7 +133,7 @@ export function MessageList({
         <div
           className={twMerge(
             grids[layout],
-            'sticky top-0 z-10 min-h-8.5 border-b border-paper-100 bg-paper-50 text-xs font-semibold tracking-wide text-ink-500 uppercase',
+            'sticky top-0 z-10 min-h-8.5 border-b border-paper-100 bg-paper-50 text-xs font-semibold tracking-wide text-ink-500 uppercase dark:border-paper-800 dark:bg-paper-950 dark:text-ink-400',
           )}
         >
           <span>Time</span>
@@ -164,7 +164,7 @@ export function MessageList({
         ))}
         <div
           ref={sentinelRef}
-          className="px-4 py-3 text-center text-xs text-ink-500"
+          className="px-4 py-3 text-center text-xs text-ink-500 dark:text-ink-400"
         >
           {hasOlder
             ? loadingOlder
@@ -199,13 +199,15 @@ const MessageRow = memo(function MessageRow({
       }}
       className={twMerge(
         grids[layout],
-        'min-h-10 cursor-pointer border-0 border-b border-solid border-paper-100 text-left font-sans text-[13px] text-ink-900 [contain-intrinsic-size:auto_40px] [content-visibility:auto]',
+        'min-h-10 cursor-pointer border-0 border-b border-solid border-paper-100 text-left font-sans text-[13px] text-ink-900 [contain-intrinsic-size:auto_40px] [content-visibility:auto] dark:border-paper-800 dark:text-ink-100',
         selected
-          ? 'bg-blue-50 shadow-[inset_3px_0_0_var(--color-blue-700)]'
-          : 'bg-white hover:bg-blue-50/50',
+          ? 'bg-blue-50 shadow-[inset_3px_0_0_var(--color-blue-700)] dark:bg-blue-950 dark:shadow-[inset_3px_0_0_var(--color-blue-400)]'
+          : 'bg-white hover:bg-blue-50/50 dark:bg-paper-900 dark:hover:bg-blue-950/50',
       )}
     >
-      <span className="font-mono text-ink-500">{formatTime(atOf(entry))}</span>
+      <span className="font-mono text-ink-500 dark:text-ink-400">
+        {formatTime(atOf(entry))}
+      </span>
       {layout === 'full' ? (
         <FullColumns entry={entry} />
       ) : (
@@ -244,11 +246,18 @@ function FullColumns({ entry }: FullColumnsProps) {
       <span>
         <StatusText status={statusOf(entry)} />
       </span>
-      <span className="truncate text-xs text-ink-500">{noteOf(entry)}</span>
-      <span className="font-mono text-ink-600" title={sessionId ?? undefined}>
+      <span className="truncate text-xs text-ink-500 dark:text-ink-400">
+        {noteOf(entry)}
+      </span>
+      <span
+        className="font-mono text-ink-600 dark:text-ink-300"
+        title={sessionId ?? undefined}
+      >
         {shortSession(sessionId)}
       </span>
-      <span className="text-right font-mono text-ink-600">{tookOf(entry)}</span>
+      <span className="text-right font-mono text-ink-600 dark:text-ink-300">
+        {tookOf(entry)}
+      </span>
     </>
   );
 }

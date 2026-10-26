@@ -15,8 +15,8 @@ export type SessionsSectionProps = {
   server: ServerSummary;
 };
 
-const th = tw`border-b border-paper-200 px-4 py-2.5 text-left text-xs font-semibold tracking-wide whitespace-nowrap text-ink-500 uppercase`;
-const td = tw`border-b border-paper-100 px-4 py-3 align-middle text-sm whitespace-nowrap`;
+const th = tw`border-b border-paper-200 px-4 py-2.5 text-left text-xs font-semibold tracking-wide whitespace-nowrap text-ink-500 uppercase dark:border-paper-800 dark:text-ink-400`;
+const td = tw`border-b border-paper-100 px-4 py-3 align-middle text-sm whitespace-nowrap dark:border-paper-800`;
 
 /** Live MCP sessions of a server, each with a Close button. */
 export function SessionsSection({ server }: SessionsSectionProps) {
@@ -24,13 +24,13 @@ export function SessionsSection({ server }: SessionsSectionProps) {
 
   const body =
     error !== undefined ? (
-      <p role="alert" className="m-0 text-sm text-red-800">
+      <p role="alert" className="m-0 text-sm text-red-800 dark:text-red-400">
         Could not load sessions: {error.message}
       </p>
     ) : sessions === undefined ? (
-      <p className="m-0 text-sm text-ink-500">Loading…</p>
+      <p className="m-0 text-sm text-ink-500 dark:text-ink-400">Loading…</p>
     ) : sessions.length === 0 ? (
-      <p className="m-0 text-sm/relaxed text-ink-600">
+      <p className="m-0 text-sm/relaxed text-ink-600 dark:text-ink-300">
         No live sessions. Connect a client to the endpoint at the top of this
         page to open one.
       </p>
@@ -48,7 +48,7 @@ type SessionTableProps = {
 
 function SessionTable({ server, sessions }: SessionTableProps) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-paper-200 bg-white">
+    <div className="overflow-x-auto rounded-lg border border-paper-200 bg-white dark:border-paper-800 dark:bg-paper-900">
       <table className="w-full border-collapse">
         <thead>
           <tr>
@@ -116,7 +116,7 @@ function SessionRow({ server, session }: SessionRowProps) {
             ? 'Unknown client'
             : `${clientInfo.name} ${clientInfo.version}`}
         </span>
-        <span className="block font-mono text-xs text-ink-500">
+        <span className="block font-mono text-xs text-ink-500 dark:text-ink-400">
           {session.id}
         </span>
       </td>
@@ -129,7 +129,10 @@ function SessionRow({ server, session }: SessionRowProps) {
       <td className={td}>{formatRelative(session.lastSeenAt)}</td>
       <td className={`${td} text-right`}>
         {error !== null && (
-          <span role="alert" className="mr-3 text-[13px] text-red-800">
+          <span
+            role="alert"
+            className="mr-3 text-[13px] text-red-800 dark:text-red-400"
+          >
             {error}
           </span>
         )}
