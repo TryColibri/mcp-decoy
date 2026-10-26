@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react';
 import { Link } from 'react-router';
 
 import { type MCPEntry, type MCPFact } from '@/shared/api';
@@ -37,6 +38,46 @@ const labelOf = ({ kind }: MCPFact): string => {
   }
 };
 
+/** Props of `CarriedRow`. */
+export type CarriedRowProps = {
+  /** What the row is: a request, a reply, a notification… */
+  label: string;
+  /** SSE fields of the message when it was streamed, otherwise `null`. */
+  sse: MCPFact['sse'];
+  /** The row's main content, usually a link to an entry. */
+  children: ReactNode;
+};
+
+/** One row of a `CarriedRows` list: a label, the content and the SSE fields. */
+export function CarriedRow({ label, sse, children }: CarriedRowProps) {
+  return (
+    <li className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-paper-100 px-3 py-2 first:border-t-0">
+      <span className="w-24 shrink-0 text-xs text-ink-600">{label}</span>
+      {children}
+      {sse !== null && (
+        <span className="ml-8 font-mono text-xs text-ink-600">
+          event: {sse.event ?? '—'} · id: {sse.id ?? '—'}
+        </span>
+      )}
+    </li>
+  );
+}
+
+/** Props of `CarriedRows`. */
+export type CarriedRowsProps = {
+  /** The `CarriedRow`s to list. */
+  children: ReactNode;
+};
+
+/** The bordered frame around a list of `CarriedRow`s. */
+export function CarriedRows({ children }: CarriedRowsProps) {
+  return (
+    <ul className="m-0 flex list-none flex-col overflow-hidden rounded-lg border border-paper-200 p-0 text-[13px]">
+      {children}
+    </ul>
+  );
+}
+
 /**
  * The messages an exchange carried, mirroring the "Carried by" list of an MCP
  * entry: a label, a link to the entry and the SSE fields when streamed. The
@@ -44,15 +85,9 @@ const labelOf = ({ kind }: MCPFact): string => {
  */
 export function CarriedList({ items, server }: CarriedListProps) {
   return (
-    <ul className="m-0 flex list-none flex-col overflow-hidden rounded-lg border border-paper-200 p-0 text-[13px]">
+    <CarriedRows>
       {items.map(({ entry, fact }) => (
-        <li
-          key={fact.id}
-          className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-paper-100 px-3 py-2 first:border-t-0"
-        >
-          <span className="w-24 shrink-0 text-xs text-ink-600">
-            {labelOf(fact)}
-          </span>
+        <CarriedRow key={fact.id} label={labelOf(fact)} sse={fact.sse}>
           <Link
             to={logsPath(
               server,
@@ -63,13 +98,8 @@ export function CarriedList({ items, server }: CarriedListProps) {
           >
             {nameOf(entry)}
           </Link>
-          {fact.sse !== null && (
-            <span className="ml-auto font-mono text-xs text-ink-600">
-              event: {fact.sse.event ?? '—'} · id: {fact.sse.id ?? '—'}
-            </span>
-          )}
-        </li>
+        </CarriedRow>
       ))}
-    </ul>
+    </CarriedRows>
   );
 }

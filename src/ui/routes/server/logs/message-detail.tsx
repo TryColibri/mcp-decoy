@@ -14,7 +14,12 @@ import { Button } from '@/ui/components/button';
 import { tw } from '@/ui/tw';
 
 import { BodyView } from './body-view';
-import { CarriedList, type CarriedItem } from './carried-list';
+import {
+  CarriedList,
+  CarriedRow,
+  CarriedRows,
+  type CarriedItem,
+} from './carried-list';
 import { HeadersView } from './headers-view';
 import {
   atOf,
@@ -409,8 +414,7 @@ function MCPOverviewPanel({ entry, entries, server }: MCPOverviewPanelProps) {
   };
 
   const carriedBy = (label: string, fact: MCPFact) => (
-    <li key={fact.id} className="flex flex-wrap items-baseline gap-x-2">
-      <span className="text-ink-600">{label}</span>
+    <CarriedRow key={fact.id} label={label} sse={fact.sse}>
       {fact.carriedBy === null ? (
         <span className="font-mono text-red-800">not sent</span>
       ) : (
@@ -425,12 +429,7 @@ function MCPOverviewPanel({ entry, entries, server }: MCPOverviewPanelProps) {
           {exchangeNameOf(fact.carriedBy)}
         </Link>
       )}
-      {fact.sse !== null && (
-        <span className="font-mono text-xs text-ink-600">
-          event: {fact.sse.event ?? '—'} · id: {fact.sse.id ?? '—'}
-        </span>
-      )}
-    </li>
+    </CarriedRow>
   );
 
   return (
@@ -448,10 +447,10 @@ function MCPOverviewPanel({ entry, entries, server }: MCPOverviewPanelProps) {
         ]}
       />
       <Section title="Carried by">
-        <ul className="m-0 flex list-none flex-col gap-1 p-0 text-[13px]">
+        <CarriedRows>
           {carriedBy(isPair(entry) ? 'Request' : 'Message', message)}
           {reply?.type === 'mcp' && carriedBy('Reply', reply)}
-        </ul>
+        </CarriedRows>
       </Section>
     </div>
   );
