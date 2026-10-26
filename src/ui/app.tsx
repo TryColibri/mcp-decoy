@@ -25,7 +25,7 @@ const router = createBrowserRouter(
       <Route path="servers/new" element={<NewServerPage />} />
       <Route path="servers/:server" element={<ServerLayout />}>
         <Route index element={<Navigate to="logs" replace />} />
-        <Route path="logs" element={<LogsPage />} />
+        <Route path="logs/:entry?" element={<LogsPage />} />
         <Route path="tools/:tool?" element={<ToolsPage />} />
         <Route path="connections" element={<ConnectionsPage />} />
       </Route>

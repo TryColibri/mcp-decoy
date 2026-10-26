@@ -16,7 +16,10 @@ import {
   instanceInfoSchema,
   logEntrySchema,
   logEvictedSchema,
+  type LogFact,
   logPageSchema,
+  type MCPEntry,
+  type MCPFact,
   oauthTokenListSchema,
   problemSchema,
   type ServerConfig,
@@ -683,7 +686,7 @@ describe('uiApp', () => {
       expect(new Set(ids).size).toBe(total);
     });
 
-    it('searches logs', async () => {
+    it('searches logs through every fact of an entry', async () => {
       const { client } = await connect();
       await client.listTools();
 
@@ -693,23 +696,56 @@ describe('uiApp', () => {
         ).json(),
       );
 
-      expect(page.items.map((entry) => entry.method)).toEqual([
-        'tools/list',
-        'tools/list',
-      ]);
+      const mcp = page.items.filter(
+        (entry): entry is MCPEntry => entry.type === 'mcp',
+      );
+      expect(mcp.map((entry) => entry.message.method)).toEqual(['tools/list']);
+      // The POST that carried the request mentions it too.
+      expect(page.items.filter((entry) => entry.type === 'http')).toHaveLength(
+        1,
+      );
     });
 
-    const append = (store: Services['store'], method: string) =>
+    it('returns the highest fact id as after, and filters by carriedBy', async () => {
+      append(services.store, 'tools/list');
+      const carried = append(services.store, 'notifications/x', {
+        kind: 'notification',
+        carriedBy: 77,
+      });
+      append(services.store, 'tools/call');
+
+      const page = logPageSchema.parse(
+        await (
+          await request('/api/v1/servers/weather/logs?carriedBy=77')
+        ).json(),
+      );
+
+      expect(page.items.map((entry) => entry.id)).toEqual([carried.id]);
+      expect(page.total).toBe(1);
+      expect(page.after).toBe(services.store.lastId());
+    });
+
+    const append = (
+      store: Services['store'],
+      method: string,
+      fields: Partial<Omit<MCPFact, 'id' | 'type'>> = {},
+    ): LogFact =>
       store.append({
+        type: 'mcp',
         at: '2026-10-21T12:00:00.000Z',
         server: 'weather',
         sessionId: null,
-        direction: 'in',
+        from: 'client',
         kind: 'request',
         method,
         jsonrpcId: 1,
-        durationMs: null,
         raw: `{"jsonrpc":"2.0","id":1,"method":"${method}"}`,
+        truncated: false,
+        carriedBy: null,
+        sse: null,
+        replyTo: null,
+        durationMs: null,
+        ...fields,
       });
 
     /** Reads a response body as text until a needle shows up. */
@@ -771,7 +807,7 @@ describe('uiApp', () => {
       await stream.cancel();
 
       expect(stream.text()).not.toContain(`id: ${skipped.id}\n`);
-      expect(stream.text().match(/event: entry/g)).toHaveLength(2);
+      expect(stream.text().match(/event: fact/g)).toHaveLength(2);
     });
 
     it('sends evicted over SSE for matching entries only', async () => {
@@ -811,6 +847,95 @@ describe('uiApp', () => {
         id: evictedCall.id,
       });
       expect(stream.text().match(/event: evicted/g)).toHaveLength(1);
+    });
+
+    it('streams a late anchor without an id, then its attachment with one', async () => {
+      const anchor = append(services.store, 'tools/call');
+      const response = await request(
+        `/api/v1/servers/weather/logs/stream?after=${services.store.lastId()}&q=needle`,
+      );
+      const stream = sseReader(response);
+
+      const reply = append(services.store, '', {
+        from: 'server',
+        kind: 'response',
+        method: null,
+        raw: '{"jsonrpc":"2.0","id":1,"result":"needle"}',
+        replyTo: anchor.id,
+      });
+      await stream.readUntil(`id: ${reply.id}\n`);
+      await stream.cancel();
+
+      const [late, attachment] = stream
+        .text()
+        .split('\n\n')
+        .filter((block) => block.includes('event: fact'));
+      expect(late).not.toContain('id: ');
+      expect(JSON.parse(/data: (.*)/.exec(late)?.[1] ?? '')).toMatchObject({
+        id: anchor.id,
+        type: 'mcp',
+      });
+      expect(attachment).toContain(`id: ${reply.id}`);
+    });
+
+    it('resumes from Last-Event-ID by fact id', async () => {
+      append(services.store, 'tools/call');
+      const last = append(services.store, 'tools/call');
+
+      const response = await request(
+        '/api/v1/servers/weather/logs/stream?after=0&q=tools/call',
+        { headers: { 'last-event-id': String(last.id) } },
+      );
+      const stream = sseReader(response);
+      const next = append(services.store, 'tools/call');
+      await stream.readUntil(`id: ${next.id}\n`);
+      await stream.cancel();
+
+      expect(stream.text().match(/event: fact/g)).toHaveLength(1);
+      expect(stream.text()).not.toContain(`id: ${last.id}\n`);
+    });
+
+    it('returns one entry by the id of its anchor', async () => {
+      await connect();
+      const initialize = services.logs
+        .all('weather')
+        .find(
+          (entry): entry is MCPEntry =>
+            entry.type === 'mcp' && entry.message.method === 'initialize',
+        );
+
+      const response = await request(
+        `/api/v1/servers/weather/logs/${initialize?.id ?? 0}`,
+      );
+
+      expect(response.status).toBe(200);
+      expect(logEntrySchema.parse(await response.json())).toEqual(initialize);
+    });
+
+    it('answers 404 for the id of an attachment', async () => {
+      await connect();
+      const initialize = services.logs
+        .all('weather')
+        .find(
+          (entry): entry is MCPEntry =>
+            entry.type === 'mcp' && entry.message.method === 'initialize',
+        );
+
+      await expectProblem(
+        await request(
+          `/api/v1/servers/weather/logs/${initialize?.reply?.id ?? 0}`,
+        ),
+        404,
+        'not-found',
+      );
+    });
+
+    it('answers 404 for an unknown log entry', async () => {
+      await expectProblem(
+        await request('/api/v1/servers/weather/logs/999999'),
+        404,
+        'not-found',
+      );
     });
 
     it('rejects an invalid cursor or limit', async () => {

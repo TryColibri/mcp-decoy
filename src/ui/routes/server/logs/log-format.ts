@@ -1,35 +1,178 @@
-import { httpExchangeSchema, type LogEntry } from '@/shared/api';
+import { default as prettyMilliseconds, type Options } from 'pretty-ms';
 
-/** Label of the kind tag shown next to the method. */
-export type LogTag =
+import {
+  type HTTPEntry,
+  type LogEntry,
+  type LogFact,
+  type MCPEntry,
+  type MCPFact,
+} from '@/shared/api';
+
+/** Label of the type tag shown next to an entry's name. */
+export type LogType =
+  | 'http'
+  | 'oauth'
   | 'request'
-  | 'result'
-  | 'notify'
-  | 'error'
-  | 'invalid'
-  | 'http';
+  | 'server request'
+  | 'client notify'
+  | 'server notify'
+  | 'client result'
+  | 'server result'
+  | 'client error'
+  | 'server error'
+  | 'invalid';
+
+/** How a status reads: green, red, plain, or grey for what is still open. */
+export type StatusTone = 'ok' | 'error' | 'neutral' | 'pending';
+
+/** What the Status column shows. */
+export type EntryStatus = {
+  /** Text; empty when there is nothing to say. */
+  label: string;
+  /** How to color it. */
+  tone: StatusTone;
+};
 
 /**
- * Tag shown for an entry's kind.
+ * Whether an MCP entry is a request with (or waiting for) a reply, as opposed
+ * to one unpaired message.
+ *
+ * @param entry - An MCP entry.
+ */
+export const isPair = (entry: MCPEntry): boolean =>
+  entry.message.kind === 'request';
+
+/**
+ * The fact an entry is anchored on: the exchange, or the message.
  *
  * @param entry - A log entry.
  */
-export function tagOf(entry: LogEntry): LogTag {
-  switch (entry.kind) {
+export const anchorOf = (entry: LogEntry): LogFact =>
+  entry.type === 'http' ? entry.exchange : entry.message;
+
+/**
+ * Tag shown for an entry's type.
+ *
+ * @param entry - A log entry.
+ */
+export function typeOf(entry: LogEntry): LogType {
+  if (entry.type === 'http') {
+    return entry.exchange.endpoint === 'mcp' ? 'http' : 'oauth';
+  }
+  const { from, kind } = entry.message;
+  switch (kind) {
     case 'request':
-      return 'request';
-    case 'response':
-      return 'result';
+      return from === 'client' ? 'request' : 'server request';
     case 'notification':
-      return 'notify';
+      return from === 'client' ? 'client notify' : 'server notify';
+    case 'response':
+      return from === 'client' ? 'client result' : 'server result';
     case 'error':
-      return 'error';
+      return from === 'client' ? 'client error' : 'server error';
     case 'invalid':
       return 'invalid';
-    case 'http':
-      return 'http';
   }
 }
+
+/**
+ * Name shown for an entry: `POST /s/demo/mcp` for an exchange, the method for
+ * a message, `#<id>` for a reply that found no request.
+ *
+ * @param entry - A log entry.
+ */
+export function nameOf(entry: LogEntry): string {
+  if (entry.type === 'http') {
+    const { request } = entry.exchange;
+    return `${request.method} ${pathOf(request.url)}`;
+  }
+  const { method, jsonrpcId } = entry.message;
+  if (method !== null) {
+    return method;
+  }
+  return jsonrpcId === null ? '(unknown)' : `#${jsonrpcId}`;
+}
+
+/**
+ * Status shown for an entry.
+ *
+ * @param entry - A log entry.
+ */
+export function statusOf(entry: LogEntry): EntryStatus {
+  return entry.type === 'http' ? httpStatusOf(entry) : mcpStatusOf(entry);
+}
+
+const httpStatusOf = ({ exchange, state }: HTTPEntry): EntryStatus => {
+  if (exchange.response === null) {
+    return { label: 'no response', tone: 'error' };
+  }
+  if (state === 'streaming') {
+    return { label: 'streaming', tone: 'pending' };
+  }
+  const { status } = exchange.response;
+  const tone: StatusTone =
+    status >= 400 ? 'error' : status >= 300 ? 'neutral' : 'ok';
+  return { label: String(status), tone };
+};
+
+const mcpStatusOf = (entry: MCPEntry): EntryStatus => {
+  if (!isPair(entry)) {
+    return entry.message.carriedBy === null
+      ? { label: 'not sent', tone: 'error' }
+      : { label: '', tone: 'neutral' };
+  }
+  const { reply } = entry;
+  if (reply === null) {
+    return { label: 'pending', tone: 'pending' };
+  }
+  if (reply.type === 'no-reply') {
+    return { label: 'no response', tone: 'error' };
+  }
+  if (reply.kind === 'error') {
+    const code = errorOf(reply)?.code;
+    return {
+      label: typeof code === 'number' ? `error ${code}` : 'error',
+      tone: 'error',
+    };
+  }
+  return resultOf(reply)?.isError === true
+    ? { label: 'isError', tone: 'error' }
+    : { label: 'ok', tone: 'ok' };
+};
+
+const DURATION_FORMAT: Options = {
+  secondsDecimalDigits: 3,
+  unitCount: 2,
+};
+
+/**
+ * What the Took column shows: the duration, `streaming` while an event stream
+ * is open, or nothing.
+ *
+ * @param entry - A log entry.
+ */
+export function tookOf(entry: LogEntry): string {
+  if (entry.durationMs !== null) {
+    return prettyMilliseconds(entry.durationMs, DURATION_FORMAT);
+  }
+  return entry.type === 'http' && entry.state === 'streaming'
+    ? 'streaming'
+    : '';
+}
+
+/**
+ * Time the entry started: the request's arrival or the message's capture.
+ *
+ * @param entry - A log entry.
+ */
+export const atOf = (entry: LogEntry): string => anchorOf(entry).at;
+
+/**
+ * MCP session the entry belongs to, or `null`.
+ *
+ * @param entry - A log entry.
+ */
+export const sessionOf = (entry: LogEntry): string | null =>
+  anchorOf(entry).sessionId;
 
 /**
  * Local wall-clock time with milliseconds, e.g. `12:04:31.204`.
@@ -52,254 +195,209 @@ export function shortSession(sessionId: string | null): string {
   return sessionId === null ? '—' : sessionId.slice(0, 4);
 }
 
-const cache = new WeakMap<LogEntry, unknown>();
+const cache = new WeakMap<MCPFact, unknown>();
 
 /**
- * The parsed JSON of an entry, or `undefined` when it isn't JSON. Cached.
+ * The parsed JSON of a message, or `undefined` when it isn't JSON. Cached.
  *
- * @param entry - A log entry.
+ * @param fact - An `mcp` fact.
  */
-export function parsedMessage(entry: LogEntry): unknown {
-  if (!cache.has(entry)) {
+export function parsedMessage(fact: MCPFact): unknown {
+  if (!cache.has(fact)) {
     let value: unknown;
     try {
-      value = JSON.parse(entry.raw);
+      value = JSON.parse(fact.raw);
     } catch {
       value = undefined;
     }
-    cache.set(entry, value);
+    cache.set(fact, value);
   }
-  return cache.get(entry);
+  return cache.get(fact);
 }
 
 /**
- * The entry's JSON, pretty-printed, or its raw text when it isn't JSON.
+ * The message's JSON, pretty-printed, or its raw text when it isn't JSON.
  *
- * @param entry - A log entry.
+ * @param fact - An `mcp` fact.
  */
-export function prettyJSON(entry: LogEntry): string {
-  const value = parsedMessage(entry);
-  return value === undefined ? entry.raw : JSON.stringify(value, null, 2);
+export function prettyJSON(fact: MCPFact): string {
+  const value = parsedMessage(fact);
+  return value === undefined ? fact.raw : JSON.stringify(value, null, 2);
 }
 
 /**
- * A short note summarizing an entry: the tool name of a call, the tool count
- * of a list result, the code of an error, the client of an `initialize`.
+ * A body as text: strings as they are, anything else pretty-printed JSON.
+ *
+ * @param body - A request or response body.
+ */
+export function prettyBody(body: unknown): string {
+  return typeof body === 'string' ? body : JSON.stringify(body, null, 2);
+}
+
+/**
+ * A short note summarizing an entry: the client of an `initialize` and the
+ * protocol it got, the tool of a call, the tool count of a list, the message
+ * of an error, the decision of an OAuth consent, the events of a stream.
  *
  * @param entry - A log entry.
  */
 export function noteOf(entry: LogEntry): string {
-  if (entry.kind === 'http') {
-    return httpNoteOf(entry);
-  }
-  const message = parsedMessage(entry);
-  if (!isRecord(message)) {
-    return entry.kind === 'invalid' ? 'not JSON-RPC' : '';
-  }
-  const params = isRecord(message.params) ? message.params : {};
-  const result = isRecord(message.result) ? message.result : {};
-
-  if (entry.kind === 'error' && isRecord(message.error)) {
-    const { code, message: text } = message.error;
-    return [
-      typeof code === 'number' ? code : '',
-      typeof text === 'string' ? text : '',
-    ]
-      .join(' ')
-      .trim();
-  }
-  if (entry.method === 'initialize' && entry.kind === 'request') {
-    const client = isRecord(params.clientInfo) ? params.clientInfo : {};
-    return [client.name, client.version]
-      .filter((part) => typeof part === 'string')
-      .join(' ');
-  }
-  if (entry.method === 'initialize' && entry.kind === 'response') {
-    return typeof result.protocolVersion === 'string'
-      ? `protocol ${result.protocolVersion}`
-      : '';
-  }
-  if (entry.method === 'tools/list' && entry.kind === 'response') {
-    const count = Array.isArray(result.tools) ? result.tools.length : 0;
-    return `${count} ${count === 1 ? 'tool' : 'tools'}`;
-  }
-  if (entry.method === 'tools/call' && entry.kind === 'request') {
-    return typeof params.name === 'string' ? params.name : '';
-  }
-  if (entry.method === 'tools/call' && entry.kind === 'response') {
-    return result.isError === true ? 'isError' : '';
-  }
-  return '';
+  return entry.type === 'http' ? httpNoteOf(entry) : mcpNoteOf(entry);
 }
 
-/**
- * Summarizes an `http`-kind entry, e.g. `401 invalid_token`, `200 consent
- * page`, `302 approved` or `201 client "Claude"`.
- *
- * @param entry - An `http`-kind entry.
- */
-function httpNoteOf(entry: LogEntry): string {
-  const parsed = httpExchangeSchema.safeParse(parsedMessage(entry));
-  if (!parsed.success) {
+const mcpNoteOf = (entry: MCPEntry): string => {
+  const { message, reply } = entry;
+  const parsed = parsedMessage(message);
+  if (!isRecord(parsed)) {
+    return message.kind === 'invalid' ? 'not JSON-RPC' : '';
+  }
+  if (message.kind === 'error') {
+    return errorText(errorOf(message));
+  }
+  if (!isPair(entry)) {
     return '';
   }
-  const { request, response } = parsed.data;
-  const status = response.status ?? 0;
-  const path = (request.method ?? '').split(' ').at(1) ?? '';
+  if (reply?.type === 'no-reply') {
+    return reply.reason === 'session-closed'
+      ? 'session closed'
+      : 'exchange ended';
+  }
+  if (reply?.kind === 'error') {
+    return errorText(errorOf(reply));
+  }
+  const params = isRecord(parsed.params) ? parsed.params : {};
+  const result = reply === null ? {} : (resultOf(reply) ?? {});
+
+  switch (message.method) {
+    case 'initialize': {
+      const client = isRecord(params.clientInfo) ? params.clientInfo : {};
+      const who = [client.name, client.version]
+        .filter((part) => typeof part === 'string')
+        .join(' ');
+      const protocol =
+        typeof result.protocolVersion === 'string'
+          ? `protocol ${result.protocolVersion}`
+          : '';
+      return [who, protocol].filter((part) => part !== '').join(' · ');
+    }
+    case 'tools/list': {
+      if (reply === null) {
+        return '';
+      }
+      const count = Array.isArray(result.tools) ? result.tools.length : 0;
+      return `${count} ${count === 1 ? 'tool' : 'tools'}`;
+    }
+    case 'tools/call':
+      return typeof params.name === 'string' ? params.name : '';
+    default:
+      return '';
+  }
+};
+
+const httpNoteOf = ({ exchange, end }: HTTPEntry): string => {
+  const events =
+    end === null
+      ? ''
+      : `${end.events} ${end.events === 1 ? 'event' : 'events'}`;
+  const { response, request } = exchange;
+  if (response === null || exchange.endpoint === 'mcp') {
+    return events;
+  }
+  const path = pathOf(request.url);
   const body = response.body;
 
   if (path.startsWith('/consent/')) {
     const location =
-      typeof response.headers.location === 'string'
-        ? response.headers.location
-        : '';
-    const decision = location.includes('error=access_denied')
-      ? 'denied'
-      : location.includes('code=')
-        ? 'approved'
-        : '';
-    return decision === '' ? String(status) : `${status} ${decision}`;
+      new Map(Object.entries(response.headers)).get('location') ?? '';
+    if (location.includes('error=access_denied')) {
+      return 'denied';
+    }
+    return location.includes('code=') ? 'approved' : '';
   }
-  if (path === '/authorize' && status === 200) {
-    return `${status} consent page`;
+  if (path === '/authorize' && response.status === 200) {
+    return 'consent page';
   }
   if (
     path === '/register' &&
     isRecord(body) &&
     typeof body.client_name === 'string'
   ) {
-    return `${status} client "${body.client_name}"`;
+    return `client "${body.client_name}"`;
   }
   if (isRecord(body) && typeof body.error === 'string') {
-    return `${status} ${body.error}`;
+    return body.error;
   }
-  return String(status);
-}
+  return '';
+};
 
-/**
- * The request or response paired with an entry, if loaded: same session,
- * same JSON-RPC id, opposite direction.
- *
- * @param entry - A request, response or error.
- * @param entries - Loaded entries.
- */
-export function pairOf(
-  entry: LogEntry,
-  entries: LogEntry[],
-): LogEntry | undefined {
-  if (entry.jsonrpcId === null) {
-    return undefined;
+const pathOf = (url: string): string => {
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return url;
   }
-  const wantRequest = entry.kind === 'response' || entry.kind === 'error';
-  if (!wantRequest && entry.kind !== 'request') {
-    return undefined;
-  }
-  return entries.find(
-    (candidate) =>
-      candidate.sessionId === entry.sessionId &&
-      candidate.jsonrpcId === entry.jsonrpcId &&
-      candidate.direction !== entry.direction &&
-      (wantRequest
-        ? candidate.kind === 'request'
-        : candidate.kind === 'response' || candidate.kind === 'error'),
-  );
-}
+};
 
-/** What a session negotiated in its `initialize` exchange. */
-export type Negotiation = {
-  /** Session the negotiation belongs to. */
-  sessionId: string;
-  /** Protocol version the client asked for. */
-  requestedVersion: string | null;
-  /** Protocol version the server agreed to. */
-  agreedVersion: string | null;
-  /** Client name and version, e.g. `my-app 0.3.1`. */
-  client: string | null;
-  /** Capabilities the client declared. */
-  clientCapabilities: Record<string, unknown> | null;
-  /** Capabilities the server declared. */
-  serverCapabilities: Record<string, unknown> | null;
+const errorOf = (fact: MCPFact): Record<string, unknown> | undefined => {
+  const parsed = parsedMessage(fact);
+  return isRecord(parsed) && isRecord(parsed.error) ? parsed.error : undefined;
+};
+
+const resultOf = (fact: MCPFact): Record<string, unknown> | undefined => {
+  const parsed = parsedMessage(fact);
+  return isRecord(parsed) && isRecord(parsed.result)
+    ? parsed.result
+    : undefined;
+};
+
+const errorText = (error: Record<string, unknown> | undefined): string =>
+  [
+    typeof error?.code === 'number' ? error.code : '',
+    typeof error?.message === 'string' ? error.message : '',
+  ]
+    .join(' ')
+    .trim();
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** A request URL taken apart. */
+export type SplitURL = {
+  /** The URL without its query string and fragment. */
+  base: string;
+  /** Query parameters in order; a repeated name appears once per value. */
+  query: Array<[name: string, value: string]>;
 };
 
 /**
- * Derives a session's negotiation from its `initialize` pair in the loaded
- * entries.
+ * Splits a request URL into its address and decoded query parameters.
  *
- * @param sessionId - The session.
- * @param entries - Loaded entries.
- * @returns `null` when the `initialize` request isn't loaded.
+ * @param url - A request URL, absolute or not.
  */
-export function negotiationOf(
-  sessionId: string,
-  entries: LogEntry[],
-): Negotiation | null {
-  const request = entries.find(
-    (entry) =>
-      entry.sessionId === sessionId &&
-      entry.method === 'initialize' &&
-      entry.kind === 'request',
-  );
-  if (request === undefined) {
-    return null;
+export function splitURL(url: string): SplitURL {
+  const [withoutFragment = ''] = url.split('#');
+  const separator = withoutFragment.indexOf('?');
+  if (separator === -1) {
+    return { base: withoutFragment, query: [] };
   }
-  const response = pairOf(request, entries);
-  const requestMessage = parsedMessage(request);
-  const params =
-    isRecord(requestMessage) && isRecord(requestMessage.params)
-      ? requestMessage.params
-      : {};
-  const responseMessage =
-    response === undefined ? undefined : parsedMessage(response);
-  const result =
-    isRecord(responseMessage) && isRecord(responseMessage.result)
-      ? responseMessage.result
-      : {};
-  const client = isRecord(params.clientInfo) ? params.clientInfo : null;
-
   return {
-    sessionId,
-    requestedVersion: stringOrNull(params.protocolVersion),
-    agreedVersion: stringOrNull(result.protocolVersion),
-    client:
-      client === null
-        ? null
-        : [client.name, client.version]
-            .filter((part) => typeof part === 'string')
-            .join(' '),
-    clientCapabilities: isRecord(params.capabilities)
-      ? params.capabilities
-      : null,
-    serverCapabilities: isRecord(result.capabilities)
-      ? result.capabilities
-      : null,
+    base: withoutFragment.slice(0, separator),
+    query: [...new URLSearchParams(withoutFragment.slice(separator + 1))],
   };
 }
 
 /**
- * Lists capabilities with their notable sub-flags, e.g.
- * `roots (listChanged), sampling`.
+ * URL of the Logs tab with `id` selected.
  *
- * @param capabilities - A capabilities object.
+ * @param server - Server name.
+ * @param id - Anchor id of the entry to show; omit for the bare list.
+ * @param tab - Detail tab to open, as the URL fragment; omit to keep the
+ * current one.
  */
-export function describeCapabilities(
-  capabilities: Record<string, unknown> | null,
-): string {
-  if (capabilities === null) {
-    return 'unknown';
+export const logsPath = (server: string, id?: number, tab?: string): string => {
+  const base = `/servers/${encodeURIComponent(server)}/logs`;
+  if (id === undefined) {
+    return base;
   }
-  const names = Object.entries(capabilities).map(([name, value]) => {
-    const flags = isRecord(value)
-      ? Object.entries(value)
-          .filter(([, flag]) => flag === true)
-          .map(([flag]) => flag)
-      : [];
-    return flags.length === 0 ? name : `${name} (${flags.join(', ')})`;
-  });
-  return names.length === 0 ? 'none' : names.join(', ');
-}
-
-const stringOrNull = (value: unknown): string | null =>
-  typeof value === 'string' ? value : null;
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
+  return tab === undefined ? `${base}/${id}` : `${base}/${id}#${tab}`;
+};

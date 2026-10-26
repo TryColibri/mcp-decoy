@@ -2,11 +2,9 @@ import { mcpAuthRouter, createOAuthMetadata } from '@hono/mcp/auth';
 import { buildOAuthProtectedResourceMetadata } from '@modelcontextprotocol/server';
 import { Hono } from 'hono';
 
-import { type Capture } from '@/server/mcp';
 import { type OAuthStore } from '@/server/oauth';
 import { type ServerConfig } from '@/shared/api';
 
-import { createHTTPLog } from './http-log';
 import { createDecoyProvider } from './provider';
 import { publicOriginOf } from './public-origin';
 
@@ -16,10 +14,6 @@ export type OAuthRoutesDeps = {
   store: OAuthStore;
   /** The definition of a server, or `undefined` when it doesn't exist. */
   findServer: (name: string) => ServerConfig | undefined;
-  /** Every server, for attributing an exchange that can't be tied to one server. */
-  listServers: () => readonly ServerConfig[];
-  /** Where OAuth HTTP exchanges are recorded. */
-  capture: Capture;
 };
 
 /**
@@ -29,14 +23,9 @@ export type OAuthRoutesDeps = {
  * (metadata, `/authorize`, `/token`, `/register`, `/revoke`), one instance
  * cached per origin since the issuer is derived from it.
  *
- * @param deps - Store, server lookups and capture.
+ * @param deps - Store and server lookup.
  */
-export function createOAuthRoutes({
-  store,
-  findServer,
-  listServers,
-  capture,
-}: OAuthRoutesDeps) {
+export function createOAuthRoutes({ store, findServer }: OAuthRoutesDeps) {
   const provider = createDecoyProvider(store);
   const routersByOrigin = new Map<string, Hono>();
 
@@ -61,7 +50,6 @@ export function createOAuthRoutes({
   };
 
   return new Hono()
-    .use('*', createHTTPLog({ capture, listServers, store }))
     .get('/.well-known/oauth-protected-resource/s/:server/mcp', (c) => {
       const name = c.req.param('server');
       const config = findServer(name);

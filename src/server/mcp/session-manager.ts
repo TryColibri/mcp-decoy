@@ -14,7 +14,7 @@ import {
   type ToolConfig,
 } from '@/shared/api';
 
-import { type Capture, type CaptureOrigin } from './capture';
+import { type Capture, type CaptureOrigin, type Exchange } from './capture';
 import { createSessionServer } from './session-server';
 
 /** Dependencies of the session manager. */
@@ -37,8 +37,19 @@ export type SessionManagerDeps = {
 
 /** Live MCP sessions of every server, and the Streamable HTTP entry point. */
 export type SessionManager = {
-  /** Handles an MCP request (`POST`, `GET` or `DELETE`) addressed to a server. */
-  handle(server: string, request: Request): Promise<Response>;
+  /**
+   * Handles an MCP request (`POST`, `GET` or `DELETE`) addressed to a server.
+   *
+   * @param server - Name of the server the request is addressed to.
+   * @param request - The request.
+   * @param exchange - The recording of the request's HTTP exchange, or `null`
+   *   when it isn't recorded.
+   */
+  handle(
+    server: string,
+    request: Request,
+    exchange: Exchange | null,
+  ): Promise<Response>;
   /**
    * Live sessions of a server, oldest first.
    * @throws {NotFoundError} When the server doesn't exist.
@@ -67,6 +78,8 @@ type LiveSession = {
   capabilities: Record<string, unknown>;
   connectedAt: string;
   lastSeenAt: string;
+  /** The exchange of the `GET` that opened the session's standalone SSE stream. */
+  standalone: Exchange | null;
 };
 
 /**
@@ -124,47 +137,27 @@ export function createSessionManager({
     }
   });
 
-  const respond = async (
-    origin: CaptureOrigin,
-    response: Response,
-  ): Promise<Response> => {
-    // Error responses the transport builds itself never go through `send`.
-    if (
-      response.status >= 400 &&
-      (response.headers.get('content-type') ?? '').includes('application/json')
-    ) {
-      capture.outgoingBody(origin, await response.clone().text());
-    }
-    return response;
-  };
-
   const jsonRPCError = (
-    origin: CaptureOrigin | null,
     status: number,
     code: number,
     message: string,
     { data, requestBody }: { data?: unknown; requestBody?: string | null } = {},
-  ): Response => {
-    const body = JSON.stringify({
-      jsonrpc: '2.0',
-      error: { code, message, ...(data === undefined ? {} : { data }) },
-      id: requestIdOf(requestBody ?? null),
-    });
-    if (origin !== null) {
-      capture.outgoingBody(origin, body);
-    }
-    return new Response(body, {
-      status,
-      headers: { 'content-type': 'application/json' },
-    });
-  };
+  ): Response =>
+    new Response(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        error: { code, message, ...(data === undefined ? {} : { data }) },
+        id: requestIdOf(requestBody ?? null),
+      }),
+      { status, headers: { 'content-type': 'application/json' } },
+    );
 
   const createSession = async (
     config: ServerConfig,
     initialize: InitializeParams,
   ): Promise<LiveSession> => {
-    // The ID is generated up front so the initialize request can be logged
-    // under the session it opens.
+    // The ID is generated up front so the transport and the send wrap below
+    // agree on it.
     const id = randomUUID();
     const origin: CaptureOrigin = { server: config.name, sessionId: id };
     const sdkServer = createSessionServer({
@@ -192,13 +185,30 @@ export function createSessionManager({
       capabilities: initialize.capabilities,
       connectedAt: timestamp,
       lastSeenAt: timestamp,
+      standalone: null,
     };
 
     const send = session.transport.send.bind(session.transport);
     session.transport.send = async (message, options) => {
-      const entry = capture.outgoing(origin, message);
-      if (entry.method === 'initialize' && entry.kind === 'response') {
+      const answeredId = answeredIdOf(message);
+      if (
+        answeredId !== null &&
+        answeredId === initialize.id &&
+        session.protocolVersion === null
+      ) {
         session.protocolVersion = negotiatedVersion(message);
+      }
+      // The SDK drops a message that isn't tied to a request when no
+      // standalone stream is open (`if (standaloneSse === void 0) return`),
+      // so it never reaches the wire and the capture can't see it there. It
+      // also drops related messages (progress, for one) whose POST stream is
+      // gone; Decoy sends none.
+      if (
+        answeredId === null &&
+        options?.relatedRequestId === undefined &&
+        session.standalone?.open !== true
+      ) {
+        capture.undelivered(origin, message);
       }
       return send(message, options);
     };
@@ -208,14 +218,13 @@ export function createSessionManager({
   };
 
   return {
-    async handle(serverName, request) {
+    async handle(serverName, request, exchange) {
       const body =
         request.method === 'POST' ? await request.clone().text() : null;
       const config = findServer(serverName);
       if (config === undefined) {
         const known = serverNames();
         return jsonRPCError(
-          null,
           404,
           -32001,
           `Unknown server "${serverName}". Known servers: ${
@@ -228,27 +237,23 @@ export function createSessionManager({
       const sessionId = request.headers.get('mcp-session-id');
 
       if (sessionId !== null) {
-        const origin: CaptureOrigin = { server: serverName, sessionId };
-        if (body !== null) {
-          capture.incoming(origin, body);
-        }
-        const session = sessions.get(sessionId);
-        if (session === undefined || session.server !== serverName) {
-          return jsonRPCError(
-            body === null ? null : origin,
-            404,
-            -32001,
-            'Session not found',
-            { requestBody: body },
-          );
+        const found = sessions.get(sessionId);
+        const session = found?.server === serverName ? found : undefined;
+        if (session === undefined) {
+          return jsonRPCError(404, -32001, 'Session not found', {
+            requestBody: body,
+          });
         }
         session.lastSeenAt = now().toISOString();
-        return respond(origin, await session.transport.handleRequest(request));
+        const response = await session.transport.handleRequest(request);
+        if (request.method === 'GET' && response.status === 200) {
+          session.standalone = exchange;
+        }
+        return response;
       }
 
       if (body === null) {
         return jsonRPCError(
-          null,
           400,
           -32000,
           'Bad Request: Mcp-Session-Id header is required',
@@ -257,10 +262,7 @@ export function createSessionManager({
 
       const initialize = findInitialize(body);
       if (initialize === null) {
-        const origin: CaptureOrigin = { server: serverName, sessionId: null };
-        capture.incoming(origin, body);
         return jsonRPCError(
-          origin,
           400,
           -32000,
           'Bad Request: No valid session ID provided',
@@ -269,12 +271,7 @@ export function createSessionManager({
       }
 
       const session = await createSession(config, initialize);
-      const origin: CaptureOrigin = {
-        server: serverName,
-        sessionId: session.id,
-      };
-      capture.incoming(origin, body);
-      return respond(origin, await session.transport.handleRequest(request));
+      return session.transport.handleRequest(request);
     },
 
     list(server) {
@@ -314,6 +311,7 @@ export function createSessionManager({
 }
 
 type InitializeParams = {
+  id: string | number;
   clientInfo: ClientInfo | null;
   protocolVersion: string | null;
   capabilities: Record<string, unknown>;
@@ -336,7 +334,12 @@ const findInitialize = (body: string): InitializeParams | null => {
     ) {
       const params = isRecord(message.params) ? message.params : {};
       const clientInfo = params.clientInfo;
+      const id = message.id;
+      if (typeof id !== 'string' && typeof id !== 'number') {
+        return null;
+      }
       return {
+        id,
         clientInfo:
           isRecord(clientInfo) &&
           typeof clientInfo.name === 'string' &&
@@ -369,6 +372,14 @@ const requestIdOf = (body: string | null): string | number | null => {
     return null;
   }
 };
+
+/** The JSON-RPC id a response or error message answers, or `null` for any other message. */
+const answeredIdOf = (message: unknown): string | number | null =>
+  isRecord(message) &&
+  !('method' in message) &&
+  (typeof message.id === 'string' || typeof message.id === 'number')
+    ? message.id
+    : null;
 
 const negotiatedVersion = (message: unknown): string | null =>
   isRecord(message) &&

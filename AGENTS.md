@@ -151,6 +151,7 @@ src/
   shared/
     api/              # Zod schemas + types for API bodies, grouped by resource
     client/           # createMCPDecoyClient(baseUrl), built on hc<ApiV1>
+    logs/             # reconcile(): pure, turns a log anchor + attachment into an entry; server and SPA both use it
   server/
     cli.ts            # bin entry: parse flags, print banner, call main.start()
     main.ts           # start(options) → { close() }
@@ -158,6 +159,7 @@ src/
     ui-app.ts         # Hono app: middleware, /api/v1, static + SPA fallback
     api/              # /api/v1 route modules per resource, problem+json
     servers/ tools/ templates/ logs/ mcp/ config/ runtime/
+    exchange-log.ts   # Hono middleware: records every MCP-listener exchange from the wire (before cors)
     oauth/            # OAuthStore: DCR, consent, codes, tokens — no Hono
     oauth-http/       # provider, routes, consent page, gate — the only Hono-aware OAuth code
     events.ts, errors.ts
