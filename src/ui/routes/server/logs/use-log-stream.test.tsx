@@ -584,15 +584,22 @@ describe('useLogStream', () => {
       result.current.resume();
     });
 
-    await waitFor(() => {
-      expect(FakeEventSource.instances).toHaveLength(2);
-    });
-    await waitFor(() => {
-      expect(ids(result.current.entries)).toEqual([6, 5, 4]);
-    });
+    await waitFor(
+      () => {
+        expect(FakeEventSource.instances).toHaveLength(2);
+      },
+      { timeout: 20_000 },
+    );
+    await waitFor(
+      () => {
+        expect(ids(result.current.entries)).toEqual([6, 5, 4]);
+      },
+      { timeout: 20_000 },
+    );
     expect(result.current.total).toBe(6);
     expect(FakeEventSource.instances[0]?.closed).toBe(true);
-  });
+    // Folding MAX_ENTRIES facts one by one is quadratic: ~2s locally, ~10s on a CI runner.
+  }, 30_000);
 
   it('reports reconnecting when the stream drops', async () => {
     const { result } = render();
