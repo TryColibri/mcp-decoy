@@ -475,6 +475,40 @@ MCP Decoy sends `notifications/tools/list_changed` to every live session of the
 The Zod schemas in [src/shared/api/](src/shared/api/) define the request and
 response bodies.
 
+## Debug your client with a coding agent
+
+MCP Decoy ships an agent skill that teaches a coding agent, such as Claude Code
+or Cursor, to drive MCP Decoy for you. With the skill installed, you can ask the
+agent to debug your client: it starts MCP Decoy, defines the tools that a
+scenario needs, runs your client, reads the logs, and reports what your client
+did wrong. For example, "my client never shows tools that I add at runtime. Use
+MCP Decoy to find out why."
+
+To install the skill for all your projects, run the following command:
+
+```sh
+npx @hodor-ai/mcp-decoy skill install
+```
+
+The command writes `~/.agents/skills/mcp-decoy/SKILL.md` and links
+`~/.claude/skills/mcp-decoy` to it, so both Claude Code and the agents that read
+`.agents/skills` find the skill. To install the skill into one project instead,
+run the command from the root of the project with `--dir .`:
+
+```sh
+npx @hodor-ai/mcp-decoy skill install --dir .
+```
+
+`--dir` is the directory that holds `.agents/` and `.claude/`. It defaults to
+your home directory.
+
+Run the command again after you upgrade MCP Decoy to refresh the skill. To read
+the skill, or to put it somewhere else yourself, run `mcp-decoy skill`. It
+prints the skill to standard output.
+
+The skill uses the [REST API](#rest-api), so it works with any instance of MCP
+Decoy that your agent can reach on the API port.
+
 ## Develop MCP Decoy
 
 MCP Decoy needs Node.js 24 or later and [pnpm](https://pnpm.io/). Run the

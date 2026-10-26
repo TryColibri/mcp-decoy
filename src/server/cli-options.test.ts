@@ -82,4 +82,53 @@ describe('parseCLI', () => {
       'Unexpected argument: extra',
     ]);
   });
+
+  describe('skill', () => {
+    it('prints the skill', () => {
+      expect(parseCLI(['skill'])).toEqual({ kind: 'skill' });
+    });
+
+    it('installs globally by default', () => {
+      expect(parseCLI(['skill', 'install'])).toEqual({
+        kind: 'skill-install',
+      });
+    });
+
+    it('installs under the directory given with --dir', () => {
+      expect(parseCLI(['skill', 'install', '--dir', '.'])).toEqual({
+        kind: 'skill-install',
+        dir: '.',
+      });
+    });
+
+    it('rejects unknown skill commands and stray arguments', () => {
+      expect(problemsOf(['skill', 'remove'])).toEqual([
+        'Unknown skill command: remove',
+      ]);
+      expect(problemsOf(['skill', 'install', 'extra'])).toEqual([
+        'Unexpected argument: extra',
+      ]);
+    });
+
+    it('rejects unknown options', () => {
+      expect(problemsOf(['skill', '--nope'])).toEqual([
+        'Unknown option --nope',
+      ]);
+    });
+
+    it('rejects --dir outside skill install', () => {
+      expect(problemsOf(['skill', '--dir', 'x'])).toEqual([
+        '--dir: only applies to skill install',
+      ]);
+      expect(problemsOf(['--dir', 'x'])).toEqual([
+        '--dir: only applies to skill install',
+      ]);
+    });
+
+    it('rejects an empty --dir', () => {
+      expect(problemsOf(['skill', 'install', '--dir', ''])).toEqual([
+        '--dir: must not be empty',
+      ]);
+    });
+  });
 });
