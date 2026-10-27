@@ -19,6 +19,7 @@ import {
 import { MessageDetail, type MessageDetailProps } from './message-detail';
 
 vi.mock('@/ui/api');
+vi.mock('@/ui/components/code-editor');
 
 const mockUseCarriedEntries = vi.mocked(useCarriedEntries);
 
@@ -468,7 +469,7 @@ describe('MessageDetail', () => {
       await userEvent.click(screen.getByRole('tab', { name: 'Response' }));
 
       expect(
-        screen.getByText(/"code": -32602/, { selector: 'pre' }),
+        screen.getByText(/"code": -32602/, { selector: 'textarea' }),
       ).toBeInTheDocument();
     });
 
@@ -516,7 +517,7 @@ describe('MessageDetail', () => {
 
       expect(
         screen.getByText(/notifications\/tools\/list_changed/, {
-          selector: 'pre',
+          selector: 'textarea',
         }),
       ).toBeInTheDocument();
     });

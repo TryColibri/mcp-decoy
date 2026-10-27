@@ -25,16 +25,28 @@ describe('checkTemplateStructure', () => {
   it('reports a misused operator, with its location', () => {
     expect(
       checkTemplateStructure({ content: [{ $map: [1], each: 'x' }] }),
-    ).toBe(
-      'TemplateError at template.content[0]: $map has undefined properties: each',
-    );
+    ).toEqual({
+      message:
+        'TemplateError at template.content[0]: $map has undefined properties: each',
+      path: ['content', 0],
+    });
+  });
+
+  it('puts quoted keys in the path', () => {
+    expect(
+      checkTemplateStructure({ 'a b': { $map: [1], each: 'x' } })?.path,
+    ).toEqual(['a b']);
   });
 
   it('reports a reserved $ key', () => {
-    expect(checkTemplateStructure({ $nope: 1 })).toContain('TemplateError');
+    expect(checkTemplateStructure({ $nope: 1 })?.message).toContain(
+      'TemplateError',
+    );
   });
 
   it('reports a malformed expression', () => {
-    expect(checkTemplateStructure({ $eval: '(1' })).toContain('SyntaxError');
+    expect(checkTemplateStructure({ $eval: '(1' })?.message).toContain(
+      'SyntaxError',
+    );
   });
 });

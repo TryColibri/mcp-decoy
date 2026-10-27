@@ -7,6 +7,8 @@ import { type ServerSummary, type Tool } from '@/shared/api';
 
 import { ToolEditor } from './tool-editor';
 
+vi.mock('@/ui/components/code-editor');
+
 const SERVER: ServerSummary = {
   name: 'weather',
   serverInfo: { name: 'mcp-decoy/weather', version: '0.1.0' },

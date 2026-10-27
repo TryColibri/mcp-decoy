@@ -1,3 +1,4 @@
+import { CodeEditor, type CodeEditorMode } from '@/ui/components/code-editor';
 import { CopyButton } from '@/ui/components/copy-button';
 
 import { prettyBody } from './log-format';
@@ -11,8 +12,9 @@ export type BodyViewProps = {
 };
 
 /**
- * A body in the dark code block with a copy button: text as it is, anything
- * else as pretty JSON.
+ * A body in a read-only code block with a copy button: text as it is,
+ * anything else as pretty JSON. A body that parses as JSON is colored and can
+ * be folded.
  */
 export function BodyView({ body, copyLabel = 'Copy body' }: BodyViewProps) {
   if (body === undefined) {
@@ -21,16 +23,35 @@ export function BodyView({ body, copyLabel = 'Copy body' }: BodyViewProps) {
     );
   }
   const text = prettyBody(body);
+  const mode = modeOf(body, text);
   return (
-    <div className="relative">
-      <pre className="m-0 min-h-24 overflow-x-auto rounded-lg bg-ink-900 py-4 pr-12 pl-4.5 font-mono text-[12.5px] leading-[1.6] whitespace-pre text-paper-200 dark:border dark:border-ink-800 dark:bg-ink-950">
-        {text}
-      </pre>
+    <div className="relative rounded-lg border border-paper-200 bg-paper-50 dark:border-paper-800 dark:bg-paper-950">
+      <CodeEditor
+        readOnly
+        autoHeight
+        mode={mode}
+        value={text}
+        aria-label={copyLabel.replace(/^Copy /, '')}
+        className="rounded-lg"
+      />
       <CopyButton
         text={text}
         label={copyLabel}
-        className="absolute top-2 right-2 text-paper-200 hover:bg-ink-700 dark:text-paper-200 dark:hover:bg-ink-800"
+        className="absolute top-2 right-2 bg-paper-50/80 text-ink-600 hover:bg-paper-200 dark:bg-paper-950/80 dark:text-ink-300 dark:hover:bg-paper-800"
       />
     </div>
   );
 }
+
+/** Anything but a string is shown as JSON; a string only if it parses. */
+const modeOf = (body: unknown, text: string): CodeEditorMode => {
+  if (typeof body !== 'string') {
+    return 'json';
+  }
+  try {
+    JSON.parse(text);
+    return 'json';
+  } catch {
+    return 'text';
+  }
+};

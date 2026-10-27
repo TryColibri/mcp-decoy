@@ -1,3 +1,5 @@
+import { type JSONPath } from 'jsonc-parser';
+
 import {
   type InputSchema,
   inputSchemaSchema,
@@ -30,6 +32,14 @@ export type ToolFormState = {
 export type ToolFormErrors = Partial<
   Record<keyof ToolFormState | 'form', string>
 >;
+
+/** Why a JSON field is invalid. */
+export type FieldIssue = {
+  /** What is wrong, as shown under the field. */
+  message: string;
+  /** The node it is about; absent when it is about the text as a whole. */
+  path?: JSONPath;
+};
 
 /** Result of validating the form. */
 export type ParsedToolForm =
@@ -103,13 +113,13 @@ export function parseToolForm(state: ToolFormState): ParsedToolForm {
 
   const inputSchema = parseInputSchema(state.inputSchema);
   if (!inputSchema.ok) {
-    errors.inputSchema = inputSchema.error;
+    errors.inputSchema = inputSchema.error.message;
   }
 
   const template = parseJSON(state.responseTemplate);
-  const templateError = checkResponseTemplate(state.responseTemplate);
-  if (templateError !== undefined) {
-    errors.responseTemplate = templateError;
+  const templateIssue = checkResponseTemplate(state.responseTemplate);
+  if (templateIssue !== undefined) {
+    errors.responseTemplate = templateIssue.message;
   }
 
   if (Object.keys(errors).length > 0 || !inputSchema.ok || !template.ok) {
@@ -143,7 +153,7 @@ export function parseToolForm(state: ToolFormState): ParsedToolForm {
  * @param text - The input schema field.
  * @returns The error to show, or `undefined` when the text is valid.
  */
-export function checkInputSchema(text: string): string | undefined {
+export function checkInputSchema(text: string): FieldIssue | undefined {
   const parsed = parseInputSchema(text);
   return parsed.ok ? undefined : parsed.error;
 }
@@ -155,9 +165,11 @@ export function checkInputSchema(text: string): string | undefined {
  * @param text - The response template field.
  * @returns The error to show, or `undefined` when the text is valid.
  */
-export function checkResponseTemplate(text: string): string | undefined {
+export function checkResponseTemplate(text: string): FieldIssue | undefined {
   const parsed = parseJSON(text);
-  return parsed.ok ? checkTemplateStructure(parsed.value) : parsed.error;
+  return parsed.ok
+    ? checkTemplateStructure(parsed.value)
+    : { message: parsed.error };
 }
 
 /**
@@ -192,12 +204,12 @@ type JSONParseResult =
 
 type InputSchemaParseResult =
   | { ok: true; value: InputSchema }
-  | { ok: false; error: string };
+  | { ok: false; error: FieldIssue };
 
 const parseInputSchema = (text: string): InputSchemaParseResult => {
   const json = parseJSON(text);
   if (!json.ok) {
-    return json;
+    return { ok: false, error: { message: json.error } };
   }
   const parsed = inputSchemaSchema.safeParse(json.value);
   if (parsed.success) {
@@ -212,9 +224,12 @@ const parseInputSchema = (text: string): InputSchemaParseResult => {
     !Array.isArray(json.value);
   return {
     ok: false,
-    error: object
-      ? 'Input schema must have "type": "object"'
-      : 'Input schema must be a JSON object',
+    error: {
+      message: object
+        ? 'Input schema must have "type": "object"'
+        : 'Input schema must be a JSON object',
+      path: [],
+    },
   };
 };
 

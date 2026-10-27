@@ -18,6 +18,7 @@ import {
 } from '@/shared/api';
 import { ApiError, client, unwrap, unwrapEmpty } from '@/ui/api';
 import { Button, buttonClasses } from '@/ui/components/button';
+import { CodeEditor, type CodeEditorIssue } from '@/ui/components/code-editor';
 import { tw } from '@/ui/tw';
 
 import {
@@ -25,6 +26,7 @@ import {
   parseToolForm,
   toFormErrors,
   toFormState,
+  type FieldIssue,
   type ToolFormErrors,
   type ToolFormState,
 } from './tool-form';
@@ -48,10 +50,9 @@ export type ToolEditorProps = {
 
 const fieldLabel = tw`flex flex-col gap-1.5 text-[13px] text-ink-700 dark:text-ink-200`;
 const hint = tw`text-xs font-normal text-ink-500 dark:text-ink-400`;
-const textarea = tw`box-border w-full rounded-lg border bg-paper-50 px-3.5 py-3 leading-[1.6] text-ink-900 dark:bg-paper-950 dark:text-ink-100`;
+const prose = tw`box-border w-full resize-y rounded-lg border bg-paper-50 px-3.5 py-3 font-sans text-sm leading-[1.6] text-ink-900 dark:bg-paper-950 dark:text-ink-100`;
 /** Fixed-size, fills the height left over in its field. */
-const code = tw`${textarea} min-h-0 flex-1 resize-none font-mono text-[12.5px]`;
-const prose = tw`${textarea} resize-y font-sans text-sm`;
+const code = tw`box-border min-h-0 w-full flex-1 rounded-lg border`;
 /** Lets two fields side by side share their label row, so the inputs line up. */
 const aligned = tw`@4xl:row-span-2 @4xl:grid @4xl:grid-rows-subgrid`;
 const control = tw`box-border min-h-10 rounded-lg border bg-white px-3 text-sm font-medium text-ink-900 dark:bg-paper-900 dark:text-ink-100`;
@@ -87,9 +88,19 @@ export function ToolEditor({
     inputSchema: form.inputSchema,
     responseTemplate: form.responseTemplate,
   });
-  const inputSchemaError = errors.inputSchema ?? validation.inputSchemaError;
+  const inputSchemaError =
+    errors.inputSchema ?? validation.inputSchemaIssue?.message;
   const responseTemplateError =
-    errors.responseTemplate ?? validation.responseTemplateError;
+    errors.responseTemplate ?? validation.responseTemplateIssue?.message;
+  // A save error from the form or the API is about the whole field.
+  const inputSchemaIssue =
+    errors.inputSchema === undefined
+      ? locatedIssue(validation.inputSchemaIssue)
+      : undefined;
+  const responseTemplateIssue =
+    errors.responseTemplate === undefined
+      ? locatedIssue(validation.responseTemplateIssue)
+      : undefined;
   const ids = {
     name: useId(),
     title: useId(),
@@ -277,14 +288,15 @@ export function ToolEditor({
               hintId={ids.schemaHint}
               error={inputSchemaError}
             >
-              <textarea
-                id={ids.schema}
+              <CodeEditor
+                mode="json-schema"
                 className={twMerge(code, borderOf(inputSchemaError))}
                 value={form.inputSchema}
-                onChange={(event) => {
-                  update('inputSchema', event.target.value);
+                onChange={(value) => {
+                  update('inputSchema', value);
                 }}
-                spellCheck={false}
+                issue={inputSchemaIssue}
+                aria-label="Input schema"
                 aria-describedby={ids.schemaHint}
                 aria-invalid={inputSchemaError !== undefined}
               />
@@ -298,14 +310,15 @@ export function ToolEditor({
               hintId={ids.templateHint}
               error={responseTemplateError}
             >
-              <textarea
-                id={ids.template}
+              <CodeEditor
+                mode="json-e"
                 className={twMerge(code, borderOf(responseTemplateError))}
                 value={form.responseTemplate}
-                onChange={(event) => {
-                  update('responseTemplate', event.target.value);
+                onChange={(value) => {
+                  update('responseTemplate', value);
                 }}
-                spellCheck={false}
+                issue={responseTemplateIssue}
+                aria-label="Response template"
                 aria-describedby={ids.templateHint}
                 aria-invalid={responseTemplateError !== undefined}
               />
@@ -516,6 +529,14 @@ function ConfirmButton({
     </AlertDialog.Root>
   );
 }
+
+/** The issue, when it says which node it is about: the editor underlines it. */
+const locatedIssue = (
+  issue: FieldIssue | undefined,
+): CodeEditorIssue | undefined =>
+  issue?.path === undefined
+    ? undefined
+    : { message: issue.message, path: issue.path };
 
 const borderOf = (error: string | undefined) =>
   error === undefined
