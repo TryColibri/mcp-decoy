@@ -8,7 +8,7 @@ import { tw } from '@/ui/tw';
 
 import { type ThemePreference, useTheme } from './use-theme';
 
-const option = tw`flex size-7 cursor-pointer items-center justify-center rounded-md text-ink-500 hover:text-ink-900 data-checked:bg-paper-100 data-checked:text-ink-900 dark:text-ink-400 dark:hover:text-ink-100 dark:data-checked:bg-paper-800 dark:data-checked:text-ink-100`;
+const option = tw`flex size-5 cursor-pointer items-center justify-center rounded-md text-ink-500 hover:text-ink-900 data-checked:bg-paper-100 data-checked:text-ink-900 dark:text-ink-400 dark:hover:text-ink-100 dark:data-checked:bg-paper-800 dark:data-checked:text-ink-100`;
 
 /** Props of `ThemeToggle`. */
 export type ThemeToggleProps = Omit<
@@ -40,13 +40,13 @@ export function ThemeToggle({ className, ...props }: ThemeToggleProps) {
       {...props}
     >
       <Radio.Root value="system" aria-label="System theme" className={option}>
-        <MonitorIcon size={15} aria-hidden="true" />
+        <MonitorIcon className="size-4" aria-hidden="true" />
       </Radio.Root>
       <Radio.Root value="light" aria-label="Light theme" className={option}>
-        <SunIcon size={15} aria-hidden="true" />
+        <SunIcon className="size-4" aria-hidden="true" />
       </Radio.Root>
       <Radio.Root value="dark" aria-label="Dark theme" className={option}>
-        <MoonIcon size={15} aria-hidden="true" />
+        <MoonIcon className="size-4" aria-hidden="true" />
       </Radio.Root>
     </RadioGroup>
   );

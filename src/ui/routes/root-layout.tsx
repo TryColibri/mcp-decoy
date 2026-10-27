@@ -57,6 +57,7 @@ function GlobalHeader() {
             v{instance.version}
           </span>
         )}
+        <ThemeToggle className="ml-3" />
       </Link>
       <div className="ml-auto flex items-center gap-2 text-[13px] text-ink-700 dark:text-ink-200">
         {error === undefined ? (
@@ -67,7 +68,6 @@ function GlobalHeader() {
             <span>MCP Decoy is not reachable</span>
           </>
         )}
-        <ThemeToggle className="ml-3" />
       </div>
     </header>
   );
