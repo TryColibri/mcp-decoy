@@ -5,8 +5,8 @@ export const THEME_NAME = 'decoy';
 
 /**
  * Colors of the theme as CSS custom properties of `:root` (see
- * `src/ui/styles.css`). Nothing is hard-coded here, so a dark theme only has
- * to override the variables.
+ * `src/ui/styles.css`). Nothing is hard-coded here: the dark theme overrides the
+ * variables under `data-theme="dark"`.
  */
 const COLORS = {
   background: '--code-bg',
@@ -35,8 +35,9 @@ const COLORS = {
 type ColorName = keyof typeof COLORS;
 
 /**
- * Defines the `decoy` theme from the current values of the CSS variables.
- * Call it again to pick up changed variables; `editor.setTheme` applies it.
+ * Defines the `decoy` theme from the current values of the CSS variables, on
+ * top of Monaco's dark base when the page is dark. Call it again after the
+ * page theme changes, then `editor.setTheme(THEME_NAME)` applies it.
  */
 export function defineTheme(): void {
   const styles = getComputedStyle(document.documentElement);
@@ -63,7 +64,7 @@ export function defineTheme(): void {
   /** Token rules take `RRGGBB`, without the alpha channel. */
   const token = (name: ColorName) => colorOf(name).slice(1, 7);
   editor.defineTheme(THEME_NAME, {
-    base: 'vs',
+    base: document.documentElement.dataset.theme === 'dark' ? 'vs-dark' : 'vs',
     inherit: true,
     rules: [
       { token: '', foreground: token('foreground') },

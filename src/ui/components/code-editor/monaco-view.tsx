@@ -135,6 +135,21 @@ export default function MonacoView({
     };
   }, [mode]);
 
+  // The theme is built from CSS variables: rebuild it when the page theme flips.
+  useEffect(() => {
+    const watching = new MutationObserver(() => {
+      defineTheme();
+      editor.setTheme(THEME_NAME);
+    });
+    watching.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
+    return () => {
+      watching.disconnect();
+    };
+  }, []);
+
   // The value is controlled, but Monaco keeps its own undo history: apply
   // only what differs from the text, as an edit.
   useEffect(() => {

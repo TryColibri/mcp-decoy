@@ -87,8 +87,8 @@
 }
 
 /* Code editors (Monaco). The editor theme is built from these variables at
-   runtime (src/ui/components/code-editor/theme.ts), so a dark theme only has to
-   override them. */
+   runtime (src/ui/components/code-editor/theme.ts), so the dark theme only has
+   to override them. */
 :root {
   --code-bg: var(--color-paper-50);
   --code-fg: var(--color-ink-900);
@@ -113,6 +113,32 @@
   --code-widget-border: var(--color-paper-200);
   --code-widget-selected: var(--color-paper-100);
   --code-focus: var(--color-blue-700);
+}
+
+html[data-theme='dark'] {
+  --code-bg: var(--color-paper-950);
+  --code-fg: var(--color-ink-100);
+  --code-key: var(--color-ink-100);
+  --code-string: var(--color-green-400);
+  --code-number: var(--color-blue-400);
+  --code-literal: var(--color-blue-400);
+  --code-interpolation: var(--color-blue-400);
+  --code-punctuation: var(--color-ink-400);
+  --code-operator: var(--color-orange-400);
+  --code-line-number: var(--color-ink-500);
+  --code-line-number-active: var(--color-ink-300);
+  --code-line-highlight: var(--color-paper-900);
+  --code-cursor: var(--color-ink-100);
+  --code-selection: var(--color-blue-900);
+  --code-selection-inactive: var(--color-paper-800);
+  --code-guide: var(--color-paper-800);
+  --code-guide-active: var(--color-paper-700);
+  --code-bracket-match: var(--color-blue-900);
+  --code-error: var(--color-red-400);
+  --code-widget-bg: var(--color-paper-900);
+  --code-widget-border: var(--color-paper-700);
+  --code-widget-selected: var(--color-paper-800);
+  --code-focus: var(--color-blue-400);
 }
 
 /* A read-only editor shows no caret; its text can still be selected. */
