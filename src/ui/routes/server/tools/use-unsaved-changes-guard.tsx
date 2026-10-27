@@ -69,12 +69,12 @@ export function UnsavedChangesDialog({ blocker }: UnsavedChangesDialogProps) {
       }}
     >
       <AlertDialog.Portal>
-        <AlertDialog.Backdrop className="fixed inset-0 bg-ink-900/30" />
-        <AlertDialog.Popup className="fixed top-1/2 left-1/2 flex w-105 max-w-[calc(100vw-2rem)] -translate-1/2 flex-col gap-4 rounded-xl border border-paper-200 bg-white p-6 shadow-xl">
+        <AlertDialog.Backdrop className="fixed inset-0 bg-ink-900/30 dark:bg-black/60" />
+        <AlertDialog.Popup className="fixed top-1/2 left-1/2 flex w-105 max-w-[calc(100vw-2rem)] -translate-1/2 flex-col gap-4 rounded-xl border border-paper-200 bg-white p-6 shadow-xl dark:border-paper-800 dark:bg-paper-900">
           <AlertDialog.Title className="m-0 text-base font-semibold">
             Discard unsaved changes?
           </AlertDialog.Title>
-          <AlertDialog.Description className="m-0 text-sm text-ink-600">
+          <AlertDialog.Description className="m-0 text-sm text-ink-600 dark:text-ink-300">
             This tool has changes that haven’t been saved. Leaving now loses
             them.
           </AlertDialog.Description>

@@ -13,12 +13,19 @@ export function ServersPage() {
   let content;
   if (error !== undefined) {
     content = (
-      <p role="alert" className="m-0 p-6 text-sm text-red-800">
+      <p
+        role="alert"
+        className="m-0 p-6 text-sm text-red-800 dark:text-red-400"
+      >
         Could not load servers: {error.message}
       </p>
     );
   } else if (servers === undefined) {
-    content = <p className="m-0 p-6 text-sm text-ink-500">Loading servers…</p>;
+    content = (
+      <p className="m-0 p-6 text-sm text-ink-500 dark:text-ink-400">
+        Loading servers…
+      </p>
+    );
   } else if (servers.length === 0) {
     content = <EmptyState />;
   } else {
@@ -30,7 +37,7 @@ export function ServersPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-1.5">
           <h1 className="m-0 text-[28px] font-bold tracking-tight">Servers</h1>
-          <p className="m-0 text-[15px] text-ink-600">
+          <p className="m-0 text-[15px] text-ink-600 dark:text-ink-300">
             Each mock server is mounted on its own URL. Point your client at one
             and watch the traffic in Logs.
           </p>
@@ -43,12 +50,12 @@ export function ServersPage() {
 
       <section
         aria-label="Server list"
-        className="min-w-0 overflow-hidden rounded-xl border border-paper-200 bg-white"
+        className="min-w-0 overflow-hidden rounded-xl border border-paper-200 bg-white dark:border-paper-800 dark:bg-paper-900"
       >
         {content}
-        <div className="border-t border-paper-100 bg-paper-50 px-4 py-3.5 text-[13px] text-ink-500">
+        <div className="border-t border-paper-100 bg-paper-50 px-4 py-3.5 text-[13px] text-ink-500 dark:border-paper-800 dark:bg-paper-950 dark:text-ink-400">
           Servers are stored in{' '}
-          <span className="font-mono break-all text-ink-900">
+          <span className="font-mono break-all text-ink-900 dark:text-ink-100">
             {instance?.configFile ?? 'servers.json'}
           </span>
           . Changes apply live — no restart.
@@ -62,7 +69,7 @@ function EmptyState() {
   return (
     <div className="flex flex-col items-start gap-3 px-6 py-10">
       <h2 className="m-0 text-base font-semibold">No servers yet</h2>
-      <p className="m-0 max-w-prose text-sm/relaxed text-ink-600">
+      <p className="m-0 max-w-prose text-sm/relaxed text-ink-600 dark:text-ink-300">
         A server is a mock MCP endpoint with the tools you define. Create one,
         add a tool, then point your MCP client at its URL. Every message shows
         up live in its Logs tab.

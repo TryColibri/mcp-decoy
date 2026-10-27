@@ -136,8 +136,8 @@ export function EditServerDialog({
       }}
     >
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 bg-ink-900/30" />
-        <Dialog.Popup className="fixed top-1/2 left-1/2 max-h-[calc(100vh-2rem)] w-160 max-w-[calc(100vw-2rem)] -translate-1/2 overflow-y-auto rounded-xl border border-paper-200 bg-white p-6 shadow-xl">
+        <Dialog.Backdrop className="fixed inset-0 bg-ink-900/30 dark:bg-black/60" />
+        <Dialog.Popup className="fixed top-1/2 left-1/2 max-h-[calc(100vh-2rem)] w-160 max-w-[calc(100vw-2rem)] -translate-1/2 overflow-y-auto rounded-xl border border-paper-200 bg-white p-6 shadow-xl dark:border-paper-800 dark:bg-paper-900">
           <form onSubmit={submit} noValidate className="flex flex-col gap-4.5">
             <Dialog.Title className="m-0 text-base font-semibold">
               Edit “{server.name}”
@@ -153,19 +153,22 @@ export function EditServerDialog({
               endpoint={endpoint}
             />
             {renaming && (
-              <Dialog.Description className="m-0 text-[13px]/relaxed text-ink-600">
+              <Dialog.Description className="m-0 text-[13px]/relaxed text-ink-600 dark:text-ink-300">
                 Renaming changes the endpoint URL. Live sessions are closed and
                 clients must reconnect to the new URL. Logs are kept.
               </Dialog.Description>
             )}
             {authChanging && (
-              <p className="m-0 text-[13px]/relaxed text-ink-600">
+              <p className="m-0 text-[13px]/relaxed text-ink-600 dark:text-ink-300">
                 Changing authentication closes live sessions. Clients must
                 reconnect and, for OAuth, re-authorize.
               </p>
             )}
             {formError !== null && (
-              <p role="alert" className="m-0 text-[13px] text-red-800">
+              <p
+                role="alert"
+                className="m-0 text-[13px] text-red-800 dark:text-red-400"
+              >
                 {formError}
               </p>
             )}

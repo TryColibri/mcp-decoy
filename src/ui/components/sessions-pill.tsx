@@ -23,7 +23,9 @@ export function SessionsPill({
       {...props}
       className={twMerge(
         'inline-flex items-center rounded-full px-2.5 py-0.5 text-[13px] font-medium',
-        live ? 'bg-green-50 text-green-900' : 'bg-paper-100 text-ink-600',
+        live
+          ? 'bg-green-50 text-green-900 dark:bg-green-950 dark:text-green-300'
+          : 'bg-paper-100 text-ink-600 dark:bg-paper-800 dark:text-ink-300',
         className,
       )}
     >
@@ -49,7 +51,7 @@ export function StatusDot({ live, className, ...props }: StatusDotProps) {
       {...props}
       className={twMerge(
         'inline-block size-2 shrink-0 rounded-full',
-        live ? 'bg-green-700' : 'bg-ink-400',
+        live ? 'bg-green-700 dark:bg-green-500' : 'bg-ink-400 dark:bg-ink-600',
         className,
       )}
     />

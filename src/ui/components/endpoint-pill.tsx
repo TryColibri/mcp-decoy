@@ -19,7 +19,7 @@ export function EndpointPill({ url, className, ...props }: EndpointPillProps) {
     <span
       {...props}
       className={twMerge(
-        'inline-flex items-start gap-1 rounded-md bg-paper-100 py-0.5 pr-0.5 pl-2 font-mono text-[13px] text-ink-900',
+        'inline-flex items-start gap-1 rounded-md bg-paper-100 py-0.5 pr-0.5 pl-2 font-mono text-[13px] text-ink-900 dark:bg-paper-800 dark:text-ink-100',
         className,
       )}
     >

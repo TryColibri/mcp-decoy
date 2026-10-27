@@ -70,7 +70,7 @@ export function RedirectURIsEditor({ server, uris }: RedirectURIsEditorProps) {
 
   return (
     <form onSubmit={save} noValidate className="flex flex-col gap-1.5">
-      <p className="m-0 text-xs font-semibold text-ink-500 uppercase">
+      <p className="m-0 text-xs font-semibold text-ink-500 uppercase dark:text-ink-400">
         <label htmlFor={id}>Redirect URIs</label>{' '}
         <span id={hintId} className="font-normal normal-case">
           One per line. Leave empty to only allow Dynamic Client Registration.
@@ -79,7 +79,7 @@ export function RedirectURIsEditor({ server, uris }: RedirectURIsEditorProps) {
       <textarea
         id={id}
         rows={Math.max(2, parsed.length)}
-        className="box-border min-h-16 w-full resize-y rounded-lg border border-paper-300 bg-white px-3 py-2.5 font-mono text-sm text-ink-900"
+        className="box-border min-h-16 w-full resize-y rounded-lg border border-paper-300 bg-white px-3 py-2.5 font-mono text-sm text-ink-900 dark:border-paper-700 dark:bg-paper-900 dark:text-ink-100"
         value={text}
         onChange={(event) => {
           setText(event.target.value);
@@ -89,12 +89,15 @@ export function RedirectURIsEditor({ server, uris }: RedirectURIsEditorProps) {
         aria-describedby={hintId}
       />
       {error !== null && (
-        <p role="alert" className="m-0 text-[13px] text-red-800">
+        <p
+          role="alert"
+          className="m-0 text-[13px] text-red-800 dark:text-red-400"
+        >
           {error}
         </p>
       )}
       {changed && (
-        <p className="m-0 text-[13px]/relaxed text-ink-600">
+        <p className="m-0 text-[13px]/relaxed text-ink-600 dark:text-ink-300">
           Saving revokes every token and closes live sessions. Clients must
           reconnect and re-authorize.
         </p>
