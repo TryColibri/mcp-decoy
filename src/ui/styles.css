@@ -86,59 +86,112 @@
   }
 }
 
-/* Code editors (Monaco). The editor theme is built from these variables at
-   runtime (src/ui/components/code-editor/theme.ts), so the dark theme only has
-   to override them. */
+/* Code editors (Monaco).
+
+   Every editor color comes from a palette of sixteen, drawn from paper and ink:
+
+     paper-0..3   four background neutrals: the page, a raised sheet, a
+                  selected sheet, and the faded ink of comments and gutters
+     ink-0..2     three foreground neutrals: text, and two steps of emphasis
+     pen          four cool hues, for what the code is made of
+     marker       five accents, each with one meaning: red errors, orange
+                  operators, yellow interpolations, green strings, purple
+                  numbers
+
+   The palette is the only thing the dark scheme overrides. The roles below it
+   are declared once, so the two schemes cannot drift apart, and the editor
+   theme is built from them at runtime
+   (src/ui/components/code-editor/theme.ts). */
 :root {
-  --code-bg: var(--color-paper-50);
-  --code-fg: var(--color-ink-900);
-  --code-key: var(--color-ink-900);
-  --code-string: var(--color-green-800);
-  --code-number: var(--color-blue-700);
-  --code-literal: var(--color-blue-700);
-  --code-interpolation: var(--color-blue-700);
-  --code-punctuation: var(--color-ink-400);
-  --code-operator: var(--color-orange-700);
-  --code-line-number: var(--color-ink-400);
-  --code-line-number-active: var(--color-ink-700);
-  --code-line-highlight: var(--color-paper-100);
-  --code-cursor: var(--color-ink-900);
-  --code-selection: var(--color-blue-100);
-  --code-selection-inactive: var(--color-paper-200);
-  --code-guide: var(--color-paper-200);
-  --code-guide-active: var(--color-paper-300);
-  --code-bracket-match: var(--color-blue-100);
-  --code-error: var(--color-red-700);
-  --code-widget-bg: white;
-  --code-widget-border: var(--color-paper-200);
-  --code-widget-selected: var(--color-paper-100);
-  --code-focus: var(--color-blue-700);
+  --code-paper-0: var(--color-paper-50);
+  --code-paper-1: var(--color-paper-100);
+  --code-paper-2: var(--color-paper-200);
+  --code-paper-3: var(--color-paper-500);
+
+  --code-ink-0: var(--color-ink-800);
+  --code-ink-1: var(--color-ink-900);
+  --code-ink-2: var(--color-ink-950);
+
+  /* Teal and indigo are reserved: no token uses them yet. */
+  --code-pen-teal: var(--color-teal-700);
+  --code-pen-cyan: var(--color-cyan-700);
+  --code-pen-blue: var(--color-blue-700);
+  --code-pen-indigo: var(--color-indigo-700);
+
+  --code-marker-red: var(--color-red-700);
+  --code-marker-orange: var(--color-orange-700);
+  --code-marker-yellow: var(--color-yellow-700);
+  --code-marker-green: var(--color-green-700);
+  --code-marker-purple: var(--color-purple-700);
 }
 
 html[data-theme='dark'] {
-  --code-bg: var(--color-paper-950);
-  --code-fg: var(--color-ink-100);
-  --code-key: var(--color-ink-100);
-  --code-string: var(--color-green-400);
-  --code-number: var(--color-blue-400);
-  --code-literal: var(--color-blue-400);
-  --code-interpolation: var(--color-blue-400);
-  --code-punctuation: var(--color-ink-400);
-  --code-operator: var(--color-orange-400);
-  --code-line-number: var(--color-ink-500);
-  --code-line-number-active: var(--color-ink-300);
-  --code-line-highlight: var(--color-paper-900);
-  --code-cursor: var(--color-ink-100);
-  --code-selection: var(--color-blue-900);
-  --code-selection-inactive: var(--color-paper-800);
-  --code-guide: var(--color-paper-800);
-  --code-guide-active: var(--color-paper-700);
-  --code-bracket-match: var(--color-blue-900);
-  --code-error: var(--color-red-400);
-  --code-widget-bg: var(--color-paper-900);
-  --code-widget-border: var(--color-paper-700);
-  --code-widget-selected: var(--color-paper-800);
-  --code-focus: var(--color-blue-400);
+  --code-paper-0: var(--color-paper-950);
+  --code-paper-1: var(--color-paper-900);
+  --code-paper-2: var(--color-paper-800);
+  --code-paper-3: var(--color-paper-500);
+
+  --code-ink-0: var(--color-ink-200);
+  --code-ink-1: var(--color-ink-100);
+  --code-ink-2: var(--color-ink-50);
+
+  /* Washed toward ink: the raw hues are too saturated on the dark page. */
+  --code-pen-teal: color-mix(
+    in oklab,
+    var(--color-teal-400) 60%,
+    var(--color-ink-400)
+  );
+  --code-pen-cyan: color-mix(
+    in oklab,
+    var(--color-cyan-400) 60%,
+    var(--color-ink-400)
+  );
+  --code-pen-blue: color-mix(
+    in oklab,
+    var(--color-blue-400) 60%,
+    var(--color-ink-400)
+  );
+  --code-pen-indigo: color-mix(
+    in oklab,
+    var(--color-indigo-400) 60%,
+    var(--color-ink-400)
+  );
+
+  --code-marker-red: var(--color-red-400);
+  --code-marker-orange: var(--color-orange-400);
+  --code-marker-yellow: var(--color-yellow-300);
+  --code-marker-green: var(--color-green-400);
+  --code-marker-purple: var(--color-purple-400);
+}
+
+:root {
+  --code-bg: var(--code-paper-0);
+  --code-fg: var(--code-ink-0);
+  --code-key: var(--code-pen-cyan);
+  --code-string: var(--code-marker-green);
+  --code-number: var(--code-marker-purple);
+  --code-literal: var(--code-pen-blue);
+  --code-interpolation: var(--code-marker-yellow);
+  --code-punctuation: var(--code-paper-3);
+  --code-operator: var(--code-marker-orange);
+  --code-line-number: var(--code-paper-3);
+  --code-line-number-active: var(--code-ink-1);
+  --code-line-highlight: var(--code-paper-1);
+  --code-cursor: var(--code-ink-2);
+  --code-selection: color-mix(in srgb, var(--code-paper-3) 40%, transparent);
+  --code-selection-inactive: var(--code-paper-2);
+  --code-guide: var(--code-paper-2);
+  --code-guide-active: color-mix(in srgb, var(--code-paper-3) 50%, transparent);
+  --code-bracket-match: color-mix(
+    in srgb,
+    var(--code-pen-blue) 30%,
+    transparent
+  );
+  --code-error: var(--code-marker-red);
+  --code-widget-bg: var(--code-paper-1);
+  --code-widget-border: var(--code-paper-2);
+  --code-widget-selected: var(--code-paper-2);
+  --code-focus: var(--code-pen-blue);
 }
 
 /* A read-only editor shows no caret; its text can still be selected. */
