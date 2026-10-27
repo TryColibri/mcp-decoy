@@ -43,7 +43,7 @@ export function ServersPage() {
           </p>
         </div>
         <ButtonLink to="/servers/new" variant="primary">
-          <PlusIcon size={16} weight="bold" aria-hidden="true" />
+          <PlusIcon className="size-4" weight="bold" aria-hidden="true" />
           New server
         </ButtonLink>
       </div>
@@ -75,7 +75,7 @@ function EmptyState() {
         up live in its Logs tab.
       </p>
       <ButtonLink to="/servers/new" variant="primary">
-        <PlusIcon size={16} weight="bold" aria-hidden="true" />
+        <PlusIcon className="size-4" weight="bold" aria-hidden="true" />
         New server
       </ButtonLink>
     </div>

@@ -143,7 +143,11 @@ function OAuthLockHint({ tokenCount }: OAuthLockHintProps) {
           <span className="inline-flex items-center text-ink-500 dark:text-ink-400" />
         }
       >
-        <LockSimpleIcon size={13} weight="bold" aria-hidden="true" />
+        <LockSimpleIcon
+          className="size-3.25"
+          weight="bold"
+          aria-hidden="true"
+        />
         <span className="sr-only">Protected by OAuth</span>
       </Tooltip.Trigger>
       <Tooltip.Portal>

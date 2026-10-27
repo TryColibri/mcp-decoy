@@ -56,12 +56,11 @@ export function CopyButton({
     >
       {copied ? (
         <CheckIcon
-          size={14}
           aria-hidden="true"
-          className="text-green-700 dark:text-green-400"
+          className="size-3.5 text-green-700 dark:text-green-400"
         />
       ) : (
-        <CopyIcon size={14} aria-hidden="true" />
+        <CopyIcon className="size-3.5" aria-hidden="true" />
       )}
     </button>
   );

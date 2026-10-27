@@ -43,7 +43,7 @@ export function ToolList({
           disabled={creating}
           className="inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-md border border-paper-300 bg-white px-2.5 text-[13px] font-semibold text-ink-900 hover:bg-paper-200 disabled:cursor-wait dark:border-paper-700 dark:bg-paper-900 dark:text-ink-100 dark:hover:bg-paper-800"
         >
-          <PlusIcon size={14} weight="bold" aria-hidden="true" />
+          <PlusIcon className="size-3.5" weight="bold" aria-hidden="true" />
           New
         </button>
       </div>
@@ -68,7 +68,7 @@ export function ToolList({
             disabled={creating}
             className="inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-md border border-paper-300 bg-white px-2.5 text-[13px] font-semibold text-ink-900 hover:bg-paper-200 disabled:cursor-wait dark:border-paper-700 dark:bg-paper-900 dark:text-ink-100 dark:hover:bg-paper-800"
           >
-            <PlusIcon size={14} weight="bold" aria-hidden="true" />
+            <PlusIcon className="size-3.5" weight="bold" aria-hidden="true" />
             New tool
           </button>
         </div>

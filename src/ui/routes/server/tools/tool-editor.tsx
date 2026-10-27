@@ -171,11 +171,11 @@ export function ToolEditor({
         disabled={busy || !dirty}
         onClick={() => save(true)}
       >
-        <FloppyDiskIcon size={16} aria-hidden="true" />
+        <FloppyDiskIcon className="size-4" aria-hidden="true" />
         Save changes
       </Button>
       <Button disabled={busy} onClick={() => save(false)}>
-        <EyeSlashIcon size={16} aria-hidden="true" />
+        <EyeSlashIcon className="size-4" aria-hidden="true" />
         Unpublish
       </Button>
       <ConfirmButton
@@ -185,18 +185,18 @@ export function ToolEditor({
         disabled={busy}
         onConfirm={remove}
       >
-        <TrashIcon size={16} aria-hidden="true" />
+        <TrashIcon className="size-4" aria-hidden="true" />
         Delete tool
       </ConfirmButton>
     </>
   ) : (
     <>
       <Button variant="primary" disabled={busy} onClick={() => save(true)}>
-        <UploadSimpleIcon size={16} aria-hidden="true" />
+        <UploadSimpleIcon className="size-4" aria-hidden="true" />
         Publish tool
       </Button>
       <Button disabled={busy || !dirty} onClick={() => save(false)}>
-        <FloppyDiskIcon size={16} aria-hidden="true" />
+        <FloppyDiskIcon className="size-4" aria-hidden="true" />
         Save draft
       </Button>
       <ConfirmButton
@@ -206,7 +206,7 @@ export function ToolEditor({
         disabled={busy}
         onConfirm={remove}
       >
-        <TrashIcon size={16} aria-hidden="true" />
+        <TrashIcon className="size-4" aria-hidden="true" />
         Discard draft
       </ConfirmButton>
     </>
@@ -462,7 +462,7 @@ function AnnotationCheckbox({
             className="flex size-4 items-center justify-center rounded-sm border border-paper-300 bg-white data-checked:border-ink-900 data-checked:bg-ink-900 dark:border-paper-700 dark:bg-paper-900 dark:data-checked:border-ink-100 dark:data-checked:bg-ink-100"
           >
             <Checkbox.Indicator className="flex text-white data-unchecked:hidden dark:text-ink-900">
-              <CheckIcon size={12} weight="bold" aria-hidden="true" />
+              <CheckIcon className="size-3" weight="bold" aria-hidden="true" />
             </Checkbox.Indicator>
           </Checkbox.Root>
           <span className="font-mono text-[13px]">{name}</span>
