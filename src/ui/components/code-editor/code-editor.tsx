@@ -27,7 +27,7 @@ export type CodeEditorViewProps = {
   value: string;
   /** Called with the whole text after each edit. */
   onChange?: (value: string) => void;
-  /** The text can be selected and copied, not edited. */
+  /** The text can be selected and copied, not edited, and shows no caret. */
   readOnly?: boolean;
   /** What the text is. Changing it re-creates the editor. */
   mode: CodeEditorMode;

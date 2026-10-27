@@ -208,6 +208,7 @@ export default function MonacoView({
     <div
       ref={host}
       className={autoHeight ? 'max-h-[60vh]' : 'absolute inset-0'}
+      data-readonly={readOnly ? '' : undefined}
       style={autoHeight ? { height: contentHeight } : undefined}
     />
   );

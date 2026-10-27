@@ -115,6 +115,11 @@
   --code-focus: var(--color-blue-700);
 }
 
+/* A read-only editor shows no caret; its text can still be selected. */
+[data-readonly] .cursors-layer {
+  display: none;
+}
+
 /* json-e syntax, added as decorations. Unlayered on purpose: Monaco injects
    its token colors unlayered, which beat any rule in a Tailwind layer. */
 .monaco-editor .code-operator {
