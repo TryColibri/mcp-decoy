@@ -164,12 +164,12 @@ export function LogsPage() {
         <div className="ml-auto flex flex-wrap gap-2">
           {stream.paused ? (
             <Button size="small" onClick={stream.resume}>
-              <PlayIcon size={14} aria-hidden="true" />
+              <PlayIcon className="size-3.5" aria-hidden="true" />
               Resume{stream.pending > 0 ? ` · ${stream.pending} new` : ''}
             </Button>
           ) : (
             <Button size="small" onClick={stream.pause}>
-              <PauseIcon size={14} aria-hidden="true" />
+              <PauseIcon className="size-3.5" aria-hidden="true" />
               Pause
             </Button>
           )}

@@ -155,7 +155,7 @@ function DeleteServerButton({ name }: DeleteServerButtonProps) {
   return (
     <AlertDialog.Root>
       <AlertDialog.Trigger className={buttonClasses('danger', 'small')}>
-        <TrashIcon size={14} aria-hidden="true" />
+        <TrashIcon className="size-3.5" aria-hidden="true" />
         Delete server
       </AlertDialog.Trigger>
       <AlertDialog.Portal>

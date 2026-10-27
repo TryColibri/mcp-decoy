@@ -527,6 +527,19 @@ return <div>{panel}</div>;
 
 Do not use `!important`.
 
+## Icons
+
+Size Phosphor icons with Tailwind `size-*` classes in `className`, never with
+the numeric `size` prop.
+
+```tsx
+// correct
+<TrashIcon className="size-4" aria-hidden="true" />
+
+// incorrect
+<TrashIcon size={16} aria-hidden="true" />
+```
+
 ## Logging
 
 Log levels:

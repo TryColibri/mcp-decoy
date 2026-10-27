@@ -117,7 +117,7 @@ export function MessageDetail({
             onClick={onClose}
             className="px-2"
           >
-            <XIcon size={14} aria-hidden="true" />
+            <XIcon className="size-3.5" aria-hidden="true" />
           </Button>
         </div>
       </div>

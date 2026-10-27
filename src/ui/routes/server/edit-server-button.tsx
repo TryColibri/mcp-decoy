@@ -43,7 +43,7 @@ export function EditServerButton({ server, children }: EditServerButtonProps) {
           setEditing(true);
         }}
       >
-        <PencilSimpleIcon size={14} aria-hidden="true" />
+        <PencilSimpleIcon className="size-3.5" aria-hidden="true" />
         {children}
       </Button>
       {editing && (
