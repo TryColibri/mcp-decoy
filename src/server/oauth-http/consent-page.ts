@@ -13,7 +13,7 @@ const logoMark = raw(
 );
 
 const favicon =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2316181D' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3Cpath d='M12 3v3M12 18v3M3 12h3M18 12h3'/%3E%3C/svg%3E";
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2316181D' stroke-width='2' stroke-linecap='round'%3E%3Cstyle%3E@media(prefers-color-scheme:dark){svg{stroke:%23F3F4F6}}%3C/style%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3Cpath d='M12 3v3M12 18v3M3 12h3M18 12h3'/%3E%3C/svg%3E";
 
 /**
  * Renders Decoy's consent page: the server, the client's name and ID, the
@@ -39,6 +39,43 @@ export function renderConsentPage({
         <link rel="icon" href="${favicon}" />
         <title>Authorize ${clientName} — MCP Decoy</title>
         <style>
+          :root {
+            color-scheme: light dark;
+            --page: #f9faf9;
+            --card: #fff;
+            --card-border: #e6e6e5;
+            --card-shadow: rgb(8 9 12 / 0.05);
+            --well: #f3f4f6;
+            --text: #16181d;
+            --text-muted: #4c5261;
+            --text-faint: #6b7180;
+            --primary: #16181d;
+            --primary-hover: #25272c;
+            --primary-text: #fff;
+            --secondary: #fff;
+            --secondary-hover: #e6e6e5;
+            --secondary-border: #d5d5d2;
+            --focus: #1d4ed8;
+          }
+          @media (prefers-color-scheme: dark) {
+            :root {
+              --page: #0b0b0a;
+              --card: #1b1b18;
+              --card-border: #282725;
+              --card-shadow: rgb(0 0 0 / 0.4);
+              --well: #08090c;
+              --text: #f3f4f6;
+              --text-muted: #9ba1b0;
+              --text-faint: #9ba1b0;
+              --primary: #f3f4f6;
+              --primary-hover: #d1d4db;
+              --primary-text: #16181d;
+              --secondary: #1b1b18;
+              --secondary-hover: #282725;
+              --secondary-border: #42423e;
+              --focus: #60a5fa;
+            }
+          }
           * {
             box-sizing: border-box;
           }
@@ -48,8 +85,8 @@ export function renderConsentPage({
             min-height: 100dvh;
             margin: 0;
             padding: 1.5rem;
-            background: #f9faf9;
-            color: #16181d;
+            background: var(--page);
+            color: var(--text);
             font-family:
               'Geist',
               ui-sans-serif,
@@ -74,10 +111,10 @@ export function renderConsentPage({
           }
           .card {
             padding: 1.75rem;
-            background: #fff;
-            border: 1px solid #e6e6e5;
+            background: var(--card);
+            border: 1px solid var(--card-border);
             border-radius: 0.75rem;
-            box-shadow: 0 1px 2px rgb(8 9 12 / 0.05);
+            box-shadow: 0 1px 2px var(--card-shadow);
           }
           h1 {
             margin: 0;
@@ -89,10 +126,10 @@ export function renderConsentPage({
             margin: 0.5rem 0 0;
             font-size: 0.875rem;
             line-height: 1.5;
-            color: #4c5261;
+            color: var(--text-muted);
           }
           .lead strong {
-            color: #16181d;
+            color: var(--text);
             font-weight: 600;
           }
           dl {
@@ -100,7 +137,7 @@ export function renderConsentPage({
             gap: 0.875rem;
             margin: 1.5rem 0 0;
             padding: 1rem;
-            background: #f3f4f6;
+            background: var(--well);
             border-radius: 0.5rem;
           }
           dt {
@@ -109,7 +146,7 @@ export function renderConsentPage({
             font-weight: 600;
             letter-spacing: 0.04em;
             text-transform: uppercase;
-            color: #6b7180;
+            color: var(--text-faint);
           }
           dd {
             margin: 0;
@@ -134,32 +171,32 @@ export function renderConsentPage({
             transition: background-color 0.15s;
           }
           button[value='approve'] {
-            background: #16181d;
+            background: var(--primary);
             border: 0;
-            color: #fff;
+            color: var(--primary-text);
             font-weight: 600;
           }
           button[value='approve']:hover {
-            background: #25272c;
+            background: var(--primary-hover);
           }
           button[value='deny'] {
-            background: #fff;
-            border: 1px solid #d5d5d2;
-            color: #16181d;
+            background: var(--secondary);
+            border: 1px solid var(--secondary-border);
+            color: var(--text);
             font-weight: 500;
           }
           button[value='deny']:hover {
-            background: #e6e6e5;
+            background: var(--secondary-hover);
           }
           button:focus-visible {
-            outline: 2px solid #1d4ed8;
+            outline: 2px solid var(--focus);
             outline-offset: 2px;
           }
           .note {
             margin: 1rem 0 0;
             text-align: center;
             font-size: 0.75rem;
-            color: #6b7180;
+            color: var(--text-faint);
           }
         </style>
       </head>
