@@ -361,14 +361,12 @@ describe('OAuth routes', () => {
       clientId: string;
       redirectUri: string;
       scope?: string;
-      server?: string;
     };
 
     const authorizeURLFor = ({
       clientId,
       redirectUri,
       scope,
-      server = 'weather',
     }: AuthorizeURLParams) => {
       const url = new URL('http://localhost:6280/authorize');
       url.searchParams.set('client_id', clientId);
@@ -376,7 +374,7 @@ describe('OAuth routes', () => {
       url.searchParams.set('response_type', 'code');
       url.searchParams.set('code_challenge', pkcePair().challenge);
       url.searchParams.set('code_challenge_method', 'S256');
-      url.searchParams.set('resource', `http://localhost:6280/s/${server}/mcp`);
+      url.searchParams.set('resource', 'http://localhost:6280/s/weather/mcp');
       url.searchParams.set('state', 'xyz');
       if (scope !== undefined) {
         url.searchParams.set('scope', scope);
@@ -393,16 +391,9 @@ describe('OAuth routes', () => {
       return location.searchParams.get('error');
     };
 
-    const setScopeSettings = (
-      scopePolicy: 'lenient' | 'strict',
-      clientScopes?: string[],
-    ) =>
+    const setClientScopes = (clientScopes: string[]) =>
       harness.services.servers.update('weather', {
-        auth: {
-          mode: 'oauth',
-          scopePolicy,
-          ...(clientScopes === undefined ? {} : { clientScopes }),
-        },
+        auth: { mode: 'oauth', clientScopes },
       });
 
     it('advertises mcp in both metadata documents', async () => {
@@ -508,8 +499,7 @@ describe('OAuth routes', () => {
       expect(errorOf(response)).toBe('invalid_scope');
     });
 
-    it('refuses scope=mcp to a DCR client that registered no scope under the strict policy', async () => {
-      await setScopeSettings('strict');
+    it('keeps state on an invalid_scope redirect', async () => {
       const client = await registerDCRClient(
         harness.app,
         'http://localhost:9999/cb',
@@ -519,7 +509,7 @@ describe('OAuth routes', () => {
         authorizeURLFor({
           clientId: client.client_id,
           redirectUri: 'http://localhost:9999/cb',
-          scope: 'mcp',
+          scope: 'mcp admin',
         }),
       );
 
@@ -529,8 +519,7 @@ describe('OAuth routes', () => {
       ).toBe('xyz');
     });
 
-    it('shows consent under the strict policy to a DCR client that registered the scope', async () => {
-      await setScopeSettings('strict');
+    it('shows consent for a scope the DCR client registered with', async () => {
       const registration = await harness.app.request(
         'http://localhost:6280/register',
         {
@@ -539,25 +528,29 @@ describe('OAuth routes', () => {
           body: JSON.stringify({
             redirect_uris: ['http://localhost:9999/cb'],
             token_endpoint_auth_method: 'none',
-            scope: 'mcp',
+            scope: 'admin',
           }),
         },
       );
-      const client = (await registration.json()) as { client_id: string };
+      const client = (await registration.json()) as {
+        client_id: string;
+        scope: string;
+      };
 
       const response = await harness.app.request(
         authorizeURLFor({
           clientId: client.client_id,
           redirectUri: 'http://localhost:9999/cb',
-          scope: 'mcp',
+          scope: 'mcp admin',
         }),
       );
 
+      expect(client.scope).toBe('admin');
       expect(response.status).toBe(200);
     });
 
     it('gives the pre-registered client the scopes the operator set', async () => {
-      await setScopeSettings('strict', ['mcp', 'admin']);
+      await setClientScopes(['admin']);
 
       const response = await harness.app.request(
         authorizeURLFor({
@@ -570,8 +563,8 @@ describe('OAuth routes', () => {
       expect(response.status).toBe(200);
     });
 
-    it('refuses scope=mcp to a pre-registered client with no scopes under the strict policy', async () => {
-      await setScopeSettings('strict', []);
+    it('still lets a pre-registered client with no scopes request mcp', async () => {
+      await setClientScopes([]);
 
       const response = await harness.app.request(
         authorizeURLFor({
@@ -581,30 +574,7 @@ describe('OAuth routes', () => {
         }),
       );
 
-      expect(errorOf(response)).toBe('invalid_scope');
-    });
-
-    it('applies the policy of the server the client asks access to', async () => {
-      await harness.services.servers.create({
-        name: 'forecast',
-        auth: { mode: 'oauth', scopePolicy: 'strict' },
-      });
-      const client = await registerDCRClient(
-        harness.app,
-        'http://localhost:9999/cb',
-      );
-      const request = (server: string) =>
-        harness.app.request(
-          authorizeURLFor({
-            clientId: client.client_id,
-            redirectUri: 'http://localhost:9999/cb',
-            scope: 'mcp',
-            server,
-          }),
-        );
-
-      expect(errorOf(await request('forecast'))).toBe('invalid_scope');
-      expect((await request('weather')).status).toBe(200);
+      expect(response.status).toBe(200);
     });
   });
 

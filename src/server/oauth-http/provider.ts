@@ -9,12 +9,10 @@ import { SUPPORTED_SCOPES } from '@/shared/api';
 import { renderConsentPage } from './consent-page';
 
 /**
- * `@hono/mcp`'s `/authorize` refuses any scope missing from `client.scope`
- * before the provider runs, which would refuse `mcp` to every client that
- * registered without a scope. It doesn't know the server yet, so it can't
- * apply that server's scope policy. This widens `scope` with the advertised
- * scopes so the check passes, and `OAuthStore.beginConsent` enforces the
- * policy once the resource is known.
+ * `@hono/mcp`'s `/authorize` refuses any scope missing from `client.scope`,
+ * which would refuse `mcp` to every client that registered without a scope
+ * (RFC 7591 makes `scope` optional). Widening `scope` with the advertised
+ * scopes lets any client request them, plus the scopes it registered with.
  */
 const withAdvertisedScopes = (
   client: OAuthClientInformationFull | undefined,

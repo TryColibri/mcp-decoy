@@ -291,7 +291,6 @@ describe('uiApp', () => {
           clientSecret: expect.any(String),
           redirectUris: ['http://localhost:9999/cb'],
           clientScopes: ['mcp'],
-          scopePolicy: 'lenient',
           tokenCount: 0,
         });
 
@@ -304,30 +303,23 @@ describe('uiApp', () => {
         });
       });
 
-      it('sets the scope policy and the pre-registered client scopes', async () => {
+      it('sets the pre-registered client scopes', async () => {
         const response = await request('/api/v1/servers/weather', {
           method: 'PATCH',
           json: {
-            auth: {
-              mode: 'oauth',
-              scopePolicy: 'strict',
-              clientScopes: ['mcp', 'files:read'],
-            },
+            auth: { mode: 'oauth', clientScopes: ['mcp', 'files:read'] },
           },
         });
 
         expect(response.status).toBe(200);
         expect(
           serverSummarySchema.parse(await response.json()).auth,
-        ).toMatchObject({
-          scopePolicy: 'strict',
-          clientScopes: ['mcp', 'files:read'],
-        });
+        ).toMatchObject({ clientScopes: ['mcp', 'files:read'] });
       });
 
       it.each([
         ['a scope with a space', { clientScopes: ['two words'] }],
-        ['an unknown scope policy', { scopePolicy: 'loose' }],
+        ['a scope policy, which no longer exists', { scopePolicy: 'strict' }],
       ])('answers 422 for %s', async (_, fields) => {
         await expectProblem(
           await request('/api/v1/servers/weather', {

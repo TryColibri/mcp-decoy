@@ -132,7 +132,6 @@ export function createServersService({
         ...current,
         redirectUris: input.redirectUris ?? current.redirectUris,
         clientScopes: input.clientScopes ?? current.clientScopes,
-        scopePolicy: input.scopePolicy ?? current.scopePolicy,
       };
     }
     return {
@@ -141,7 +140,6 @@ export function createServersService({
       clientSecret: randomSecret(),
       redirectUris: input.redirectUris ?? [],
       clientScopes: input.clientScopes ?? [...SUPPORTED_SCOPES],
-      scopePolicy: input.scopePolicy ?? 'lenient',
     };
   };
 

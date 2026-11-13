@@ -160,7 +160,6 @@ describe('EditServerDialog', () => {
         clientSecret: 'def',
         redirectUris: ['http://localhost:9999/cb'],
         clientScopes: ['mcp'],
-        scopePolicy: 'lenient',
         tokenCount: 0,
       },
     };

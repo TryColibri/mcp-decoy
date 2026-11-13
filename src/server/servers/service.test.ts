@@ -209,7 +209,6 @@ describe('ServersService', () => {
         clientSecret: 'secret-1',
         redirectUris: ['http://localhost/cb'],
         clientScopes: ['mcp'],
-        scopePolicy: 'lenient',
         tokenCount: 0,
       });
       expect(mockEvents.emit).toHaveBeenCalledExactlyOnceWith(
@@ -235,7 +234,6 @@ describe('ServersService', () => {
         clientSecret: 'secret-1',
         redirectUris: ['http://localhost/other'],
         clientScopes: ['mcp'],
-        scopePolicy: 'lenient',
         tokenCount: 0,
       });
       expect(mockEvents.emit).toHaveBeenCalledExactlyOnceWith(
@@ -244,17 +242,14 @@ describe('ServersService', () => {
       );
     });
 
-    it('sets the scope settings when switching to oauth', async () => {
+    it('sets the client scopes when switching to oauth', async () => {
       await service.create({ name: 'weather' });
 
       const updated = await service.update('weather', {
-        auth: { mode: 'oauth', clientScopes: [], scopePolicy: 'strict' },
+        auth: { mode: 'oauth', clientScopes: [] },
       });
 
-      expect(updated.auth).toMatchObject({
-        clientScopes: [],
-        scopePolicy: 'strict',
-      });
+      expect(updated.auth).toMatchObject({ clientScopes: [] });
     });
 
     it('keeps the redirect URIs when an update leaves them out', async () => {
@@ -264,19 +259,19 @@ describe('ServersService', () => {
       });
 
       const updated = await service.update('weather', {
-        auth: { mode: 'oauth', scopePolicy: 'strict' },
+        auth: { mode: 'oauth', clientScopes: ['admin'] },
       });
 
       expect(updated.auth).toMatchObject({
         redirectUris: ['http://localhost/cb'],
-        scopePolicy: 'strict',
+        clientScopes: ['admin'],
       });
     });
 
-    it('keeps the scope settings when an update leaves them out', async () => {
+    it('keeps the client scopes when an update leaves them out', async () => {
       await service.create({ name: 'weather' });
       await service.update('weather', {
-        auth: { mode: 'oauth', clientScopes: ['admin'], scopePolicy: 'strict' },
+        auth: { mode: 'oauth', clientScopes: ['admin'] },
       });
 
       const updated = await service.update('weather', {
@@ -286,17 +281,16 @@ describe('ServersService', () => {
       expect(updated.auth).toMatchObject({
         redirectUris: ['http://localhost/cb'],
         clientScopes: ['admin'],
-        scopePolicy: 'strict',
       });
     });
 
-    it('announces a change of scope policy', async () => {
+    it('announces a change of client scopes', async () => {
       await service.create({ name: 'weather' });
       await service.update('weather', { auth: { mode: 'oauth' } });
       mockEvents.emit.mockClear();
 
       await service.update('weather', {
-        auth: { mode: 'oauth', scopePolicy: 'strict' },
+        auth: { mode: 'oauth', clientScopes: ['admin'] },
       });
 
       expect(mockEvents.emit).toHaveBeenCalledExactlyOnceWith(

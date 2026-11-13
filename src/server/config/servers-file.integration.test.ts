@@ -76,7 +76,7 @@ describe('servers file', () => {
       );
     });
 
-    it('defaults the scope settings of an auth block written before they existed', async () => {
+    it('defaults the client scopes of an auth block written before they existed', async () => {
       const { auth: _, ...withoutAuth } = SERVER;
       await writeFile(
         path,
@@ -104,7 +104,6 @@ describe('servers file', () => {
         clientSecret: 'secret',
         redirectUris: [],
         clientScopes: ['mcp'],
-        scopePolicy: 'lenient',
       });
     });
 

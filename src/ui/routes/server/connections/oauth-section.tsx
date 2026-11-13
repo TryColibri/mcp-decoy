@@ -14,8 +14,8 @@ export type OAuthSectionProps = {
 
 /**
  * A server's OAuth settings: the pre-registered client's credentials and the
- * protected-resource metadata URL (read-only), and its redirect URIs and the
- * scopes clients may request (editable here). A switch in the heading turns
+ * protected-resource metadata URL (read-only), and its redirect URIs and
+ * scopes (editable here). A switch in the heading turns
  * OAuth on or off.
  */
 export function OAuthSection({ server }: OAuthSectionProps) {
@@ -32,8 +32,7 @@ export function OAuthSection({ server }: OAuthSectionProps) {
     );
   }
 
-  const { clientId, clientSecret, redirectUris, clientScopes, scopePolicy } =
-    auth;
+  const { clientId, clientSecret, redirectUris, clientScopes } = auth;
 
   return (
     <Section title="OAuth" actions={<OAuthSwitch server={server} />}>
@@ -56,9 +55,8 @@ export function OAuthSection({ server }: OAuthSectionProps) {
         uris={redirectUris}
       />
       <ScopesEditor
-        key={`${scopePolicy} ${clientScopes.join(' ')}`}
+        key={clientScopes.join(' ')}
         server={server.name}
-        scopePolicy={scopePolicy}
         clientScopes={clientScopes}
       />
     </Section>

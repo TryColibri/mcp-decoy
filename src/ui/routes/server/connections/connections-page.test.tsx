@@ -78,7 +78,6 @@ const OAUTH_SERVER: ServerSummary = {
     clientSecret: 'secret-1',
     redirectUris: [],
     clientScopes: ['mcp'],
-    scopePolicy: 'lenient',
     tokenCount: 2,
   },
 };
@@ -237,7 +236,6 @@ describe('ConnectionsPage', () => {
         clientSecret: 'secret-1',
         redirectUris: ['http://localhost:9999/cb'],
         clientScopes: ['mcp'],
-        scopePolicy: 'lenient',
         tokenCount: 0,
       },
     };
@@ -298,10 +296,9 @@ describe('ConnectionsPage', () => {
   });
 
   describe('scopes', () => {
-    it('starts from the saved settings and has nothing to save yet', () => {
+    it('starts from the saved scopes and has nothing to save yet', () => {
       renderPage(OAUTH_SERVER);
 
-      expect(screen.getByRole('radio', { name: 'Lenient' })).toBeChecked();
       expect(screen.getByLabelText('Pre-registered client scopes')).toHaveValue(
         'mcp',
       );
@@ -310,12 +307,11 @@ describe('ConnectionsPage', () => {
       ).toBeDisabled();
     });
 
-    it('saves the policy and the scopes through the PATCH', async () => {
+    it('saves the edited scopes through the PATCH', async () => {
       mocks.patchServer.mockResolvedValue({});
       renderPage(OAUTH_SERVER);
       const user = userEvent.setup();
 
-      await user.click(screen.getByRole('radio', { name: 'Strict' }));
       await user.type(
         screen.getByLabelText('Pre-registered client scopes'),
         '  files:read',
@@ -325,13 +321,7 @@ describe('ConnectionsPage', () => {
 
       expect(mocks.patchServer).toHaveBeenCalledExactlyOnceWith({
         param: { server: 'weather' },
-        json: {
-          auth: {
-            mode: 'oauth',
-            scopePolicy: 'strict',
-            clientScopes: ['mcp', 'files:read'],
-          },
-        },
+        json: { auth: { mode: 'oauth', clientScopes: ['mcp', 'files:read'] } },
       });
     });
 
@@ -345,9 +335,7 @@ describe('ConnectionsPage', () => {
 
       expect(mocks.patchServer).toHaveBeenCalledExactlyOnceWith({
         param: { server: 'weather' },
-        json: {
-          auth: { mode: 'oauth', scopePolicy: 'lenient', clientScopes: [] },
-        },
+        json: { auth: { mode: 'oauth', clientScopes: [] } },
       });
     });
   });

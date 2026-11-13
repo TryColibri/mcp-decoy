@@ -53,22 +53,6 @@ export const scopeSchema = z
   )
   .describe('OAuth scope token (RFC 6749 §3.3).');
 
-/**
- * Which scopes a client may request at `/authorize`.
- *
- * - `lenient`: the advertised scopes (`mcp`), plus any scope the client
- *   registered with.
- * - `strict`: only the scopes the client registered with. A client that
- *   registered without `scope` may request none.
- */
-export type ScopePolicy = 'lenient' | 'strict';
-
-export const scopePolicySchema: z.ZodType<ScopePolicy> = z
-  .enum(['lenient', 'strict'])
-  .describe(
-    'Which scopes a client may request: `lenient` allows the advertised scopes plus the registered ones, `strict` only the registered ones.',
-  );
-
 /** A server's pre-registered OAuth client, persisted in `servers.json`. */
 export type ServerAuthConfig = {
   /** Only mode supported: OAuth 2.1. */
@@ -81,8 +65,6 @@ export type ServerAuthConfig = {
   redirectUris: string[];
   /** Scopes the pre-registered client is registered with. */
   clientScopes: string[];
-  /** Which scopes a client may request. */
-  scopePolicy: ScopePolicy;
 };
 
 export const serverAuthConfigSchema: z.ZodType<ServerAuthConfig> =
@@ -95,14 +77,11 @@ export const serverAuthConfigSchema: z.ZodType<ServerAuthConfig> =
     redirectUris: z
       .array(z.url())
       .describe('Redirect URIs the pre-registered client may use.'),
-    // Defaults keep `servers.json` files written before these settings valid.
+    // The default keeps `servers.json` files written before it valid.
     clientScopes: z
       .array(scopeSchema)
       .default(() => [...SUPPORTED_SCOPES])
       .describe('Scopes the pre-registered client is registered with.'),
-    scopePolicy: scopePolicySchema
-      .default('lenient')
-      .describe('Which scopes a client may request.'),
   });
 
 /** A persisted mock MCP server. */
@@ -148,7 +127,6 @@ export type ServerAuthSummary =
       clientSecret: string;
       redirectUris: string[];
       clientScopes: string[];
-      scopePolicy: ScopePolicy;
       tokenCount: number;
     };
 
@@ -167,9 +145,6 @@ export const serverAuthSummarySchema: z.ZodType<ServerAuthSummary> =
       clientScopes: z
         .array(scopeSchema)
         .describe('Scopes the pre-registered client is registered with.'),
-      scopePolicy: scopePolicySchema.describe(
-        'Which scopes a client may request.',
-      ),
       tokenCount: z
         .number()
         .int()
@@ -246,8 +221,6 @@ export type ServerAuthInput =
       redirectUris?: string[];
       /** Scopes the pre-registered client is registered with. Absent: kept, or `["mcp"]` when switching to OAuth. */
       clientScopes?: string[];
-      /** Which scopes a client may request. Absent: kept, or `lenient` when switching to OAuth. */
-      scopePolicy?: ScopePolicy;
     };
 
 export const serverAuthInputSchema: z.ZodType<ServerAuthInput> =
@@ -266,11 +239,6 @@ export const serverAuthInputSchema: z.ZodType<ServerAuthInput> =
         .optional()
         .describe(
           'Scopes the pre-registered client is registered with. Absent: kept, or `["mcp"]` when switching to OAuth.',
-        ),
-      scopePolicy: scopePolicySchema
-        .optional()
-        .describe(
-          'Which scopes a client may request. Absent: kept, or `lenient` when switching to OAuth.',
         ),
     }),
   ]);
