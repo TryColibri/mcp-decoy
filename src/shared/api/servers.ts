@@ -38,6 +38,37 @@ export const serverInfoSchema: z.ZodType<ServerInfo> = z.strictObject({
     .describe('Implementation version.'),
 });
 
+/** The scopes the authorization server advertises in `scopes_supported`. */
+export const SUPPORTED_SCOPES: readonly string[] = ['mcp'];
+
+/** Pattern of one OAuth scope token (RFC 6749 §3.3): printable ASCII without spaces, `"` or `\`. */
+export const SCOPE_PATTERN = /^[\x21\x23-\x5B\x5D-\x7E]+$/;
+
+/** Schema for one OAuth scope token. */
+export const scopeSchema = z
+  .string()
+  .regex(
+    SCOPE_PATTERN,
+    'A scope is printable ASCII without spaces, quotes or backslashes',
+  )
+  .describe('OAuth scope token (RFC 6749 §3.3).');
+
+/**
+ * Which scopes a client may request at `/authorize`.
+ *
+ * - `lenient`: the advertised scopes (`mcp`), plus any scope the client
+ *   registered with.
+ * - `strict`: only the scopes the client registered with. A client that
+ *   registered without `scope` may request none.
+ */
+export type ScopePolicy = 'lenient' | 'strict';
+
+export const scopePolicySchema: z.ZodType<ScopePolicy> = z
+  .enum(['lenient', 'strict'])
+  .describe(
+    'Which scopes a client may request: `lenient` allows the advertised scopes plus the registered ones, `strict` only the registered ones.',
+  );
+
 /** A server's pre-registered OAuth client, persisted in `servers.json`. */
 export type ServerAuthConfig = {
   /** Only mode supported: OAuth 2.1. */
@@ -48,6 +79,10 @@ export type ServerAuthConfig = {
   clientSecret: string;
   /** Redirect URIs the pre-registered client may use. */
   redirectUris: string[];
+  /** Scopes the pre-registered client is registered with. */
+  clientScopes: string[];
+  /** Which scopes a client may request. */
+  scopePolicy: ScopePolicy;
 };
 
 export const serverAuthConfigSchema: z.ZodType<ServerAuthConfig> =
@@ -60,6 +95,14 @@ export const serverAuthConfigSchema: z.ZodType<ServerAuthConfig> =
     redirectUris: z
       .array(z.url())
       .describe('Redirect URIs the pre-registered client may use.'),
+    // Defaults keep `servers.json` files written before these settings valid.
+    clientScopes: z
+      .array(scopeSchema)
+      .default(() => [...SUPPORTED_SCOPES])
+      .describe('Scopes the pre-registered client is registered with.'),
+    scopePolicy: scopePolicySchema
+      .default('lenient')
+      .describe('Which scopes a client may request.'),
   });
 
 /** A persisted mock MCP server. */
@@ -104,6 +147,8 @@ export type ServerAuthSummary =
       clientId: string;
       clientSecret: string;
       redirectUris: string[];
+      clientScopes: string[];
+      scopePolicy: ScopePolicy;
       tokenCount: number;
     };
 
@@ -119,6 +164,12 @@ export const serverAuthSummarySchema: z.ZodType<ServerAuthSummary> =
       redirectUris: z
         .array(z.url())
         .describe('Redirect URIs the pre-registered client may use.'),
+      clientScopes: z
+        .array(scopeSchema)
+        .describe('Scopes the pre-registered client is registered with.'),
+      scopePolicy: scopePolicySchema.describe(
+        'Which scopes a client may request.',
+      ),
       tokenCount: z
         .number()
         .int()
@@ -184,12 +235,20 @@ export const serverListSchema: z.ZodType<ServerList> = z.strictObject({
 
 /**
  * Requested authentication state of a server. With no redirect URIs, the
- * pre-registered client isn't offered; Dynamic Client Registration still
- * works.
+ * pre-registered client can't complete authorization; Dynamic Client
+ * Registration still works.
  */
 export type ServerAuthInput =
   | { mode: 'none' }
-  | { mode: 'oauth'; redirectUris?: string[] };
+  | {
+      mode: 'oauth';
+      /** Pre-registered client's redirect URIs. Absent: kept, or none when switching to OAuth. */
+      redirectUris?: string[];
+      /** Scopes the pre-registered client is registered with. Absent: kept, or `["mcp"]` when switching to OAuth. */
+      clientScopes?: string[];
+      /** Which scopes a client may request. Absent: kept, or `lenient` when switching to OAuth. */
+      scopePolicy?: ScopePolicy;
+    };
 
 export const serverAuthInputSchema: z.ZodType<ServerAuthInput> =
   z.discriminatedUnion('mode', [
@@ -199,7 +258,20 @@ export const serverAuthInputSchema: z.ZodType<ServerAuthInput> =
       redirectUris: z
         .array(z.url('Each redirect URI must be an absolute URL'))
         .optional()
-        .describe("Pre-registered client's redirect URIs. Absent: DCR only."),
+        .describe(
+          "Pre-registered client's redirect URIs. Absent: kept, or none when switching to OAuth.",
+        ),
+      clientScopes: z
+        .array(scopeSchema)
+        .optional()
+        .describe(
+          'Scopes the pre-registered client is registered with. Absent: kept, or `["mcp"]` when switching to OAuth.',
+        ),
+      scopePolicy: scopePolicySchema
+        .optional()
+        .describe(
+          'Which scopes a client may request. Absent: kept, or `lenient` when switching to OAuth.',
+        ),
     }),
   ]);
 
@@ -252,8 +324,8 @@ export type UpdateServerRequest = {
   /**
    * New authentication state. Switching to OAuth generates fresh
    * credentials unless the server is already on OAuth, in which case they
-   * are kept and only `redirectUris` is replaced. Switching to `none` drops
-   * them and closes live sessions.
+   * are kept and only the `auth` fields sent are replaced. Switching to
+   * `none` drops them and closes live sessions.
    */
   auth?: ServerAuthInput;
 };

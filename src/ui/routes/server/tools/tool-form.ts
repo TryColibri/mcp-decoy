@@ -73,6 +73,7 @@ export function toFormState(tool: Tool): ToolFormState {
     annotations: {
       readOnlyHint: tool.annotations.readOnlyHint ?? false,
       destructiveHint: tool.annotations.destructiveHint ?? false,
+      idempotentHint: tool.annotations.idempotentHint ?? false,
       openWorldHint: tool.annotations.openWorldHint ?? false,
     },
   };
@@ -94,6 +95,7 @@ export function isToolFormDirty(state: ToolFormState, tool: Tool): boolean {
     state.responseTemplate !== saved.responseTemplate ||
     state.annotations.readOnlyHint !== saved.annotations.readOnlyHint ||
     state.annotations.destructiveHint !== saved.annotations.destructiveHint ||
+    state.annotations.idempotentHint !== saved.annotations.idempotentHint ||
     state.annotations.openWorldHint !== saved.annotations.openWorldHint
   );
 }
@@ -126,10 +128,12 @@ export function parseToolForm(state: ToolFormState): ParsedToolForm {
     return { ok: false, errors };
   }
 
-  const { readOnlyHint, destructiveHint, openWorldHint } = state.annotations;
+  const { readOnlyHint, destructiveHint, idempotentHint, openWorldHint } =
+    state.annotations;
   const annotations: ToolAnnotations = {
     ...(readOnlyHint ? { readOnlyHint } : {}),
     ...(destructiveHint ? { destructiveHint } : {}),
+    ...(idempotentHint ? { idempotentHint } : {}),
     ...(openWorldHint ? { openWorldHint } : {}),
   };
 

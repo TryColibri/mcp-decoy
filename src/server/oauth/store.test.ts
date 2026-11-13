@@ -1,5 +1,6 @@
 import {
   InvalidGrantError,
+  InvalidScopeError,
   InvalidTargetError,
   InvalidTokenError,
 } from '@modelcontextprotocol/sdk/server/auth/errors.js';
@@ -24,6 +25,8 @@ const OAUTH_SERVER: ServerConfig = {
     clientId: 'preregistered-client',
     clientSecret: 'preregistered-secret',
     redirectUris: ['http://localhost/cb'],
+    clientScopes: ['mcp'],
+    scopePolicy: 'lenient',
   },
   createdAt: '2026-10-21T12:00:00.000Z',
 };
@@ -102,13 +105,36 @@ describe('OAuthStore', () => {
       });
     });
 
-    it('does not offer a pre-registered client with no redirect URIs', () => {
+    it('registers the pre-registered client with its scopes', () => {
+      servers.set(OAUTH_SERVER.name, {
+        ...OAUTH_SERVER,
+        auth: { ...OAUTH_SERVER.auth!, clientScopes: ['mcp', 'admin'] },
+      });
+
+      expect(store.getClient('preregistered-client')?.scope).toBe('mcp admin');
+    });
+
+    it('leaves out scope for a pre-registered client with no scopes', () => {
+      servers.set(OAUTH_SERVER.name, {
+        ...OAUTH_SERVER,
+        auth: { ...OAUTH_SERVER.auth!, clientScopes: [] },
+      });
+
+      expect(store.getClient('preregistered-client')).not.toHaveProperty(
+        'scope',
+      );
+    });
+
+    it('resolves a pre-registered client with no redirect URIs', () => {
       servers.set(OAUTH_SERVER.name, {
         ...OAUTH_SERVER,
         auth: { ...OAUTH_SERVER.auth!, redirectUris: [] },
       });
 
-      expect(store.getClient('preregistered-client')).toBeUndefined();
+      expect(store.getClient('preregistered-client')).toMatchObject({
+        client_id: 'preregistered-client',
+        redirect_uris: [],
+      });
     });
 
     it('returns undefined for an unknown client', () => {
@@ -164,6 +190,77 @@ describe('OAuthStore', () => {
       expect(store.consent(requestId)).toMatchObject({
         client,
         server: OAUTH_SERVER.name,
+      });
+    });
+
+    describe('scopes', () => {
+      const setScopeSettings = (
+        scopePolicy: 'lenient' | 'strict',
+        clientScopes = ['mcp'],
+      ) => {
+        servers.set(OAUTH_SERVER.name, {
+          ...OAUTH_SERVER,
+          auth: { ...OAUTH_SERVER.auth!, scopePolicy, clientScopes },
+        });
+      };
+
+      const begin = (client: OAuthClientInformationFull, scopes: string[]) =>
+        store.beginConsent(client, {
+          codeChallenge: 'challenge',
+          redirectUri: client.redirect_uris[0],
+          resource: resourceOf(OAUTH_SERVER.name),
+          scopes,
+        });
+
+      it('lets a client that registered no scope request mcp under the lenient policy', () => {
+        const client = registerDCRClient();
+
+        expect(store.consent(begin(client, ['mcp']))?.scopes).toEqual(['mcp']);
+      });
+
+      it('lets a client request a scope it registered under the lenient policy', () => {
+        const client = store.registerClient({
+          ...DCR_METADATA,
+          scope: 'admin',
+        });
+
+        expect(() => begin(client, ['mcp', 'admin'])).not.toThrow();
+      });
+
+      it('refuses a scope that is neither advertised nor registered under the lenient policy', () => {
+        const client = registerDCRClient();
+
+        expect(() => begin(client, ['admin'])).toThrow(
+          new InvalidScopeError('Client was not registered with scope admin'),
+        );
+      });
+
+      it('refuses mcp to a client that registered no scope under the strict policy', () => {
+        setScopeSettings('strict');
+        const client = registerDCRClient();
+
+        expect(() => begin(client, ['mcp'])).toThrow(InvalidScopeError);
+      });
+
+      it('lets a client request a scope it registered under the strict policy', () => {
+        setScopeSettings('strict');
+        const client = store.registerClient({ ...DCR_METADATA, scope: 'mcp' });
+
+        expect(() => begin(client, ['mcp'])).not.toThrow();
+      });
+
+      it('lets a client request no scope under the strict policy', () => {
+        setScopeSettings('strict');
+        const client = registerDCRClient();
+
+        expect(() => begin(client, [])).not.toThrow();
+      });
+
+      it('checks the pre-registered client against its configured scopes', () => {
+        setScopeSettings('strict', []);
+        const client = store.getClient('preregistered-client')!;
+
+        expect(() => begin(client, ['mcp'])).toThrow(InvalidScopeError);
       });
     });
   });

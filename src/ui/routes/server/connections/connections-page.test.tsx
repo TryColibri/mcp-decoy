@@ -77,6 +77,8 @@ const OAUTH_SERVER: ServerSummary = {
     clientId: 'client-1',
     clientSecret: 'secret-1',
     redirectUris: [],
+    clientScopes: ['mcp'],
+    scopePolicy: 'lenient',
     tokenCount: 2,
   },
 };
@@ -234,6 +236,8 @@ describe('ConnectionsPage', () => {
         clientId: 'client-1',
         clientSecret: 'secret-1',
         redirectUris: ['http://localhost:9999/cb'],
+        clientScopes: ['mcp'],
+        scopePolicy: 'lenient',
         tokenCount: 0,
       },
     };
@@ -290,6 +294,61 @@ describe('ConnectionsPage', () => {
       expect(await screen.findByRole('alert')).toHaveTextContent(
         'Server is down',
       );
+    });
+  });
+
+  describe('scopes', () => {
+    it('starts from the saved settings and has nothing to save yet', () => {
+      renderPage(OAUTH_SERVER);
+
+      expect(screen.getByRole('radio', { name: 'Lenient' })).toBeChecked();
+      expect(screen.getByLabelText('Pre-registered client scopes')).toHaveValue(
+        'mcp',
+      );
+      expect(
+        screen.getByRole('button', { name: 'Save scopes' }),
+      ).toBeDisabled();
+    });
+
+    it('saves the policy and the scopes through the PATCH', async () => {
+      mocks.patchServer.mockResolvedValue({});
+      renderPage(OAUTH_SERVER);
+      const user = userEvent.setup();
+
+      await user.click(screen.getByRole('radio', { name: 'Strict' }));
+      await user.type(
+        screen.getByLabelText('Pre-registered client scopes'),
+        '  files:read',
+      );
+      expect(screen.getByText(/Saving revokes every token/)).toBeVisible();
+      await user.click(screen.getByRole('button', { name: 'Save scopes' }));
+
+      expect(mocks.patchServer).toHaveBeenCalledExactlyOnceWith({
+        param: { server: 'weather' },
+        json: {
+          auth: {
+            mode: 'oauth',
+            scopePolicy: 'strict',
+            clientScopes: ['mcp', 'files:read'],
+          },
+        },
+      });
+    });
+
+    it('saves an empty scope list', async () => {
+      mocks.patchServer.mockResolvedValue({});
+      renderPage(OAUTH_SERVER);
+      const user = userEvent.setup();
+
+      await user.clear(screen.getByLabelText('Pre-registered client scopes'));
+      await user.click(screen.getByRole('button', { name: 'Save scopes' }));
+
+      expect(mocks.patchServer).toHaveBeenCalledExactlyOnceWith({
+        param: { server: 'weather' },
+        json: {
+          auth: { mode: 'oauth', scopePolicy: 'lenient', clientScopes: [] },
+        },
+      });
     });
   });
 

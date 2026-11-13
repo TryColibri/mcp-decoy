@@ -164,8 +164,8 @@ the following fields:
   decide when to call the tool.
 - **Input schema**: a valid JSON Schema that describes the arguments, with
   `"type": "object"`. MCP Decoy doesn't validate call arguments against it.
-- **Annotations**: the `readOnlyHint`, `destructiveHint`, and `openWorldHint`
-  checkboxes. Clients receive them in `tools/list`.
+- **Annotations**: the `readOnlyHint`, `destructiveHint`, `idempotentHint`, and
+  `openWorldHint` checkboxes. Clients receive them in `tools/list`.
 - **Response template**: what the tool returns. See
   [Write a response template](#write-a-response-template).
 
@@ -346,6 +346,40 @@ The client authenticates with `client_secret_post`. Send `client_id` and
 `client_secret` in the body of the token request. MCP Decoy doesn't support
 `Authorization: Basic`.
 
+### Choose which scopes clients may request
+
+MCP Decoy advertises one scope, `mcp`, in `scopes_supported` of both metadata
+documents. The **Scope policy** in the **OAuth** section of the **Connections**
+tab decides which scopes a client may request at `/authorize`:
+
+- **Lenient** (the default): a client may request `mcp`, plus any scope it
+  registered with. A client that registers without `scope`, which
+  [RFC 7591](https://www.rfc-editor.org/rfc/rfc7591) allows, can still request
+  `mcp`.
+- **Strict**: a client may request only the scopes it registered with. A client
+  that registers without `scope` and then requests `mcp` is redirected back with
+  `error=invalid_scope`. Use it to test how your client handles a refused scope.
+
+Under both policies, a client that requests a scope it isn't allowed gets
+`error=invalid_scope`, and a request with no `scope` asks for no scopes.
+
+The pre-registered client has the scopes in the **Pre-registered client scopes**
+field, `mcp` by default. Leave the field empty to give it none, which under the
+strict policy refuses its requests for `mcp`.
+
+The policy applies per server. A client registered through Dynamic Client
+Registration is shared by every server on the instance, so the same client can
+be refused by a strict server and accepted by a lenient one.
+
+To set the scope settings through the API, send them in `auth`. Fields of `auth`
+that you leave out keep their value.
+
+```sh
+curl -X PATCH http://localhost:6281/api/v1/servers/weather \
+  -H 'Content-Type: application/json' \
+  -d '{"auth": {"mode": "oauth", "scopePolicy": "strict", "clientScopes": ["mcp"]}}'
+```
+
 ### Revoke tokens
 
 The **Tokens** section of the **Connections** tab lists every live access and
@@ -358,8 +392,8 @@ After you revoke an access token, the client's next request gets a `401`, and
 the client must authorize again. If you revoke only a refresh token, the access
 token stays valid, and the refresh request fails.
 
-Changing the redirect URIs, turning OAuth on, and turning OAuth off also revoke
-every token and close the live sessions of the server.
+Changing the redirect URIs or the scope settings, turning OAuth on, and turning
+OAuth off also revoke every token and close the live sessions of the server.
 
 ### Use HTTPS or a public URL
 

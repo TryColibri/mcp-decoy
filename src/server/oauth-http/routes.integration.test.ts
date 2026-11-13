@@ -356,6 +356,282 @@ describe('OAuth routes', () => {
     });
   });
 
+  describe('scopes', () => {
+    type AuthorizeURLParams = {
+      clientId: string;
+      redirectUri: string;
+      scope?: string;
+      server?: string;
+    };
+
+    const authorizeURLFor = ({
+      clientId,
+      redirectUri,
+      scope,
+      server = 'weather',
+    }: AuthorizeURLParams) => {
+      const url = new URL('http://localhost:6280/authorize');
+      url.searchParams.set('client_id', clientId);
+      url.searchParams.set('redirect_uri', redirectUri);
+      url.searchParams.set('response_type', 'code');
+      url.searchParams.set('code_challenge', pkcePair().challenge);
+      url.searchParams.set('code_challenge_method', 'S256');
+      url.searchParams.set('resource', `http://localhost:6280/s/${server}/mcp`);
+      url.searchParams.set('state', 'xyz');
+      if (scope !== undefined) {
+        url.searchParams.set('scope', scope);
+      }
+      return url.toString();
+    };
+
+    const preregisteredClientId = () =>
+      harness.services.servers.findConfig('weather')!.auth!.clientId;
+
+    const errorOf = (response: Response) => {
+      expect(response.status).toBe(302);
+      const location = new URL(response.headers.get('location')!);
+      return location.searchParams.get('error');
+    };
+
+    const setScopeSettings = (
+      scopePolicy: 'lenient' | 'strict',
+      clientScopes?: string[],
+    ) =>
+      harness.services.servers.update('weather', {
+        auth: {
+          mode: 'oauth',
+          scopePolicy,
+          ...(clientScopes === undefined ? {} : { clientScopes }),
+        },
+      });
+
+    it('advertises mcp in both metadata documents', async () => {
+      const resource = await harness.app.request(
+        'http://localhost:6280/.well-known/oauth-protected-resource/s/weather/mcp',
+      );
+      const server = await harness.app.request(
+        'http://localhost:6280/.well-known/oauth-authorization-server',
+      );
+
+      expect(await resource.json()).toMatchObject({
+        scopes_supported: ['mcp'],
+      });
+      expect(await server.json()).toMatchObject({ scopes_supported: ['mcp'] });
+    });
+
+    it('shows consent for scope=mcp to a DCR client that registered no scope', async () => {
+      const client = await registerDCRClient(
+        harness.app,
+        'http://localhost:9999/cb',
+      );
+
+      const response = await harness.app.request(
+        authorizeURLFor({
+          clientId: client.client_id,
+          redirectUri: 'http://localhost:9999/cb',
+          scope: 'mcp',
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.text()).toContain('mcp');
+    });
+
+    it('shows consent for scope=mcp to the pre-registered client', async () => {
+      const response = await harness.app.request(
+        authorizeURLFor({
+          clientId: preregisteredClientId(),
+          redirectUri: 'http://localhost:9999/preregistered-cb',
+          scope: 'mcp',
+        }),
+      );
+
+      expect(response.status).toBe(200);
+    });
+
+    it('grants the requested scope in the token', async () => {
+      const client = await registerDCRClient(
+        harness.app,
+        'http://localhost:9999/cb',
+      );
+      const { verifier, challenge } = pkcePair();
+      const url = new URL(
+        authorizeURLFor({
+          clientId: client.client_id,
+          redirectUri: 'http://localhost:9999/cb',
+          scope: 'mcp',
+        }),
+      );
+      url.searchParams.set('code_challenge', challenge);
+
+      const consentResponse = await approveOrDeny(
+        harness.app,
+        await harness.app.request(url.toString()),
+        'approve',
+      );
+      const code = new URL(
+        consentResponse.headers.get('location')!,
+      ).searchParams.get('code');
+      const tokenResponse = await harness.app.request(
+        'http://localhost:6280/token',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            grant_type: 'authorization_code',
+            code: code!,
+            redirect_uri: 'http://localhost:9999/cb',
+            client_id: client.client_id,
+            code_verifier: verifier,
+            resource: 'http://localhost:6280/s/weather/mcp',
+          }).toString(),
+        },
+      );
+
+      expect(await tokenResponse.json()).toMatchObject({ scope: 'mcp' });
+    });
+
+    it('refuses a scope the server does not advertise and the client did not register', async () => {
+      const client = await registerDCRClient(
+        harness.app,
+        'http://localhost:9999/cb',
+      );
+
+      const response = await harness.app.request(
+        authorizeURLFor({
+          clientId: client.client_id,
+          redirectUri: 'http://localhost:9999/cb',
+          scope: 'admin',
+        }),
+      );
+
+      expect(errorOf(response)).toBe('invalid_scope');
+    });
+
+    it('refuses scope=mcp to a DCR client that registered no scope under the strict policy', async () => {
+      await setScopeSettings('strict');
+      const client = await registerDCRClient(
+        harness.app,
+        'http://localhost:9999/cb',
+      );
+
+      const response = await harness.app.request(
+        authorizeURLFor({
+          clientId: client.client_id,
+          redirectUri: 'http://localhost:9999/cb',
+          scope: 'mcp',
+        }),
+      );
+
+      expect(errorOf(response)).toBe('invalid_scope');
+      expect(
+        new URL(response.headers.get('location')!).searchParams.get('state'),
+      ).toBe('xyz');
+    });
+
+    it('shows consent under the strict policy to a DCR client that registered the scope', async () => {
+      await setScopeSettings('strict');
+      const registration = await harness.app.request(
+        'http://localhost:6280/register',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            redirect_uris: ['http://localhost:9999/cb'],
+            token_endpoint_auth_method: 'none',
+            scope: 'mcp',
+          }),
+        },
+      );
+      const client = (await registration.json()) as { client_id: string };
+
+      const response = await harness.app.request(
+        authorizeURLFor({
+          clientId: client.client_id,
+          redirectUri: 'http://localhost:9999/cb',
+          scope: 'mcp',
+        }),
+      );
+
+      expect(response.status).toBe(200);
+    });
+
+    it('gives the pre-registered client the scopes the operator set', async () => {
+      await setScopeSettings('strict', ['mcp', 'admin']);
+
+      const response = await harness.app.request(
+        authorizeURLFor({
+          clientId: preregisteredClientId(),
+          redirectUri: 'http://localhost:9999/preregistered-cb',
+          scope: 'mcp admin',
+        }),
+      );
+
+      expect(response.status).toBe(200);
+    });
+
+    it('refuses scope=mcp to a pre-registered client with no scopes under the strict policy', async () => {
+      await setScopeSettings('strict', []);
+
+      const response = await harness.app.request(
+        authorizeURLFor({
+          clientId: preregisteredClientId(),
+          redirectUri: 'http://localhost:9999/preregistered-cb',
+          scope: 'mcp',
+        }),
+      );
+
+      expect(errorOf(response)).toBe('invalid_scope');
+    });
+
+    it('applies the policy of the server the client asks access to', async () => {
+      await harness.services.servers.create({
+        name: 'forecast',
+        auth: { mode: 'oauth', scopePolicy: 'strict' },
+      });
+      const client = await registerDCRClient(
+        harness.app,
+        'http://localhost:9999/cb',
+      );
+      const request = (server: string) =>
+        harness.app.request(
+          authorizeURLFor({
+            clientId: client.client_id,
+            redirectUri: 'http://localhost:9999/cb',
+            scope: 'mcp',
+            server,
+          }),
+        );
+
+      expect(errorOf(await request('forecast'))).toBe('invalid_scope');
+      expect((await request('weather')).status).toBe(200);
+    });
+  });
+
+  describe('the pre-registered client with no redirect URIs', () => {
+    it('blames the redirect URI, not the client ID', async () => {
+      await harness.services.servers.update('weather', {
+        auth: { mode: 'oauth', redirectUris: [] },
+      });
+      const clientId =
+        harness.services.servers.findConfig('weather')!.auth!.clientId;
+      const url = new URL('http://localhost:6280/authorize');
+      url.searchParams.set('client_id', clientId);
+      url.searchParams.set('redirect_uri', 'http://localhost:9999/cb');
+      url.searchParams.set('response_type', 'code');
+      url.searchParams.set('code_challenge', pkcePair().challenge);
+      url.searchParams.set('code_challenge_method', 'S256');
+
+      const response = await harness.app.request(url.toString());
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({
+        error: 'invalid_request',
+        error_description: 'Unregistered redirect_uri',
+      });
+    });
+  });
+
   describe('cross-server token isolation', () => {
     it('rejects a token issued for one server on another', async () => {
       await harness.services.servers.create({ name: 'forecast' });

@@ -2,6 +2,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 
 import {
   InvalidGrantError,
+  InvalidScopeError,
   InvalidTargetError,
   InvalidTokenError,
 } from '@modelcontextprotocol/sdk/server/auth/errors.js';
@@ -12,7 +13,7 @@ import {
 } from '@modelcontextprotocol/sdk/shared/auth.js';
 
 import { type MCPDecoyEvents, type EventBus } from '@/server/events';
-import { type ServerConfig } from '@/shared/api';
+import { type ServerConfig, SUPPORTED_SCOPES } from '@/shared/api';
 
 /** How long a consent request stays open before it must be restarted. */
 const CONSENT_TTL_MS = 5 * 60 * 1000;
@@ -105,8 +106,10 @@ export type OAuthStore = {
   ): OAuthClientInformationFull;
   /**
    * Starts a consent flow for `client`, validating that `params.resource`
-   * names an existing OAuth-protected server.
+   * names an existing OAuth-protected server and that the server's scope
+   * policy lets the client request `params.scopes`.
    * @throws {InvalidTargetError} When the resource is missing or unknown.
+   * @throws {InvalidScopeError} When the client may not request one of the scopes.
    */
   beginConsent(
     client: OAuthClientInformationFull,
@@ -331,15 +334,17 @@ export function createOAuthStore({
     if (dcrClient !== undefined) {
       return dcrClient;
     }
+    // With no redirect URIs the client still resolves, so `/authorize`
+    // blames the redirect URI rather than the client ID.
     const server = listServers().find(
       (candidate) =>
         candidate.auth?.mode === 'oauth' &&
-        candidate.auth.clientId === clientId &&
-        candidate.auth.redirectUris.length > 0,
+        candidate.auth.clientId === clientId,
     );
     if (server === undefined || server.auth === undefined) {
       return undefined;
     }
+    const { clientScopes } = server.auth;
     return {
       client_id: server.auth.clientId,
       client_secret: server.auth.clientSecret,
@@ -348,7 +353,31 @@ export function createOAuthStore({
       grant_types: ['authorization_code', 'refresh_token'],
       response_types: ['code'],
       client_name: `${server.name} (pre-registered)`,
+      ...(clientScopes.length === 0 ? {} : { scope: clientScopes.join(' ') }),
     };
+  };
+
+  /**
+   * Throws when the scope policy of `config` doesn't let the client request
+   * every scope in `requested`.
+   */
+  const checkScopes = (
+    clientId: string,
+    config: ServerConfig,
+    requested: readonly string[],
+  ) => {
+    const registered = getClient(clientId)?.scope?.split(' ') ?? [];
+    const allowed = new Set(
+      config.auth?.scopePolicy === 'strict'
+        ? registered
+        : [...registered, ...SUPPORTED_SCOPES],
+    );
+    const refused = requested.find((scope) => !allowed.has(scope));
+    if (refused !== undefined) {
+      throw new InvalidScopeError(
+        `Client was not registered with scope ${refused}`,
+      );
+    }
   };
 
   return {
@@ -379,6 +408,7 @@ export function createOAuthStore({
           `Unknown or unprotected resource "${params.resource.href}"`,
         );
       }
+      checkScopes(client.client_id, config, params.scopes ?? []);
       sweepConsents();
       const requestId = randomToken();
       consents.set(requestId, {

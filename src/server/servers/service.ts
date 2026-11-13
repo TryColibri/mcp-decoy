@@ -8,6 +8,7 @@ import {
   type ServerAuthInput,
   type ServerConfig,
   type ServerSummary,
+  SUPPORTED_SCOPES,
   type UpdateServerRequest,
 } from '@/shared/api';
 
@@ -127,13 +128,20 @@ export function createServersService({
       return undefined;
     }
     if (current !== undefined) {
-      return { ...current, redirectUris: input.redirectUris ?? [] };
+      return {
+        ...current,
+        redirectUris: input.redirectUris ?? current.redirectUris,
+        clientScopes: input.clientScopes ?? current.clientScopes,
+        scopePolicy: input.scopePolicy ?? current.scopePolicy,
+      };
     }
     return {
       mode: 'oauth',
       clientId: randomSecret(),
       clientSecret: randomSecret(),
       redirectUris: input.redirectUris ?? [],
+      clientScopes: input.clientScopes ?? [...SUPPORTED_SCOPES],
+      scopePolicy: input.scopePolicy ?? 'lenient',
     };
   };
 
