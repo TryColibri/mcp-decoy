@@ -290,6 +290,7 @@ describe('uiApp', () => {
           clientId: expect.any(String),
           clientSecret: expect.any(String),
           redirectUris: ['http://localhost:9999/cb'],
+          clientScopes: ['mcp'],
           tokenCount: 0,
         });
 
@@ -300,6 +301,34 @@ describe('uiApp', () => {
         expect(serverSummarySchema.parse(await toNone.json()).auth).toEqual({
           mode: 'none',
         });
+      });
+
+      it('sets the pre-registered client scopes', async () => {
+        const response = await request('/api/v1/servers/weather', {
+          method: 'PATCH',
+          json: {
+            auth: { mode: 'oauth', clientScopes: ['mcp', 'files:read'] },
+          },
+        });
+
+        expect(response.status).toBe(200);
+        expect(
+          serverSummarySchema.parse(await response.json()).auth,
+        ).toMatchObject({ clientScopes: ['mcp', 'files:read'] });
+      });
+
+      it.each([
+        ['a scope with a space', { clientScopes: ['two words'] }],
+        ['a scope policy, which no longer exists', { scopePolicy: 'strict' }],
+      ])('answers 422 for %s', async (_, fields) => {
+        await expectProblem(
+          await request('/api/v1/servers/weather', {
+            method: 'PATCH',
+            json: { auth: { mode: 'oauth', ...fields } },
+          }),
+          422,
+          'validation',
+        );
       });
 
       it('answers 422 for a redirect URI that is not an absolute URL', async () => {
@@ -580,6 +609,25 @@ describe('uiApp', () => {
       expect(problem.errors).toEqual([
         expect.objectContaining({ path: 'inputSchema.type' }),
       ]);
+    });
+
+    it('accepts every MCP tool hint', async () => {
+      const annotations = {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      };
+
+      const created = await request('/api/v1/servers/weather/tools', {
+        method: 'POST',
+        json: { name: 'get_forecast', annotations },
+      });
+
+      expect(created.status).toBe(201);
+      expect(toolSchema.parse(await created.json()).annotations).toEqual(
+        annotations,
+      );
     });
 
     it('answers 409 when renaming onto an existing tool', async () => {

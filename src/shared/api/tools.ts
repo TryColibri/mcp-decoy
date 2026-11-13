@@ -30,6 +30,8 @@ export type ToolAnnotations = {
   readOnlyHint?: boolean;
   /** The tool may perform destructive updates. */
   destructiveHint?: boolean;
+  /** Calling the tool again with the same arguments has no additional effect. */
+  idempotentHint?: boolean;
   /** The tool interacts with an open world of external entities. */
   openWorldHint?: boolean;
 };
@@ -44,6 +46,12 @@ export const toolAnnotationsSchema: z.ZodType<ToolAnnotations> = z.strictObject(
       .boolean()
       .optional()
       .describe('The tool may perform destructive updates.'),
+    idempotentHint: z
+      .boolean()
+      .optional()
+      .describe(
+        'Calling the tool again with the same arguments has no additional effect.',
+      ),
     openWorldHint: z
       .boolean()
       .optional()

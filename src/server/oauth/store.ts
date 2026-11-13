@@ -331,15 +331,17 @@ export function createOAuthStore({
     if (dcrClient !== undefined) {
       return dcrClient;
     }
+    // With no redirect URIs the client still resolves, so `/authorize`
+    // blames the redirect URI rather than the client ID.
     const server = listServers().find(
       (candidate) =>
         candidate.auth?.mode === 'oauth' &&
-        candidate.auth.clientId === clientId &&
-        candidate.auth.redirectUris.length > 0,
+        candidate.auth.clientId === clientId,
     );
     if (server === undefined || server.auth === undefined) {
       return undefined;
     }
+    const { clientScopes } = server.auth;
     return {
       client_id: server.auth.clientId,
       client_secret: server.auth.clientSecret,
@@ -348,6 +350,7 @@ export function createOAuthStore({
       grant_types: ['authorization_code', 'refresh_token'],
       response_types: ['code'],
       client_name: `${server.name} (pre-registered)`,
+      ...(clientScopes.length === 0 ? {} : { scope: clientScopes.join(' ') }),
     };
   };
 

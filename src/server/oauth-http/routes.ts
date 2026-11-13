@@ -3,7 +3,7 @@ import { buildOAuthProtectedResourceMetadata } from '@modelcontextprotocol/serve
 import { Hono } from 'hono';
 
 import { type OAuthStore } from '@/server/oauth';
-import { type ServerConfig } from '@/shared/api';
+import { type ServerConfig, SUPPORTED_SCOPES } from '@/shared/api';
 
 import { createDecoyProvider } from './provider';
 import { publicOriginOf } from './public-origin';
@@ -35,7 +35,7 @@ export function createOAuthRoutes({ store, findServer }: OAuthRoutesDeps) {
       router = mcpAuthRouter({
         provider,
         issuerUrl: origin,
-        scopesSupported: ['mcp'],
+        scopesSupported: [...SUPPORTED_SCOPES],
         authorizationOptions: { rateLimit: false },
         tokenOptions: { rateLimit: false },
         clientRegistrationOptions: {
@@ -59,12 +59,12 @@ export function createOAuthRoutes({ store, findServer }: OAuthRoutesDeps) {
       const origin = publicOriginOf(c.req.raw);
       const oauthMetadata = createOAuthMetadata({
         issuerUrl: origin,
-        scopesSupported: ['mcp'],
+        scopesSupported: [...SUPPORTED_SCOPES],
       });
       const metadata = buildOAuthProtectedResourceMetadata({
         oauthMetadata,
         resourceServerUrl: new URL(`${origin}/s/${name}/mcp`),
-        scopesSupported: ['mcp'],
+        scopesSupported: [...SUPPORTED_SCOPES],
       });
       return c.json(metadata);
     })

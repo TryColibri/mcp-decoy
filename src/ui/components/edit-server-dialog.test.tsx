@@ -159,6 +159,7 @@ describe('EditServerDialog', () => {
         clientId: 'abc',
         clientSecret: 'def',
         redirectUris: ['http://localhost:9999/cb'],
+        clientScopes: ['mcp'],
         tokenCount: 0,
       },
     };

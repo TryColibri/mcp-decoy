@@ -66,9 +66,11 @@ each call, with `args` as the only variable. The result must be a valid
 - OAuth: `PATCH /servers/{s}` with `{"auth":{"mode":"oauth"}}`. The consent page
   is a plain form: `GET` the authorize URL, then `POST /consent/{id}` with
   `decision=approve` on the MCP port, and follow the `302` `Location`. Revoke
-  with `DELETE .../oauth/tokens/{id}` (list them first) to test refresh. A
-  client may only request scopes it registered with, so `scope=mcp` from a
-  client that didn't register it fails with `invalid_scope`.
+  with `DELETE .../oauth/tokens/{id}` (list them first) to test refresh. Any
+  client may request `scope=mcp`, even one that registered without `scope`, plus
+  the scopes it registered with. Anything else gets `invalid_scope`.
+  `clientScopes` in `auth` sets the pre-registered client's scopes. Omitted
+  `auth` fields keep their value.
 
 ## Working method
 

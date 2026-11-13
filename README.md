@@ -164,8 +164,8 @@ the following fields:
   decide when to call the tool.
 - **Input schema**: a valid JSON Schema that describes the arguments, with
   `"type": "object"`. MCP Decoy doesn't validate call arguments against it.
-- **Annotations**: the `readOnlyHint`, `destructiveHint`, and `openWorldHint`
-  checkboxes. Clients receive them in `tools/list`.
+- **Annotations**: the `readOnlyHint`, `destructiveHint`, `idempotentHint`, and
+  `openWorldHint` checkboxes. Clients receive them in `tools/list`.
 - **Response template**: what the tool returns. See
   [Write a response template](#write-a-response-template).
 
@@ -346,6 +346,26 @@ The client authenticates with `client_secret_post`. Send `client_id` and
 `client_secret` in the body of the token request. MCP Decoy doesn't support
 `Authorization: Basic`.
 
+### Scopes
+
+MCP Decoy advertises one scope, `mcp`, in `scopes_supported` of both metadata
+documents. Any client may request `mcp`, including a client that registers
+without `scope`, which [RFC 7591](https://www.rfc-editor.org/rfc/rfc7591)
+allows. A client may also request the scopes it registered with. Any other scope
+gets `error=invalid_scope`.
+
+The pre-registered client is registered with the scopes in the **Pre-registered
+client scopes** field of the **OAuth** section, `mcp` by default. To give it
+more, list them separated by spaces and click **Save scopes**. Through the API,
+send `clientScopes` in `auth`. Fields of `auth` that you leave out keep their
+value.
+
+```sh
+curl -X PATCH http://localhost:6281/api/v1/servers/weather \
+  -H 'Content-Type: application/json' \
+  -d '{"auth": {"mode": "oauth", "clientScopes": ["mcp", "files:read"]}}'
+```
+
 ### Revoke tokens
 
 The **Tokens** section of the **Connections** tab lists every live access and
@@ -358,8 +378,8 @@ After you revoke an access token, the client's next request gets a `401`, and
 the client must authorize again. If you revoke only a refresh token, the access
 token stays valid, and the refresh request fails.
 
-Changing the redirect URIs, turning OAuth on, and turning OAuth off also revoke
-every token and close the live sessions of the server.
+Changing the redirect URIs or the client scopes, turning OAuth on, and turning
+OAuth off also revoke every token and close the live sessions of the server.
 
 ### Use HTTPS or a public URL
 

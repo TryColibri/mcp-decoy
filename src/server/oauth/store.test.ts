@@ -24,6 +24,7 @@ const OAUTH_SERVER: ServerConfig = {
     clientId: 'preregistered-client',
     clientSecret: 'preregistered-secret',
     redirectUris: ['http://localhost/cb'],
+    clientScopes: ['mcp'],
   },
   createdAt: '2026-10-21T12:00:00.000Z',
 };
@@ -102,13 +103,36 @@ describe('OAuthStore', () => {
       });
     });
 
-    it('does not offer a pre-registered client with no redirect URIs', () => {
+    it('registers the pre-registered client with its scopes', () => {
+      servers.set(OAUTH_SERVER.name, {
+        ...OAUTH_SERVER,
+        auth: { ...OAUTH_SERVER.auth!, clientScopes: ['mcp', 'admin'] },
+      });
+
+      expect(store.getClient('preregistered-client')?.scope).toBe('mcp admin');
+    });
+
+    it('leaves out scope for a pre-registered client with no scopes', () => {
+      servers.set(OAUTH_SERVER.name, {
+        ...OAUTH_SERVER,
+        auth: { ...OAUTH_SERVER.auth!, clientScopes: [] },
+      });
+
+      expect(store.getClient('preregistered-client')).not.toHaveProperty(
+        'scope',
+      );
+    });
+
+    it('resolves a pre-registered client with no redirect URIs', () => {
       servers.set(OAUTH_SERVER.name, {
         ...OAUTH_SERVER,
         auth: { ...OAUTH_SERVER.auth!, redirectUris: [] },
       });
 
-      expect(store.getClient('preregistered-client')).toBeUndefined();
+      expect(store.getClient('preregistered-client')).toMatchObject({
+        client_id: 'preregistered-client',
+        redirect_uris: [],
+      });
     });
 
     it('returns undefined for an unknown client', () => {

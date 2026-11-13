@@ -208,6 +208,7 @@ describe('ServersService', () => {
         clientId: 'id-1',
         clientSecret: 'secret-1',
         redirectUris: ['http://localhost/cb'],
+        clientScopes: ['mcp'],
         tokenCount: 0,
       });
       expect(mockEvents.emit).toHaveBeenCalledExactlyOnceWith(
@@ -232,8 +233,66 @@ describe('ServersService', () => {
         clientId: 'id-1',
         clientSecret: 'secret-1',
         redirectUris: ['http://localhost/other'],
+        clientScopes: ['mcp'],
         tokenCount: 0,
       });
+      expect(mockEvents.emit).toHaveBeenCalledExactlyOnceWith(
+        'serverAuthChanged',
+        { server: 'weather' },
+      );
+    });
+
+    it('sets the client scopes when switching to oauth', async () => {
+      await service.create({ name: 'weather' });
+
+      const updated = await service.update('weather', {
+        auth: { mode: 'oauth', clientScopes: [] },
+      });
+
+      expect(updated.auth).toMatchObject({ clientScopes: [] });
+    });
+
+    it('keeps the redirect URIs when an update leaves them out', async () => {
+      await service.create({ name: 'weather' });
+      await service.update('weather', {
+        auth: { mode: 'oauth', redirectUris: ['http://localhost/cb'] },
+      });
+
+      const updated = await service.update('weather', {
+        auth: { mode: 'oauth', clientScopes: ['admin'] },
+      });
+
+      expect(updated.auth).toMatchObject({
+        redirectUris: ['http://localhost/cb'],
+        clientScopes: ['admin'],
+      });
+    });
+
+    it('keeps the client scopes when an update leaves them out', async () => {
+      await service.create({ name: 'weather' });
+      await service.update('weather', {
+        auth: { mode: 'oauth', clientScopes: ['admin'] },
+      });
+
+      const updated = await service.update('weather', {
+        auth: { mode: 'oauth', redirectUris: ['http://localhost/cb'] },
+      });
+
+      expect(updated.auth).toMatchObject({
+        redirectUris: ['http://localhost/cb'],
+        clientScopes: ['admin'],
+      });
+    });
+
+    it('announces a change of client scopes', async () => {
+      await service.create({ name: 'weather' });
+      await service.update('weather', { auth: { mode: 'oauth' } });
+      mockEvents.emit.mockClear();
+
+      await service.update('weather', {
+        auth: { mode: 'oauth', clientScopes: ['admin'] },
+      });
+
       expect(mockEvents.emit).toHaveBeenCalledExactlyOnceWith(
         'serverAuthChanged',
         { server: 'weather' },

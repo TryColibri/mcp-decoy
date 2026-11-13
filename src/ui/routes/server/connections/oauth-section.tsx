@@ -3,6 +3,7 @@ import { CopyButton } from '@/ui/components/copy-button';
 
 import { OAuthSwitch } from './oauth-switch';
 import { RedirectURIsEditor } from './redirect-uris-editor';
+import { ScopesEditor } from './scopes-editor';
 import { Section } from './section';
 
 /** Props of `OAuthSection`. */
@@ -13,8 +14,9 @@ export type OAuthSectionProps = {
 
 /**
  * A server's OAuth settings: the pre-registered client's credentials and the
- * protected-resource metadata URL (read-only), and its redirect URIs
- * (editable here). A switch in the heading turns OAuth on or off.
+ * protected-resource metadata URL (read-only), and its redirect URIs and
+ * scopes (editable here). A switch in the heading turns
+ * OAuth on or off.
  */
 export function OAuthSection({ server }: OAuthSectionProps) {
   const { auth } = server;
@@ -30,7 +32,7 @@ export function OAuthSection({ server }: OAuthSectionProps) {
     );
   }
 
-  const { clientId, clientSecret, redirectUris } = auth;
+  const { clientId, clientSecret, redirectUris, clientScopes } = auth;
 
   return (
     <Section title="OAuth" actions={<OAuthSwitch server={server} />}>
@@ -51,6 +53,11 @@ export function OAuthSection({ server }: OAuthSectionProps) {
         key={redirectUris.join('\n')}
         server={server.name}
         uris={redirectUris}
+      />
+      <ScopesEditor
+        key={clientScopes.join(' ')}
+        server={server.name}
+        clientScopes={clientScopes}
       />
     </Section>
   );

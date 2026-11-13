@@ -67,6 +67,10 @@ const ANNOTATIONS: Array<{ key: keyof ToolAnnotations; tip: string }> = [
     tip: 'The tool may delete or overwrite data rather than only add to it. Only meaningful when not read-only.',
   },
   {
+    key: 'idempotentHint',
+    tip: 'Calling the tool again with the same arguments has no additional effect. Only meaningful when not read-only.',
+  },
+  {
     key: 'openWorldHint',
     tip: 'The tool reaches outside a closed domain, for example the web or other external services.',
   },

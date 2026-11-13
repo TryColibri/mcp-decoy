@@ -76,6 +76,37 @@ describe('servers file', () => {
       );
     });
 
+    it('defaults the client scopes of an auth block written before they existed', async () => {
+      const { auth: _, ...withoutAuth } = SERVER;
+      await writeFile(
+        path,
+        JSON.stringify({
+          version: 1,
+          servers: [
+            {
+              ...withoutAuth,
+              auth: {
+                mode: 'oauth',
+                clientId: 'id',
+                clientSecret: 'secret',
+                redirectUris: [],
+              },
+            },
+          ],
+        }),
+      );
+
+      const [server] = await loadServersFile(path);
+
+      expect(server.auth).toEqual({
+        mode: 'oauth',
+        clientId: 'id',
+        clientSecret: 'secret',
+        redirectUris: [],
+        clientScopes: ['mcp'],
+      });
+    });
+
     it('rejects duplicate server names', async () => {
       await writeFile(
         path,
