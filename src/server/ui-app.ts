@@ -5,6 +5,7 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono, type MiddlewareHandler } from 'hono';
 
 import { type ApiV1, problemResponse } from '@/server/api';
+import { renderLLMsText, SKILL, SKILL_FILE } from '@/server/skill';
 import { PROBLEM_TYPES } from '@/shared/api';
 
 /** Origin of the Vite dev server, allowed by the CSRF check in dev mode. */
@@ -29,7 +30,8 @@ const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const BODY_METHODS = new Set(['POST', 'PUT', 'PATCH']);
 
 /**
- * Creates the UI listener's app: the REST API under `/api/v1`, then the
+ * Creates the UI listener's app: the REST API under `/api/v1`, the agent
+ * skill at `/SKILL.md` with an `/llms.txt` index that points to it and an `/llms-full.txt` copy, then the
  * built SPA with an `index.html` fallback for client-side routes.
  *
  * @param options - API, port, static root and dev flag.
@@ -59,6 +61,12 @@ export function createUIApp({ api, port, staticRoot, dev }: UIAppOptions) {
     }),
   );
 
+  app.get(`/${SKILL_FILE}`, (c) => markdown(c.text(SKILL)));
+  app.get('/llms-full.txt', (c) => markdown(c.text(SKILL)));
+  app.get('/llms.txt', (c) =>
+    markdown(c.text(renderLLMsText(new URL(c.req.url).origin))),
+  );
+
   if (staticRoot !== null) {
     app.use(
       '/assets/*',
@@ -79,6 +87,12 @@ export function createUIApp({ api, port, staticRoot, dev }: UIAppOptions) {
   }
 
   return app;
+}
+
+/** Marks a text response as UTF-8 Markdown, which `c.text` would label `text/plain`. */
+function markdown(response: Response): Response {
+  response.headers.set('Content-Type', 'text/markdown; charset=UTF-8');
+  return response;
 }
 
 /** Rejects requests whose `Host` isn't the UI listener itself (DNS rebinding). */

@@ -569,6 +569,19 @@ prints the skill to standard output.
 The skill uses the [REST API](#rest-api), so it works with any instance of MCP
 Decoy that your agent can reach on the API port.
 
+A running instance also serves the skill itself, so you can point an agent at it
+without installing anything. The instance always serves the skill that matches
+its own version:
+
+- `http://localhost:6281/SKILL.md` is the skill, as Markdown.
+- `http://localhost:6281/llms.txt` is a short [llms.txt](https://llmstxt.org)
+  index that links to the skill and to the API root.
+- `http://localhost:6281/llms-full.txt` is a copy of the skill, for tools that
+  look for `llms-full.txt`.
+
+Both are served on the UI port, so like the API, they only answer to `localhost`
+and `127.0.0.1`.
+
 ## Develop MCP Decoy
 
 MCP Decoy needs Node.js 24 or later and [pnpm](https://pnpm.io/). Run the

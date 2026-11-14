@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createMCPApp } from '@/server/mcp-app';
 import { createServices, type Services } from '@/server/services';
+import { SKILL } from '@/server/skill';
 import { createUIApp } from '@/server/ui-app';
 import {
   type InstanceInfo,
@@ -118,6 +119,73 @@ describe('uiApp', () => {
 
       expect(response.status).toBe(200);
       expect(instanceInfoSchema.parse(await response.json())).toEqual(INSTANCE);
+    });
+  });
+
+  describe('GET /SKILL.md', () => {
+    it('serves the agent skill as Markdown', async () => {
+      const response = await request('/SKILL.md');
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-type')).toBe(
+        'text/markdown; charset=UTF-8',
+      );
+      await expect(response.text()).resolves.toBe(SKILL);
+    });
+
+    it('is also served when the SPA is', async () => {
+      const root = await mkdtemp(join(tmpdir(), 'mcp-decoy-ui-'));
+      try {
+        await writeFile(join(root, 'index.html'), '<!doctype html>');
+        app = createUIApp({
+          api: services.api,
+          port: () => PORT,
+          staticRoot: root,
+          dev: false,
+        });
+
+        const response = await request('/SKILL.md');
+
+        await expect(response.text()).resolves.toBe(SKILL);
+      } finally {
+        await rm(root, { recursive: true, force: true });
+      }
+    });
+
+    it('answers a foreign Host with 403', async () => {
+      const response = await request('/SKILL.md', {
+        headers: { host: 'evil.example' },
+      });
+
+      await expectProblem(response, 403, 'forbidden');
+    });
+  });
+
+  describe('GET /llms-full.txt', () => {
+    it('serves the same text as the skill', async () => {
+      const response = await request('/llms-full.txt');
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-type')).toBe(
+        'text/markdown; charset=UTF-8',
+      );
+      await expect(response.text()).resolves.toBe(SKILL);
+    });
+  });
+
+  describe('GET /llms.txt', () => {
+    it('serves an index that links to the skill and the API', async () => {
+      const response = await request('/llms.txt');
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-type')).toBe(
+        'text/markdown; charset=UTF-8',
+      );
+      const text = await response.text();
+      expect(text).toMatch(/^# MCP Decoy\n\n> /);
+      expect(text).toContain(`(${ORIGIN}/SKILL.md)`);
+      expect(text).toContain(`(${ORIGIN}/api/v1)`);
+      expect(text).toContain(`(${ORIGIN}/llms-full.txt)`);
     });
   });
 
