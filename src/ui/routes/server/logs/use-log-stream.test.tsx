@@ -242,10 +242,10 @@ describe('useLogStream', () => {
   let mockFetch: ReturnType<typeof vi.fn<typeof fetch>>;
   let cleared: boolean;
 
-  const render = (query = '') =>
-    renderHook(({ q }) => useLogStream('weather', q), {
+  const render = (query = '', client = '') =>
+    renderHook(({ q, c }) => useLogStream('weather', q, c), {
       wrapper,
-      initialProps: { q: query },
+      initialProps: { q: query, c: client },
     });
 
   const requested = (call: number) =>
@@ -306,6 +306,40 @@ describe('useLogStream', () => {
       expect(lastSource().url).toBe(
         '/api/v1/servers/weather/logs/stream?after=6&q=tools%2Fcall',
       );
+    });
+  });
+
+  it('sends the client to the page and the stream', async () => {
+    const { result } = render('', 'info:demo/1.0.0');
+
+    await waitFor(() => {
+      expect(ids(result.current.entries)).toEqual([6, 5, 4]);
+    });
+    expect(requested(0).searchParams.get('client')).toBe('info:demo/1.0.0');
+    await waitFor(() => {
+      expect(lastSource().url).toBe(
+        '/api/v1/servers/weather/logs/stream?after=6&client=info%3Ademo%2F1.0.0',
+      );
+    });
+  });
+
+  it('starts over when the client changes', async () => {
+    const { result, rerender } = render();
+    await waitFor(() => {
+      expect(ids(result.current.entries)).toEqual([6, 5, 4]);
+    });
+
+    rerender({ q: '', c: 'abc' });
+
+    await waitFor(() => {
+      expect(
+        mockFetch.mock.calls.some(
+          ([input]) =>
+            new URL(urlOf(input), 'http://localhost').searchParams.get(
+              'client',
+            ) === 'abc',
+        ),
+      ).toBe(true);
     });
   });
 
@@ -553,7 +587,7 @@ describe('useLogStream', () => {
     });
     const first = lastSource();
 
-    rerender({ q: 'tools/call' });
+    rerender({ q: 'tools/call', c: '' });
 
     await waitFor(() => {
       expect(ids(result.current.entries)).toEqual([5, 2]);

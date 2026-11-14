@@ -3,7 +3,14 @@ import { RadioGroup } from '@base-ui/react/radio-group';
 import { type ComponentProps, useId } from 'react';
 import { twMerge } from 'tailwind-merge';
 
-import { type ServerAuthInput, serverNameSchema } from '@/shared/api';
+import {
+  type CacheScope,
+  DEFAULT_PROTOCOL,
+  type ServerAuthInput,
+  type ServerEras,
+  type ServerProtocolInput,
+  serverNameSchema,
+} from '@/shared/api';
 import { CopyButton } from '@/ui/components/copy-button';
 import { tw } from '@/ui/tw';
 
@@ -21,7 +28,66 @@ export type ServerFormValues = {
   instructions: string;
   /** Authentication mode. */
   authMode: 'none' | 'oauth';
+  /** Protocol generations the server accepts. */
+  eras: ServerEras;
+  /** Cache lifetime of 2026-07-28 results in milliseconds, as typed. */
+  ttlMs: string;
+  /** Who may cache 2026-07-28 results. */
+  cacheScope: CacheScope;
 };
+
+/** The protocol fields of a form that has not been touched. */
+export const DEFAULT_PROTOCOL_VALUES: Pick<
+  ServerFormValues,
+  'eras' | 'ttlMs' | 'cacheScope'
+> = {
+  eras: DEFAULT_PROTOCOL.eras,
+  ttlMs: String(DEFAULT_PROTOCOL.cache.ttlMs),
+  cacheScope: DEFAULT_PROTOCOL.cache.scope,
+};
+
+/**
+ * Validates the cache lifetime as the user types it.
+ *
+ * @param ttlMs - The text of the field.
+ * @returns What to tell the user, or `null` when it is a valid number of milliseconds.
+ */
+export function checkTTL(ttlMs: string): string | null {
+  const trimmed = ttlMs.trim();
+  if (!/^\d+$/.test(trimmed) || !Number.isSafeInteger(Number(trimmed))) {
+    return 'Use a whole number of milliseconds, 0 or more.';
+  }
+  return null;
+}
+
+/**
+ * Builds the `protocol` request field from the form, with only what differs
+ * from `from`. `undefined` when nothing does.
+ *
+ * @param values - The form's protocol fields.
+ * @param from - What the server has now, or the defaults for a new server.
+ */
+export function protocolInputOf(
+  {
+    eras,
+    ttlMs,
+    cacheScope,
+  }: Pick<ServerFormValues, 'eras' | 'ttlMs' | 'cacheScope'>,
+  from: Pick<
+    ServerFormValues,
+    'eras' | 'ttlMs' | 'cacheScope'
+  > = DEFAULT_PROTOCOL_VALUES,
+): ServerProtocolInput | undefined {
+  const cache = {
+    ...(Number(ttlMs) === Number(from.ttlMs) ? {} : { ttlMs: Number(ttlMs) }),
+    ...(cacheScope === from.cacheScope ? {} : { scope: cacheScope }),
+  };
+  const protocol: ServerProtocolInput = {
+    ...(eras === from.eras ? {} : { eras }),
+    ...(Object.keys(cache).length === 0 ? {} : { cache }),
+  };
+  return Object.keys(protocol).length === 0 ? undefined : protocol;
+}
 
 /** Result of `checkServerName`. */
 export type ServerNameCheck = {
@@ -110,7 +176,12 @@ export function ServerFields({
     instructionsHint: useId(),
     authNone: useId(),
     authOAuth: useId(),
+    ttlMs: useId(),
+    ttlMsError: useId(),
+    cacheScope: useId(),
   };
+  const ttlError = checkTTL(values.ttlMs);
+  const shownTTLError = ttlError ?? fieldErrors['protocol.cache.ttlMs'] ?? null;
   const slug = values.name === '' ? 'my-server' : values.name;
   const nameInvalid = nameError !== null || fieldErrors.name !== undefined;
   const shownNameError = nameError ?? fieldErrors.name ?? null;
@@ -299,6 +370,115 @@ export function ServerFields({
           </label>
         </RadioGroup>
       </div>
+
+      <fieldset className="m-0 flex flex-col gap-3 border-0 p-0">
+        <legend className="mb-1.5 p-0 text-[13px] font-semibold text-ink-700 dark:text-ink-200">
+          Protocol{' '}
+          <span className="text-xs font-normal text-ink-500 dark:text-ink-400">
+            Which MCP generations this server speaks.
+          </span>
+        </legend>
+        <RadioGroup
+          aria-label="Protocol generations"
+          value={values.eras}
+          onValueChange={(eras: ServerFormValues['eras']) => {
+            onChange({ ...values, eras });
+          }}
+          className="flex flex-col gap-2"
+        >
+          {ERA_OPTIONS.map(({ value, label }) => (
+            <label
+              key={value}
+              className="flex items-center gap-2 text-sm text-ink-900 dark:text-ink-100"
+            >
+              <Radio.Root
+                value={value}
+                className="flex size-4 items-center justify-center rounded-full border border-paper-300 bg-white data-checked:border-ink-900 dark:border-paper-700 dark:bg-paper-900 dark:data-checked:border-ink-100"
+              >
+                <Radio.Indicator className="size-2 rounded-full bg-ink-900 dark:bg-ink-100" />
+              </Radio.Root>
+              {label}
+            </label>
+          ))}
+        </RadioGroup>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor={ids.ttlMs}
+              className="text-[13px] font-semibold text-ink-700 dark:text-ink-200"
+            >
+              ttlMs
+            </label>
+            <input
+              id={ids.ttlMs}
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={1}
+              className={twMerge(
+                control,
+                shownTTLError === null
+                  ? 'border-paper-300 dark:border-paper-700'
+                  : 'border-red-700 dark:border-red-500',
+              )}
+              value={values.ttlMs}
+              onChange={(event) => {
+                onChange({ ...values, ttlMs: event.target.value });
+              }}
+              aria-invalid={shownTTLError !== null}
+              aria-describedby={
+                shownTTLError === null ? undefined : ids.ttlMsError
+              }
+            />
+            {shownTTLError !== null && (
+              <span
+                id={ids.ttlMsError}
+                role="alert"
+                className="text-[13px] text-red-800 dark:text-red-400"
+              >
+                {shownTTLError}
+              </span>
+            )}
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor={ids.cacheScope}
+              className="text-[13px] font-semibold text-ink-700 dark:text-ink-200"
+            >
+              cacheScope
+            </label>
+            <select
+              id={ids.cacheScope}
+              className={twMerge(
+                control,
+                'border-paper-300 dark:border-paper-700',
+              )}
+              value={values.cacheScope}
+              onChange={(event) => {
+                onChange({
+                  ...values,
+                  cacheScope:
+                    event.target.value === 'public' ? 'public' : 'private',
+                });
+              }}
+            >
+              <option value="private">private</option>
+              <option value="public">public</option>
+            </select>
+          </div>
+        </div>
+        <p className="m-0 text-xs text-ink-500 dark:text-ink-400">
+          The cache hint goes on 2026-07-28{' '}
+          <span className="font-mono">tools/list</span> and{' '}
+          <span className="font-mono">server/discover</span> results.
+        </p>
+      </fieldset>
     </div>
   );
 }
+
+const ERA_OPTIONS: ReadonlyArray<{ value: ServerEras; label: string }> = [
+  { value: 'both', label: 'Both generations' },
+  { value: 'legacy', label: '2025-11-25 only (sessions)' },
+  { value: 'modern', label: '2026-07-28 only (stateless)' },
+];

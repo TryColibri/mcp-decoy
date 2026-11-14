@@ -1,4 +1,4 @@
-import { type ServerConfig } from '@/shared/api';
+import { DEFAULT_PROTOCOL, type ServerConfig } from '@/shared/api';
 
 /**
  * The servers a fresh configuration starts with: `echo`, one server with one
@@ -31,6 +31,7 @@ export function createDefaultServers(now: Date): ServerConfig[] {
           updatedAt: timestamp,
         },
       ],
+      protocol: structuredClone(DEFAULT_PROTOCOL),
       createdAt: timestamp,
     },
   ];

@@ -76,7 +76,7 @@ export function ServerLayout() {
         <nav aria-label="Server" className="flex gap-5">
           <Tab to="connections">
             Connections
-            <SessionCount count={server.sessionCount} />
+            <ClientCount count={server.clientCount} />
           </Tab>
           <Tab to="logs">Logs</Tab>
           <Tab to="tools">Tools</Tab>
@@ -110,18 +110,18 @@ function Tab({ to, children }: TabProps) {
   );
 }
 
-type SessionCountProps = {
+type ClientCountProps = {
   count: number;
 };
 
-/** The live-session count in the Connections tab, hidden when there is none. */
-function SessionCount({ count }: SessionCountProps) {
+/** The client count in the Connections tab, hidden when there is none. */
+function ClientCount({ count }: ClientCountProps) {
   if (count === 0) {
     return null;
   }
   return (
     <span className="ml-1.5 rounded-full bg-paper-100 px-1.5 text-xs font-medium text-ink-600 dark:bg-paper-800 dark:text-ink-300">
-      <span className="sr-only">Live sessions: </span>
+      <span className="sr-only">Connected clients: </span>
       {count}
     </span>
   );
@@ -165,7 +165,7 @@ function DeleteServerButton({ name }: DeleteServerButtonProps) {
             Delete “{name}”?
           </AlertDialog.Title>
           <AlertDialog.Description className="m-0 text-sm/relaxed text-ink-600 dark:text-ink-300">
-            Its tools are deleted and its live sessions are closed. Clients get
+            Its tools are deleted and its clients are disconnected. Clients get
             404 on their next request. This can’t be undone.
           </AlertDialog.Description>
           {error !== null && (

@@ -29,7 +29,7 @@ client.
 
 ## API in one screen
 
-Resources: `/servers`, `/servers/{s}/tools`, `/servers/{s}/sessions`,
+Resources: `/servers`, `/servers/{s}/tools`, `/servers/{s}/clients`,
 `/servers/{s}/logs`, `/servers/{s}/oauth/tokens`. Standard REST verbs. `POST`
 and `PATCH` need `Content-Type: application/json`. Error bodies list every bad
 field in `errors[]`, so trust them and fix what they say.
@@ -52,11 +52,25 @@ each call, with `args` as the only variable. The result must be a valid
 - **New tools are drafts** and clients can't see them. Send `"published": true`.
 - Publishing, editing, renaming or deleting a published tool sends
   `notifications/tools/list_changed`. It reaches the client only over a
-  `GET /mcp` event stream the client opened. In the log, `carriedBy: null` on
+  `GET /mcp` event stream the client opened (2025-11-25), or a
+  `subscriptions/listen` stream (2026-07-28). In the log, `carriedBy: null` on
   that notification means it was never delivered, so the client has no stream.
 - Decoy never validates call arguments against `inputSchema`.
-- `DELETE /servers/{s}/sessions/{id}` makes the client's next request fail with
-  `404` and `-32001 Session not found`. A correct client re-initializes.
+- `GET /servers/{s}/clients` lists every client, whatever protocol generation it
+  speaks (`era`: `legacy` is a 2025-11-25 session, `modern` is a 2026-07-28
+  stateless client keyed `oauth:<client_id>` or `info:<name>/<version>`).
+  `DELETE /servers/{s}/clients/{id}` (percent-encode the id) makes a legacy
+  client's next request fail with `404` and `-32001 Session not found`; a
+  correct client re-initializes. For a modern client it forgets it and ends its
+  `subscriptions/listen` streams. Logs carry the same id in `client`; filter
+  with `?client=`.
+- `protocol.eras` on `POST`/`PATCH /servers` picks the generations a server
+  accepts: `both` (default), `legacy` (2025-11-25 only: a `server/discover`
+  probe gets an error, so use it to **force a client to fall back** to
+  `initialize`) or `modern` (2026-07-28 only: `initialize` gets `-32022`, so use
+  it to **reject legacy** clients; sessions are closed). `protocol.cache`
+  (`ttlMs`, `scope`: `private` or `public`) is the cache hint on 2026-07-28
+  `tools/list` and `server/discover` results.
 - A failed template becomes an `isError` result starting with `MCP Decoy:` and
   is not a client bug.
 - Reading the log: `GET /servers/{s}/logs` lists entries, newest first. `mcp`

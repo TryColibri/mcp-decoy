@@ -159,7 +159,7 @@ describe('MessageList', () => {
   describe('layout', () => {
     const columnHeaders = () =>
       screen
-        .getAllByText(/^(Time|Layer|Kind|Name|Status|Summary|Session|Took)$/)
+        .getAllByText(/^(Time|Layer|Kind|Name|Status|Summary|Client|Took)$/)
         .map((header) => header.textContent);
 
     it('shows every column in the full layout', () => {
@@ -172,7 +172,7 @@ describe('MessageList', () => {
         'Name',
         'Status',
         'Summary',
-        'Session',
+        'Client',
         'Took',
       ]);
       expect(screen.getAllByText('mcp')).toHaveLength(2);

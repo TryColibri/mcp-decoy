@@ -29,7 +29,7 @@ describe('ServersService', () => {
     service = createServersService({
       repository: createServerRepository({ initial: [], persist: mockPersist }),
       events: mockEvents,
-      sessionCount: (server) => (server === 'weather' ? 2 : 0),
+      clientCount: (server) => (server === 'weather' ? 2 : 0),
       mcpUrl: (server) => `http://localhost:6280/s/${server}/mcp`,
       tokenCount: () => 0,
       now: () => NOW,
@@ -55,14 +55,16 @@ describe('ServersService', () => {
         mcpUrl: 'http://localhost:6280/s/weather/mcp',
         toolCount: 0,
         publishedToolCount: 0,
-        sessionCount: 2,
+        clientCount: 2,
         auth: { mode: 'none' },
+        protocol: { eras: 'both', cache: { ttlMs: 0, scope: 'private' } },
       });
       expect(mockPersist).toHaveBeenCalledExactlyOnceWith([
         {
           name: 'weather',
           serverInfo: { name: 'mcp-decoy/weather', version: '0.1.0' },
           tools: [],
+          protocol: { eras: 'both', cache: { ttlMs: 0, scope: 'private' } },
           createdAt: NOW.toISOString(),
         },
       ]);
@@ -187,7 +189,7 @@ describe('ServersService', () => {
           persist: mockPersist,
         }),
         events: mockEvents,
-        sessionCount: () => 0,
+        clientCount: () => 0,
         mcpUrl: (server) => `http://localhost:6280/s/${server}/mcp`,
         tokenCount: () => 0,
         randomSecret: () => secrets.shift() ?? 'unexpected',
@@ -327,6 +329,59 @@ describe('ServersService', () => {
 
       await service.update('weather', {
         auth: { mode: 'oauth', redirectUris: ['http://localhost/cb'] },
+      });
+
+      expect(mockEvents.emit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('protocol', () => {
+    it('defaults field by field on creation', async () => {
+      const created = await service.create({
+        name: 'weather',
+        protocol: { cache: { ttlMs: 5000 } },
+      });
+
+      expect(created.protocol).toEqual({
+        eras: 'both',
+        cache: { ttlMs: 5000, scope: 'private' },
+      });
+    });
+
+    it('merges an update field by field', async () => {
+      await service.create({
+        name: 'weather',
+        protocol: { eras: 'modern', cache: { ttlMs: 5000, scope: 'public' } },
+      });
+
+      const updated = await service.update('weather', {
+        protocol: { cache: { ttlMs: 0 } },
+      });
+
+      expect(updated.protocol).toEqual({
+        eras: 'modern',
+        cache: { ttlMs: 0, scope: 'public' },
+      });
+    });
+
+    it('emits serverProtocolChanged when the eras change', async () => {
+      await service.create({ name: 'weather' });
+      mockEvents.emit.mockClear();
+
+      await service.update('weather', { protocol: { eras: 'legacy' } });
+
+      expect(mockEvents.emit).toHaveBeenCalledExactlyOnceWith(
+        'serverProtocolChanged',
+        { server: 'weather', eras: 'legacy' },
+      );
+    });
+
+    it('does not emit serverProtocolChanged for a cache change or an unchanged era', async () => {
+      await service.create({ name: 'weather' });
+      mockEvents.emit.mockClear();
+
+      await service.update('weather', {
+        protocol: { eras: 'both', cache: { ttlMs: 1000, scope: 'public' } },
       });
 
       expect(mockEvents.emit).not.toHaveBeenCalled();

@@ -84,6 +84,98 @@ export const serverAuthConfigSchema: z.ZodType<ServerAuthConfig> =
       .describe('Scopes the pre-registered client is registered with.'),
   });
 
+/** Protocol generations a mock server accepts. */
+export type ServerEras = 'both' | 'legacy' | 'modern';
+
+/** Who may cache a 2026-07-28 result. */
+export type CacheScope = 'public' | 'private';
+
+/** Protocol behavior of a mock server. */
+export type ServerProtocolConfig = {
+  /**
+   * Protocol generations the server accepts: `legacy` is 2025-11-25 (sessions),
+   * `modern` is 2026-07-28 (stateless), `both` serves each client in the
+   * generation it speaks.
+   */
+  eras: ServerEras;
+  /** Cache hint stamped on 2026-07-28 `tools/list` and `server/discover` results. */
+  cache: {
+    /** Cache lifetime in milliseconds. */
+    ttlMs: number;
+    /** Whether shared caches (`public`) or only the requesting client (`private`) may cache. */
+    scope: CacheScope;
+  };
+};
+
+/** What a server's `protocol` is when `servers.json` or a request says nothing. */
+export const DEFAULT_PROTOCOL: ServerProtocolConfig = {
+  eras: 'both',
+  cache: { ttlMs: 0, scope: 'private' },
+};
+
+const erasSchema: z.ZodType<ServerEras> = z
+  .enum(['both', 'legacy', 'modern'])
+  .describe(
+    'Protocol generations the server accepts: `legacy` is 2025-11-25 (sessions), `modern` is 2026-07-28 (stateless), `both` serves each client in the generation it speaks.',
+  );
+
+const cacheScopeSchema: z.ZodType<CacheScope> = z
+  .enum(['public', 'private'])
+  .describe(
+    'Whether shared caches (`public`) or only the requesting client (`private`) may cache.',
+  );
+
+const ttlMsSchema = z
+  .number()
+  .int('Cache lifetime must be a whole number of milliseconds')
+  .min(0, 'Cache lifetime must not be negative')
+  .max(
+    Number.MAX_SAFE_INTEGER,
+    'Cache lifetime must be a safe integer of milliseconds',
+  )
+  .describe('Cache lifetime in milliseconds.');
+
+export const serverProtocolConfigSchema: z.ZodType<ServerProtocolConfig> =
+  z.strictObject({
+    eras: erasSchema.default(DEFAULT_PROTOCOL.eras),
+    cache: z
+      .strictObject({
+        ttlMs: ttlMsSchema.default(DEFAULT_PROTOCOL.cache.ttlMs),
+        scope: cacheScopeSchema.default(DEFAULT_PROTOCOL.cache.scope),
+      })
+      .default(() => ({ ...DEFAULT_PROTOCOL.cache }))
+      .describe(
+        'Cache hint stamped on 2026-07-28 `tools/list` and `server/discover` results.',
+      ),
+  });
+
+/** Requested protocol behavior. Omitted fields keep their value, or the default on creation. */
+export type ServerProtocolInput = {
+  /** Protocol generations the server accepts. */
+  eras?: ServerEras;
+  /** Cache hint of 2026-07-28 `tools/list` and `server/discover` results, field by field. */
+  cache?: {
+    /** Cache lifetime in milliseconds. */
+    ttlMs?: number;
+    /** Whether shared caches (`public`) or only the requesting client (`private`) may cache. */
+    scope?: CacheScope;
+  };
+};
+
+export const serverProtocolInputSchema: z.ZodType<ServerProtocolInput> =
+  z.strictObject({
+    eras: erasSchema.optional(),
+    cache: z
+      .strictObject({
+        ttlMs: ttlMsSchema.optional(),
+        scope: cacheScopeSchema.optional(),
+      })
+      .optional()
+      .describe(
+        'Cache hint of 2026-07-28 `tools/list` and `server/discover` results, field by field.',
+      ),
+  });
+
 /** A persisted mock MCP server. */
 export type ServerConfig = {
   /** URL slug, unique: /^[a-z0-9]+(?:-[a-z0-9]+)*$/, 1–64 chars. */
@@ -96,6 +188,8 @@ export type ServerConfig = {
   tools: ToolConfig[];
   /** OAuth protection. Absent means the server is open. */
   auth?: ServerAuthConfig;
+  /** Protocol behavior. Absent in `servers.json` means the defaults. */
+  protocol: ServerProtocolConfig;
   /** Creation time, ISO 8601. */
   createdAt: string;
 };
@@ -115,6 +209,12 @@ export const serverConfigSchema: z.ZodType<ServerConfig> = z.strictObject({
   auth: serverAuthConfigSchema
     .optional()
     .describe('OAuth protection. Absent means the server is open.'),
+  // The default keeps `servers.json` files written before it valid.
+  protocol: serverProtocolConfigSchema
+    .default(() => structuredClone(DEFAULT_PROTOCOL))
+    .describe(
+      'Protocol behavior. Absent in `servers.json` means the defaults.',
+    ),
   createdAt: z.iso.datetime().describe('Creation time, ISO 8601.'),
 });
 
@@ -168,10 +268,12 @@ export type ServerSummary = {
   toolCount: number;
   /** Number of published tools, the ones clients see. */
   publishedToolCount: number;
-  /** Number of live MCP sessions. */
-  sessionCount: number;
+  /** Number of listed MCP clients: open sessions and recently active stateless clients. */
+  clientCount: number;
   /** Authentication state. `{ mode: 'none' }` means the server is open. */
   auth: ServerAuthSummary;
+  /** Protocol behavior. */
+  protocol: ServerProtocolConfig;
 };
 
 export const serverSummarySchema: z.ZodType<ServerSummary> = z.strictObject({
@@ -190,10 +292,16 @@ export const serverSummarySchema: z.ZodType<ServerSummary> = z.strictObject({
     .number()
     .int()
     .describe('Number of published tools, the ones clients see.'),
-  sessionCount: z.number().int().describe('Number of live MCP sessions.'),
+  clientCount: z
+    .number()
+    .int()
+    .describe(
+      'Number of listed MCP clients: open sessions and recently active stateless clients.',
+    ),
   auth: serverAuthSummarySchema.describe(
     "Authentication state. `{ mode: 'none' }` means the server is open.",
   ),
+  protocol: serverProtocolConfigSchema.describe('Protocol behavior.'),
 });
 
 /** Response body of `GET /api/v1/servers`. */
@@ -253,6 +361,8 @@ export type CreateServerRequest = {
   instructions?: string;
   /** Authentication state. Defaults to `{ mode: 'none' }`. */
   auth?: ServerAuthInput;
+  /** Protocol behavior. Defaults to both generations and `{ ttlMs: 0, scope: 'private' }`, field by field. */
+  protocol?: ServerProtocolInput;
 };
 
 export const createServerRequestSchema: z.ZodType<CreateServerRequest> =
@@ -276,6 +386,11 @@ export const createServerRequestSchema: z.ZodType<CreateServerRequest> =
     auth: serverAuthInputSchema
       .optional()
       .describe("Authentication state. Defaults to `{ mode: 'none' }`."),
+    protocol: serverProtocolInputSchema
+      .optional()
+      .describe(
+        "Protocol behavior. Defaults to both generations and `{ ttlMs: 0, scope: 'private' }`, field by field.",
+      ),
   });
 
 /** Request body of `PATCH /api/v1/servers/{server}`. Omitted fields keep their value. */
@@ -296,6 +411,12 @@ export type UpdateServerRequest = {
    * `none` drops them and closes live sessions.
    */
   auth?: ServerAuthInput;
+  /**
+   * New protocol behavior, field by field. Switching `eras` to `modern`
+   * closes live sessions, and to `legacy` ends open `subscriptions/listen`
+   * streams.
+   */
+  protocol?: ServerProtocolInput;
 };
 
 export const updateServerRequestSchema: z.ZodType<UpdateServerRequest> =
@@ -321,4 +442,9 @@ export const updateServerRequestSchema: z.ZodType<UpdateServerRequest> =
     auth: serverAuthInputSchema
       .optional()
       .describe('New authentication state.'),
+    protocol: serverProtocolInputSchema
+      .optional()
+      .describe(
+        'New protocol behavior, field by field. Switching `eras` to `modern` closes live sessions, and to `legacy` ends open `subscriptions/listen` streams.',
+      ),
   });

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import {
+  type AuthInfo,
   type Server,
   WebStandardStreamableHTTPServerTransport,
 } from '@modelcontextprotocol/server';
@@ -9,20 +10,19 @@ import { NotFoundError } from '@/server/errors';
 import { type MCPDecoyEvents, type EventBus } from '@/server/events';
 import {
   type ClientInfo,
+  type MCPClient,
   type ServerConfig,
-  type Session,
   type ToolConfig,
 } from '@/shared/api';
 
 import { type Capture, type CaptureOrigin, type Exchange } from './capture';
-import { createSessionServer } from './session-server';
+import { jsonRPCError } from './json-rpc-error';
+import { createMockServer } from './mock-server';
 
 /** Dependencies of the session manager. */
 export type SessionManagerDeps = {
   /** The definition of a server, or `undefined` when it doesn't exist. */
   findServer: (name: string) => ServerConfig | undefined;
-  /** Names of every server, for the unknown-server error. */
-  serverNames: () => string[];
   /** Published tools of a server, read on every request. */
   listPublishedTools: (server: string) => ToolConfig[];
   /** Where traffic is recorded. */
@@ -35,26 +35,25 @@ export type SessionManagerDeps = {
   onError?: (error: unknown) => void;
 };
 
-/** Live MCP sessions of every server, and the Streamable HTTP entry point. */
+/** Live 2025-11-25 MCP sessions of every server, and their Streamable HTTP entry point. */
 export type SessionManager = {
   /**
-   * Handles an MCP request (`POST`, `GET` or `DELETE`) addressed to a server.
+   * Handles a 2025-11-25 MCP request (`POST`, `GET` or `DELETE`) addressed to a server.
    *
-   * @param server - Name of the server the request is addressed to.
+   * @param config - The server the request is addressed to.
    * @param request - The request.
    * @param exchange - The recording of the request's HTTP exchange, or `null`
    *   when it isn't recorded.
+   * @param authInfo - The verified token, when the server uses OAuth.
    */
   handle(
-    server: string,
+    config: ServerConfig,
     request: Request,
     exchange: Exchange | null,
+    authInfo?: AuthInfo,
   ): Promise<Response>;
-  /**
-   * Live sessions of a server, oldest first.
-   * @throws {NotFoundError} When the server doesn't exist.
-   */
-  list(server: string): Session[];
+  /** Live sessions of a server, oldest first, as clients. */
+  list(server: string): MCPClient[];
   /** Number of live sessions of a server. */
   count(server: string): number;
   /**
@@ -76,6 +75,8 @@ type LiveSession = {
   requestedProtocolVersion: string | null;
   protocolVersion: string | null;
   capabilities: Record<string, unknown>;
+  /** OAuth client the session's token was issued to, from `initialize`. */
+  oauthClientId: string | null;
   connectedAt: string;
   lastSeenAt: string;
   /** The exchange of the `GET` that opened the session's standalone SSE stream. */
@@ -84,13 +85,13 @@ type LiveSession = {
 
 /**
  * Creates the session manager and subscribes it to `toolsChanged` (sends
- * `notifications/tools/list_changed`) and `serverDeleted`, `serverRenamed` and `serverAuthChanged` (close sessions).
+ * `notifications/tools/list_changed`) and `serverDeleted`, `serverRenamed`,
+ * `serverAuthChanged` and `serverProtocolChanged` to `modern` (close sessions).
  *
  * @param deps - Server lookups, capture and event bus.
  */
 export function createSessionManager({
   findServer,
-  serverNames,
   listPublishedTools,
   capture,
   events,
@@ -137,30 +138,28 @@ export function createSessionManager({
     }
   });
 
-  const jsonRPCError = (
-    status: number,
-    code: number,
-    message: string,
-    { data, requestBody }: { data?: unknown; requestBody?: string | null } = {},
-  ): Response =>
-    new Response(
-      JSON.stringify({
-        jsonrpc: '2.0',
-        error: { code, message, ...(data === undefined ? {} : { data }) },
-        id: requestIdOf(requestBody ?? null),
-      }),
-      { status, headers: { 'content-type': 'application/json' } },
-    );
+  events.on('serverProtocolChanged', ({ server, eras }) => {
+    if (eras === 'modern') {
+      for (const session of sessionsOf(server)) {
+        void closeSession(session);
+      }
+    }
+  });
 
   const createSession = async (
     config: ServerConfig,
     initialize: InitializeParams,
+    authInfo: AuthInfo | undefined,
   ): Promise<LiveSession> => {
     // The ID is generated up front so the transport and the send wrap below
     // agree on it.
     const id = randomUUID();
-    const origin: CaptureOrigin = { server: config.name, sessionId: id };
-    const sdkServer = createSessionServer({
+    const origin: CaptureOrigin = {
+      server: config.name,
+      sessionId: id,
+      client: id,
+    };
+    const sdkServer = createMockServer({
       config,
       listPublishedTools: () => listPublishedTools(config.name),
     });
@@ -183,6 +182,7 @@ export function createSessionManager({
       requestedProtocolVersion: initialize.protocolVersion,
       protocolVersion: null,
       capabilities: initialize.capabilities,
+      oauthClientId: authInfo?.clientId ?? null,
       connectedAt: timestamp,
       lastSeenAt: timestamp,
       standalone: null,
@@ -218,21 +218,10 @@ export function createSessionManager({
   };
 
   return {
-    async handle(serverName, request, exchange) {
+    async handle(config, request, exchange, authInfo) {
+      const serverName = config.name;
       const body =
         request.method === 'POST' ? await request.clone().text() : null;
-      const config = findServer(serverName);
-      if (config === undefined) {
-        const known = serverNames();
-        return jsonRPCError(
-          404,
-          -32001,
-          `Unknown server "${serverName}". Known servers: ${
-            known.length === 0 ? '(none)' : known.join(', ')
-          }`,
-          { data: { knownServers: known }, requestBody: body },
-        );
-      }
 
       const sessionId = request.headers.get('mcp-session-id');
 
@@ -270,7 +259,7 @@ export function createSessionManager({
         );
       }
 
-      const session = await createSession(config, initialize);
+      const session = await createSession(config, initialize, authInfo);
       return session.transport.handleRequest(request);
     },
 
@@ -278,14 +267,17 @@ export function createSessionManager({
       if (findServer(server) === undefined) {
         throw new NotFoundError(`No server named "${server}"`);
       }
-      return sessionsOf(server).map((session) => ({
+      return sessionsOf(server).map((session): MCPClient => ({
         id: session.id,
+        era: 'legacy',
         clientInfo: session.clientInfo,
         requestedProtocolVersion: session.requestedProtocolVersion,
         protocolVersion: session.protocolVersion,
         capabilities: session.capabilities,
+        oauthClientId: session.oauthClientId,
         connectedAt: session.connectedAt,
         lastSeenAt: session.lastSeenAt,
+        openStreams: session.standalone?.open === true ? 1 : 0,
       }));
     },
 
@@ -355,22 +347,6 @@ const findInitialize = (body: string): InitializeParams | null => {
     }
   }
   return null;
-};
-
-/** The id of a single JSON-RPC request in `body`, so an error can answer it. */
-const requestIdOf = (body: string | null): string | number | null => {
-  if (body === null) {
-    return null;
-  }
-  try {
-    const parsed: unknown = JSON.parse(body);
-    return isRecord(parsed) &&
-      (typeof parsed.id === 'string' || typeof parsed.id === 'number')
-      ? parsed.id
-      : null;
-  } catch {
-    return null;
-  }
 };
 
 /** The JSON-RPC id a response or error message answers, or `null` for any other message. */

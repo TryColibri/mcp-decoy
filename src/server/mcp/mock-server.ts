@@ -9,30 +9,37 @@ import {
 import { renderTemplate } from '@/server/templates';
 import { type ServerConfig, type ToolConfig } from '@/shared/api';
 
-/** What a session's SDK `Server` needs to answer requests. */
-export type SessionServerDeps = {
-  /** The mock server's definition at session creation (identity, instructions). */
+/** What an SDK `Server` needs to answer a mock server's requests. */
+export type MockServerDeps = {
+  /** The mock server's definition when the `Server` is created (identity, instructions, cache hint). */
   config: ServerConfig;
   /** Published tools, read fresh on every request so live edits show up. */
   listPublishedTools: () => ToolConfig[];
 };
 
 /**
- * Creates the low-level SDK `Server` of one session. It advertises only
- * `tools: { listChanged: true }`.
+ * Creates the low-level SDK `Server` of one session (2025-11-25) or one
+ * request (2026-07-28). It advertises only `tools: { listChanged: true }`, and
+ * stamps the configured cache hint on 2026-07-28 `tools/list` and
+ * `server/discover` results.
  *
  * @param deps - Server definition and live tool lookup.
  */
 // The low-level Server is deprecated in favor of McpServer, but McpServer
 // can't serve tools that are redefined at runtime from templates.
-export function createSessionServer({
+export function createMockServer({
   config,
   listPublishedTools,
   // oxlint-disable-next-line typescript/no-deprecated
-}: SessionServerDeps): Server {
+}: MockServerDeps): Server {
+  const hint = {
+    ttlMs: config.protocol.cache.ttlMs,
+    cacheScope: config.protocol.cache.scope,
+  };
   // oxlint-disable-next-line typescript/no-deprecated
   const server = new Server(config.serverInfo, {
     capabilities: { tools: { listChanged: true } },
+    cacheHints: { 'tools/list': hint, 'server/discover': hint },
     ...(config.instructions === undefined
       ? {}
       : { instructions: config.instructions }),

@@ -538,6 +538,145 @@ describe('createCapture', () => {
       });
     });
 
+    describe('attribution', () => {
+      it('attributes the facts of a session to the session', async () => {
+        const { capture, facts } = harness;
+        const body = JSON.stringify(request(1));
+        const exchange = begin(capture, post(body), body);
+
+        await exchange.respond(
+          json(result(1), 200, { 'mcp-session-id': SESSION }),
+        );
+
+        expect(facts.map((fact) => fact.client)).toEqual([
+          SESSION,
+          SESSION,
+          SESSION,
+        ]);
+      });
+
+      it('attributes the facts of a sessionless exchange to the client named', async () => {
+        const { capture, facts } = harness;
+        const body = JSON.stringify(request(1));
+        const exchange = begin(capture, post(body, {}, null), body);
+
+        exchange.attribute({ client: 'info:demo/1.0.0' });
+        await exchange.respond(json(result(1)));
+
+        expect(facts.map((fact) => [fact.sessionId, fact.client])).toEqual([
+          [null, 'info:demo/1.0.0'],
+          [null, 'info:demo/1.0.0'],
+          [null, 'info:demo/1.0.0'],
+        ]);
+      });
+
+      it('attributes the facts of an event stream and its end', async () => {
+        const { capture, facts } = harness;
+        const body = JSON.stringify(request(1));
+        const exchange = begin(capture, post(body, {}, null), body);
+        exchange.attribute({ client: 'oauth:abc' });
+        const stream = eventStream({ 'mcp-session-id': '' });
+        stream.response.headers.delete('mcp-session-id');
+
+        const response = await exchange.respond(stream.response);
+        stream.push(event(result(1)));
+        stream.close();
+        await readAll(response);
+
+        expect(types(facts)).toEqual(['http', 'mcp', 'mcp', 'http-end']);
+        expect(facts.every((fact) => fact.client === 'oauth:abc')).toBe(true);
+      });
+    });
+
+    describe('pairing without a session', () => {
+      it('keeps two clients that reuse a JSON-RPC id apart', async () => {
+        const { capture, facts } = harness;
+        const body = JSON.stringify(request(1));
+        const first = begin(capture, post(body, {}, null), body);
+        const second = begin(capture, post(body, {}, null), body);
+        first.attribute({ client: 'info:a/1' });
+        second.attribute({ client: 'info:b/1' });
+        const firstStream = eventStream();
+        const secondStream = eventStream();
+        firstStream.response.headers.delete('mcp-session-id');
+        secondStream.response.headers.delete('mcp-session-id');
+        const firstResponse = await first.respond(firstStream.response);
+        const secondResponse = await second.respond(secondStream.response);
+
+        secondStream.push(event(result(1, { who: 'b' })));
+        secondStream.close();
+        await readAll(secondResponse);
+        firstStream.push(event(result(1, { who: 'a' })));
+        firstStream.close();
+        await readAll(firstResponse);
+
+        const replies = facts.filter(
+          (fact) => fact.type === 'mcp' && fact.kind === 'response',
+        );
+        expect(
+          replies.map((reply) => [
+            reply.client,
+            'replyTo' in reply && reply.replyTo,
+          ]),
+        ).toEqual([
+          ['info:b/1', 4],
+          ['info:a/1', 2],
+        ]);
+      });
+    });
+
+    describe('onEnd', () => {
+      it('runs once when an event stream closes', async () => {
+        const { capture } = harness;
+        const exchange = begin(capture, post({}), null);
+        const callback = vi.fn();
+        exchange.onEnd(callback);
+        const stream = eventStream();
+        const response = await exchange.respond(stream.response);
+
+        expect(callback).not.toHaveBeenCalled();
+        stream.close();
+        await readAll(response);
+
+        expect(callback).toHaveBeenCalledTimes(1);
+      });
+
+      it('runs when the client cancels the stream', async () => {
+        const { capture } = harness;
+        const exchange = begin(capture, post({}), null);
+        const callback = vi.fn();
+        exchange.onEnd(callback);
+        const stream = eventStream();
+        const response = await exchange.respond(stream.response);
+
+        await response.body?.cancel();
+
+        expect(callback).toHaveBeenCalledTimes(1);
+      });
+
+      it('runs when a non-stream response is recorded', async () => {
+        const { capture } = harness;
+        const exchange = begin(capture, post({}), null);
+        const callback = vi.fn();
+        exchange.onEnd(callback);
+
+        await exchange.respond(json({}));
+
+        expect(callback).toHaveBeenCalledTimes(1);
+      });
+
+      it('runs at once for an exchange that is already over', async () => {
+        const { capture } = harness;
+        const exchange = begin(capture, post({}), null);
+        await exchange.respond(json({}));
+        const callback = vi.fn();
+
+        exchange.onEnd(callback);
+
+        expect(callback).toHaveBeenCalledTimes(1);
+      });
+    });
+
     describe('open', () => {
       it('is true before respond and while a stream is open', async () => {
         const { capture } = harness;
@@ -668,7 +807,7 @@ describe('createCapture', () => {
       const { capture, facts } = harness;
 
       capture.undelivered(
-        { server: SERVER, sessionId: SESSION },
+        { server: SERVER, sessionId: SESSION, client: SESSION },
         { jsonrpc: '2.0', method: 'notifications/tools/list_changed' },
       );
 

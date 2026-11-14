@@ -1,21 +1,17 @@
 import { type ComponentProps } from 'react';
 import { twMerge } from 'tailwind-merge';
 
-/** Props of `SessionsPill`. */
-export type SessionsPillProps = Omit<ComponentProps<'span'>, 'children'> & {
-  /** Number of live MCP sessions. */
+/** Props of `ClientsPill`. */
+export type ClientsPillProps = Omit<ComponentProps<'span'>, 'children'> & {
+  /** Number of listed MCP clients. */
   count: number;
 };
 
 /**
- * A pill showing live MCP sessions: green when any, grey otherwise.
+ * A pill showing listed MCP clients: green when any, grey otherwise.
  * `className` is merged over the pill styles; `ref` is the `<span>`.
  */
-export function SessionsPill({
-  count,
-  className,
-  ...props
-}: SessionsPillProps) {
+export function ClientsPill({ count, className, ...props }: ClientsPillProps) {
   const live = count > 0;
   const text = live ? `${count} live` : '0';
   return (

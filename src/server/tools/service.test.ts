@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 import { ConflictError, NotFoundError } from '@/server/errors';
 import { type MCPDecoyEvents, type EventBus } from '@/server/events';
 import { createServerRepository } from '@/server/servers';
-import { type ServerConfig } from '@/shared/api';
+import { DEFAULT_PROTOCOL, type ServerConfig } from '@/shared/api';
 
 import { createToolsService, type ToolsService } from './service';
 
@@ -13,6 +13,7 @@ const server = (): ServerConfig => ({
   name: 'weather',
   serverInfo: { name: 'mcp-decoy/weather', version: '0.1.0' },
   tools: [],
+  protocol: structuredClone(DEFAULT_PROTOCOL),
   createdAt: NOW.toISOString(),
 });
 

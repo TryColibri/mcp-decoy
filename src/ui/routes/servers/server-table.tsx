@@ -5,9 +5,9 @@ import { Link } from 'react-router';
 import { twMerge } from 'tailwind-merge';
 
 import { type ServerSummary } from '@/shared/api';
+import { ClientsPill, StatusDot } from '@/ui/components/clients-pill';
 import { EditServerDialog } from '@/ui/components/edit-server-dialog';
 import { EndpointPill } from '@/ui/components/endpoint-pill';
-import { SessionsPill, StatusDot } from '@/ui/components/sessions-pill';
 import { tw } from '@/ui/tw';
 
 /** Props of `ServerTable`. */
@@ -19,7 +19,7 @@ export type ServerTableProps = {
 const th = tw`border-b border-paper-200 px-4 py-2.5 text-left text-xs font-semibold tracking-wide whitespace-nowrap text-ink-500 uppercase dark:border-paper-800 dark:text-ink-400`;
 const td = tw`border-b border-paper-100 px-4 py-3.5 align-middle text-sm whitespace-nowrap dark:border-paper-800`;
 
-/** The servers table: name, endpoint, exposed tools, sessions, links. */
+/** The servers table: name, endpoint, exposed tools, clients, links. */
 export function ServerTable({ servers }: ServerTableProps) {
   const [editing, setEditing] = useState<string | null>(null);
   const editedServer = servers.find((server) => server.name === editing);
@@ -39,7 +39,7 @@ export function ServerTable({ servers }: ServerTableProps) {
               Exposes
             </th>
             <th className={th} scope="col">
-              Sessions
+              Clients
             </th>
             <th className={th} scope="col">
               <span className="sr-only">Actions</span>
@@ -82,7 +82,7 @@ function ServerRow({ server, onEdit }: ServerRowProps) {
     <tr>
       <td className={td}>
         <div className="flex items-center gap-2.5">
-          <StatusDot live={server.sessionCount > 0} />
+          <StatusDot live={server.clientCount > 0} />
           <Link
             to={`${base}/logs`}
             className="font-semibold text-ink-900 dark:text-ink-100"
@@ -101,7 +101,7 @@ function ServerRow({ server, onEdit }: ServerRowProps) {
         {describeTools(server)}
       </td>
       <td className={td}>
-        <SessionsPill count={server.sessionCount} />
+        <ClientsPill count={server.clientCount} />
       </td>
       <td className={twMerge(td, 'text-right')}>
         <div className="inline-flex gap-2">

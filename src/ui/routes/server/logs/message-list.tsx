@@ -10,8 +10,8 @@ import {
   nameOf,
   noteOf,
   type EntryStatus,
-  sessionOf,
-  shortSession,
+  clientLabel,
+  clientOf,
   statusOf,
   type StatusTone,
   tookOf,
@@ -44,7 +44,7 @@ export type MessageListProps = {
 };
 
 const grids: Record<MessageListLayout, string> = {
-  full: tw`grid w-full grid-cols-[104px_44px_104px_minmax(0,1.4fr)_92px_minmax(0,1fr)_56px_84px] items-center gap-2 px-4`,
+  full: tw`grid w-full grid-cols-[104px_44px_104px_minmax(200px,1fr)_92px_minmax(0,120px)_minmax(48px,72px)_84px] items-center gap-2 px-4 xl:grid-cols-[104px_44px_104px_minmax(200px,1fr)_92px_minmax(0,240px)_minmax(48px,160px)_84px] xl:gap-6`,
   compact: tw`grid w-full grid-cols-[104px_minmax(0,1fr)] items-center gap-2 px-4`,
 };
 
@@ -148,7 +148,7 @@ export function MessageList({
             <>
               <span>Status</span>
               <span>Summary</span>
-              <span>Session</span>
+              <span>Client</span>
               <span className="text-right">Took</span>
             </>
           )}
@@ -229,7 +229,7 @@ type FullColumnsProps = {
 // Every column after Time in the full layout: Layer, Kind (the HTTP method or
 // the MCP message type), then Name onwards.
 function FullColumns({ entry }: FullColumnsProps) {
-  const sessionId = sessionOf(entry);
+  const client = clientOf(entry);
   return (
     <>
       <span>
@@ -250,10 +250,10 @@ function FullColumns({ entry }: FullColumnsProps) {
         {noteOf(entry)}
       </span>
       <span
-        className="font-mono text-ink-600 dark:text-ink-300"
-        title={sessionId ?? undefined}
+        className="truncate font-mono text-ink-600 dark:text-ink-300"
+        title={client ?? undefined}
       >
-        {shortSession(sessionId)}
+        {clientLabel(client)}
       </span>
       <span className="text-right font-mono text-ink-600 dark:text-ink-300">
         {tookOf(entry)}

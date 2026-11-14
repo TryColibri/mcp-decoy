@@ -1,7 +1,7 @@
 import { Link, Outlet } from 'react-router';
 
 import { useInstance } from '@/ui/api';
-import { StatusDot } from '@/ui/components/sessions-pill';
+import { StatusDot } from '@/ui/components/clients-pill';
 import { ThemeToggle } from '@/ui/theme';
 
 import { TunnelPopover } from './tunnel-popover';

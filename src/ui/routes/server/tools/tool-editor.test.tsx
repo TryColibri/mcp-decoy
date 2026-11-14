@@ -16,7 +16,8 @@ const SERVER: ServerSummary = {
   mcpUrl: 'http://localhost:6280/s/weather/mcp',
   toolCount: 1,
   publishedToolCount: 1,
-  sessionCount: 2,
+  clientCount: 2,
+  protocol: { eras: 'both', cache: { ttlMs: 0, scope: 'private' } },
   auth: { mode: 'none' },
 };
 
@@ -79,11 +80,11 @@ describe('ToolEditor', () => {
     vi.unstubAllGlobals();
   });
 
-  it('shows the live notice with the session count', () => {
+  it('shows the live notice with the client count', () => {
     renderEditor();
 
     expect(screen.getByText(/Live, no restart/)).toHaveTextContent(
-      'notifies 2 sessions on weather',
+      'notifies 2 clients on weather',
     );
   });
 

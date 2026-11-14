@@ -244,13 +244,14 @@ const noPages: LoadedPage[] = [];
 /** Where the current load is at: the query it is for and how often it restarted. */
 type Epoch = {
   query: string;
+  clientKey: string;
   restarts: number;
 };
 
 /**
  * Loads a server's log newest first, a page at a time, and follows the live
- * stream. Both honor `query`, so paging, streaming and `total` all describe the
- * same filtered log.
+ * stream. Both honor `query` and `client`, so paging, streaming and `total`
+ * all describe the same filtered log.
  *
  * Pages come from SWR (`GET …/logs?q=&cursor=&limit=200`) as reconciled
  * entries. The stream starts at the first page's `after`, so nothing is
@@ -260,12 +261,21 @@ type Epoch = {
  *
  * @param server - Server name.
  * @param query - Case-insensitive search text; empty for none.
+ * @param clientKey - Only entries attributed to this session ID or client key; empty for all.
  */
-export function useLogStream(server: string, query: string): LogStream {
+export function useLogStream(
+  server: string,
+  query: string,
+  clientKey = '',
+): LogStream {
   const id = useId();
-  const [epoch, setEpoch] = useState<Epoch>({ query, restarts: 0 });
-  if (epoch.query !== query) {
-    setEpoch({ query, restarts: epoch.restarts + 1 });
+  const [epoch, setEpoch] = useState<Epoch>({
+    query,
+    clientKey,
+    restarts: 0,
+  });
+  if (epoch.query !== query || epoch.clientKey !== clientKey) {
+    setEpoch({ query, clientKey, restarts: epoch.restarts + 1 });
   }
   // Unique to this mount and restart, so SWR never serves a stale first page.
   const load = `${id}:${epoch.restarts}`;
@@ -285,13 +295,14 @@ export function useLogStream(server: string, query: string): LogStream {
           query: {
             limit: String(PAGE_SIZE),
             ...(q === '' ? {} : { q }),
+            ...(clientKey === '' ? {} : { client: clientKey }),
             ...(cursor === undefined ? {} : { cursor }),
           },
         }),
       );
       return { ...page, load: pageLoad };
     },
-    [server],
+    [server, clientKey],
   );
   const {
     data: loadedPages,
@@ -325,7 +336,7 @@ export function useLogStream(server: string, query: string): LogStream {
 
   // The browser holds only so many live anchors: start over from a fresh page.
   if (ready && live.counted.size > MAX_ENTRIES) {
-    setEpoch({ query, restarts: epoch.restarts + 1 });
+    setEpoch({ query, clientKey, restarts: epoch.restarts + 1 });
   }
 
   const hasOlder = typeof pages?.at(-1)?.nextCursor === 'string';
@@ -421,6 +432,9 @@ export function useLogStream(server: string, query: string): LogStream {
     if (query !== '') {
       params.set('q', query);
     }
+    if (clientKey !== '') {
+      params.set('client', clientKey);
+    }
     const source = new EventSource(
       `/api/v1/servers/${encodeURIComponent(server)}/logs/stream?${params}`,
     );
@@ -470,7 +484,7 @@ export function useLogStream(server: string, query: string): LogStream {
     return () => {
       source.close();
     };
-  }, [after, load, query, ready, reset, server]);
+  }, [after, clientKey, load, query, ready, reset, server]);
 
   const pause = useCallback(() => {
     pausedRef.current = true;

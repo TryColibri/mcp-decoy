@@ -25,7 +25,7 @@ import {
   type ServerConfig,
   serverListSchema,
   serverSummarySchema,
-  sessionListSchema,
+  mcpClientListSchema,
   toolListSchema,
   toolSchema,
 } from '@/shared/api';
@@ -109,7 +109,7 @@ describe('uiApp', () => {
   });
 
   afterEach(async () => {
-    await services.sessions.closeAll();
+    await services.mcp.closeAll();
   });
 
   describe('GET /api/v1', () => {
@@ -137,8 +137,9 @@ describe('uiApp', () => {
         mcpUrl: 'http://localhost:6280/s/weather/mcp',
         toolCount: 0,
         publishedToolCount: 0,
-        sessionCount: 0,
+        clientCount: 0,
         auth: { mode: 'none' },
+        protocol: { eras: 'both', cache: { ttlMs: 0, scope: 'private' } },
       });
       expect(persist).toHaveBeenCalledTimes(1);
 
@@ -653,10 +654,10 @@ describe('uiApp', () => {
     });
   });
 
-  describe('sessions and logs', () => {
+  describe('clients and logs', () => {
     const connect = async () => {
       const mcpApp = createMCPApp({
-        sessions: services.sessions,
+        mcp: services.mcp,
         oauth: services.oauth,
         findServer: (name) => services.servers.findConfig(name),
         listServers: services.listServerConfigs,
@@ -675,34 +676,108 @@ describe('uiApp', () => {
       await services.servers.create({ name: 'weather' });
     });
 
-    it('lists and closes sessions', async () => {
+    it('lists and closes sessions as legacy clients', async () => {
       const { transport } = await connect();
 
-      const list = await request('/api/v1/servers/weather/sessions');
-      const sessions = sessionListSchema.parse(await list.json()).items;
-      expect(sessions).toEqual([
+      const list = await request('/api/v1/servers/weather/clients');
+      const clients = mcpClientListSchema.parse(await list.json()).items;
+      expect(clients).toEqual([
         expect.objectContaining({
           id: transport.sessionId,
+          era: 'legacy',
           clientInfo: { name: 'test-client', version: '1.0.0' },
+          oauthClientId: null,
         }),
       ]);
       const server = await request('/api/v1/servers/weather');
-      expect(serverSummarySchema.parse(await server.json()).sessionCount).toBe(
+      expect(serverSummarySchema.parse(await server.json()).clientCount).toBe(
         1,
       );
 
       const closed = await request(
-        `/api/v1/servers/weather/sessions/${transport.sessionId ?? ''}`,
+        `/api/v1/servers/weather/clients/${encodeURIComponent(transport.sessionId ?? '')}`,
         { method: 'DELETE' },
       );
       expect(closed.status).toBe(204);
       await expectProblem(
-        await request('/api/v1/servers/weather/sessions/nope', {
+        await request('/api/v1/servers/weather/clients/nope', {
           method: 'DELETE',
         }),
         404,
         'not-found',
       );
+    });
+
+    it('lists and forgets stateless clients', async () => {
+      const mcpApp = createMCPApp({
+        mcp: services.mcp,
+        oauth: services.oauth,
+        findServer: (name) => services.servers.findConfig(name),
+        listServers: services.listServerConfigs,
+        capture: services.capture,
+      });
+      const client = new Client(
+        { name: 'auto-client', version: '2.0.0' },
+        { versionNegotiation: { mode: 'auto' } },
+      );
+      await client.connect(
+        new StreamableHTTPClientTransport(
+          new URL('http://localhost:6280/s/weather/mcp'),
+          { fetch: async (url, init) => mcpApp.request(url, init) },
+        ),
+      );
+      await client.listTools();
+
+      const list = await request('/api/v1/servers/weather/clients');
+      const clients = mcpClientListSchema.parse(await list.json()).items;
+      expect(clients).toEqual([
+        expect.objectContaining({
+          id: 'info:auto-client/2.0.0',
+          era: 'modern',
+          clientInfo: { name: 'auto-client', version: '2.0.0' },
+          oauthClientId: null,
+          openStreams: 0,
+        }),
+      ]);
+
+      const closed = await request(
+        `/api/v1/servers/weather/clients/${encodeURIComponent('info:auto-client/2.0.0')}`,
+        { method: 'DELETE' },
+      );
+      expect(closed.status).toBe(204);
+      const after = await request('/api/v1/servers/weather/clients');
+      expect(mcpClientListSchema.parse(await after.json()).items).toEqual([]);
+      await expectProblem(
+        await request(
+          `/api/v1/servers/weather/clients/${encodeURIComponent('info:auto-client/2.0.0')}`,
+          { method: 'DELETE' },
+        ),
+        404,
+        'not-found',
+      );
+    });
+
+    it('filters logs by client', async () => {
+      const { client, transport } = await connect();
+      await client.listTools();
+      const sessionId = transport.sessionId ?? '';
+
+      const mine = logPageSchema.parse(
+        await (
+          await request(
+            `/api/v1/servers/weather/logs?client=${encodeURIComponent(sessionId)}`,
+          )
+        ).json(),
+      );
+      const other = logPageSchema.parse(
+        await (
+          await request('/api/v1/servers/weather/logs?client=someone-else')
+        ).json(),
+      );
+
+      expect(mine.total).toBe(services.logs.all('weather').length);
+      expect(other.items).toEqual([]);
+      expect(other.total).toBe(0);
     });
 
     it('paginates logs newest first with a cursor', async () => {
@@ -783,6 +858,7 @@ describe('uiApp', () => {
         at: '2026-10-21T12:00:00.000Z',
         server: 'weather',
         sessionId: null,
+        client: null,
         from: 'client',
         kind: 'request',
         method,
@@ -888,7 +964,7 @@ describe('uiApp', () => {
       append(small.store, 'tools/list');
       await stream.readUntil('event: evicted');
       await stream.cancel();
-      await small.sessions.closeAll();
+      await small.mcp.closeAll();
 
       const data = /event: evicted\ndata: (.*)\n/.exec(stream.text());
       expect(logEvictedSchema.parse(JSON.parse(data?.[1] ?? ''))).toEqual({

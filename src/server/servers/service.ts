@@ -4,9 +4,12 @@ import { ConflictError, NotFoundError } from '@/server/errors';
 import { type MCPDecoyEvents, type EventBus } from '@/server/events';
 import {
   type CreateServerRequest,
+  DEFAULT_PROTOCOL,
   type ServerAuthConfig,
   type ServerAuthInput,
   type ServerConfig,
+  type ServerProtocolConfig,
+  type ServerProtocolInput,
   type ServerSummary,
   SUPPORTED_SCOPES,
   type UpdateServerRequest,
@@ -23,8 +26,8 @@ export type ServersServiceDeps = {
   repository: ServerRepository;
   /** Where mutations are announced. */
   events: EventBus<MCPDecoyEvents>;
-  /** Number of live MCP sessions of a server. */
-  sessionCount: (server: string) => number;
+  /** Number of listed MCP clients of a server. */
+  clientCount: (server: string) => number;
   /** Streamable HTTP endpoint of a server. */
   mcpUrl: (server: string) => string;
   /** Number of live OAuth access and refresh tokens of a server. */
@@ -62,10 +65,12 @@ export type ServersService = {
   create(input: CreateServerRequest): Promise<ServerSummary>;
   /**
    * Updates any subset of a server's name, `serverInfo`, instructions and
-   * authentication. Renaming moves the server and announces it, which closes
+   * authentication and protocol. Renaming moves the server and announces it, which closes
    * its sessions. A change of authentication state announces
    * `serverAuthChanged`, which also closes its sessions. Live sessions keep
-   * the identity they were opened with.
+   * the identity they were opened with. Changing which protocol generations the
+   * server accepts announces `serverProtocolChanged`, which closes the sessions
+   * or the `subscriptions/listen` streams the new setting rules out.
    * @throws {NotFoundError} When it doesn't exist.
    * @throws {ConflictError} When renaming onto an existing server.
    */
@@ -85,7 +90,7 @@ export type ServersService = {
 export function createServersService({
   repository,
   events,
-  sessionCount,
+  clientCount,
   mcpUrl,
   tokenCount,
   randomSecret = () => randomBytes(32).toString('base64url'),
@@ -101,11 +106,24 @@ export function createServersService({
     mcpUrl: mcpUrl(server.name),
     toolCount: server.tools.length,
     publishedToolCount: server.tools.filter((tool) => tool.published).length,
-    sessionCount: sessionCount(server.name),
+    clientCount: clientCount(server.name),
     auth:
       server.auth === undefined
         ? { mode: 'none' }
         : { ...server.auth, tokenCount: tokenCount(server.name) },
+    protocol: server.protocol,
+  });
+
+  /** Applies a requested protocol behavior over the current one, field by field. */
+  const resolveProtocol = (
+    current: ServerProtocolConfig,
+    input: ServerProtocolInput | undefined,
+  ): ServerProtocolConfig => ({
+    eras: input?.eras ?? current.eras,
+    cache: {
+      ttlMs: input?.cache?.ttlMs ?? current.cache.ttlMs,
+      scope: input?.cache?.scope ?? current.cache.scope,
+    },
   });
 
   const requireServer = (name: string): ServerConfig => {
@@ -157,7 +175,7 @@ export function createServersService({
       requireServer(name);
     },
 
-    async create({ name, serverInfo, instructions, auth }) {
+    async create({ name, serverInfo, instructions, auth, protocol }) {
       const created = await repository.update((servers) => {
         if (servers.some((server) => server.name === name)) {
           throw new ConflictError(`A server named "${name}" already exists`);
@@ -174,6 +192,7 @@ export function createServersService({
             : { instructions }),
           tools: [],
           ...(resolvedAuth === undefined ? {} : { auth: resolvedAuth }),
+          protocol: resolveProtocol(DEFAULT_PROTOCOL, protocol),
           createdAt: now().toISOString(),
         };
         return { servers: [...servers, server], result: server };
@@ -184,57 +203,65 @@ export function createServersService({
 
     async update(
       name,
-      { name: newName = name, serverInfo, instructions, auth },
+      { name: newName = name, serverInfo, instructions, auth, protocol },
     ) {
-      const { server: updated, authDidChange } = await repository.update(
-        (servers) => {
-          const current = servers.find((server) => server.name === name);
-          if (current === undefined) {
-            throw new NotFoundError(`No server named "${name}"`);
-          }
-          if (
-            newName !== name &&
-            servers.some((server) => server.name === newName)
-          ) {
-            throw new ConflictError(
-              `A server named "${newName}" already exists`,
-            );
-          }
-          const {
-            instructions: previous,
-            auth: previousAuth,
-            ...rest
-          } = current;
-          const kept = instructions ?? previous;
-          const nextAuth = resolveAuth(previousAuth, auth);
-          const server: ServerConfig = {
-            ...rest,
-            name: newName,
-            serverInfo: {
-              name: serverInfo?.name ?? current.serverInfo.name,
-              version: serverInfo?.version ?? current.serverInfo.version,
-            },
-            ...(kept === undefined || kept === ''
-              ? {}
-              : { instructions: kept }),
-            ...(nextAuth === undefined ? {} : { auth: nextAuth }),
-          };
-          return {
-            servers: servers.map((candidate) =>
-              candidate === current ? server : candidate,
-            ),
-            result: {
-              server,
-              authDidChange: authChanged(previousAuth, nextAuth),
-            },
-          };
-        },
-      );
+      const {
+        server: updated,
+        authDidChange,
+        erasDidChange,
+      } = await repository.update((servers) => {
+        const current = servers.find((server) => server.name === name);
+        if (current === undefined) {
+          throw new NotFoundError(`No server named "${name}"`);
+        }
+        if (
+          newName !== name &&
+          servers.some((server) => server.name === newName)
+        ) {
+          throw new ConflictError(`A server named "${newName}" already exists`);
+        }
+        const {
+          instructions: previous,
+          auth: previousAuth,
+          protocol: previousProtocol,
+          ...rest
+        } = current;
+        const kept = instructions ?? previous;
+        const nextAuth = resolveAuth(previousAuth, auth);
+        const nextProtocol = resolveProtocol(previousProtocol, protocol);
+        const server: ServerConfig = {
+          ...rest,
+          name: newName,
+          serverInfo: {
+            name: serverInfo?.name ?? current.serverInfo.name,
+            version: serverInfo?.version ?? current.serverInfo.version,
+          },
+          ...(kept === undefined || kept === '' ? {} : { instructions: kept }),
+          ...(nextAuth === undefined ? {} : { auth: nextAuth }),
+          protocol: nextProtocol,
+        };
+        return {
+          servers: servers.map((candidate) =>
+            candidate === current ? server : candidate,
+          ),
+          result: {
+            server,
+            authDidChange: authChanged(previousAuth, nextAuth),
+            erasDidChange: previousProtocol.eras !== nextProtocol.eras,
+          },
+        };
+      });
       if (updated.name !== name) {
         events.emit('serverRenamed', { from: name, to: updated.name });
       }
       if (authDidChange) {
         events.emit('serverAuthChanged', { server: updated.name });
+      }
+      if (erasDidChange) {
+        events.emit('serverProtocolChanged', {
+          server: updated.name,
+          eras: updated.protocol.eras,
+        });
       }
       return summarize(updated);
     },

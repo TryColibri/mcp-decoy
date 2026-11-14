@@ -15,7 +15,8 @@ const SERVER: ServerSummary = {
   mcpUrl: 'http://localhost:6280/s/weather/mcp',
   toolCount: 0,
   publishedToolCount: 0,
-  sessionCount: 0,
+  clientCount: 0,
+  protocol: { eras: 'both', cache: { ttlMs: 0, scope: 'private' } },
   auth: { mode: 'none' },
 };
 
@@ -179,6 +180,57 @@ describe('EditServerDialog', () => {
     });
     expect(onSaved).toHaveBeenCalledExactlyOnceWith(updated, 'weather');
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('sends only the protocol fields that changed', async () => {
+    const updated: ServerSummary = {
+      ...SERVER,
+      protocol: { eras: 'modern', cache: { ttlMs: 60_000, scope: 'private' } },
+    };
+    patch.mockReturnValueOnce(json(200, updated));
+    const { onSaved } = renderDialog();
+    const user = userEvent.setup();
+
+    await user.click(
+      screen.getByRole('radio', { name: '2026-07-28 only (stateless)' }),
+    );
+    expect(
+      screen.getByText(/Accepting only 2026-07-28 closes live sessions/),
+    ).toBeVisible();
+    await user.clear(screen.getByLabelText('ttlMs'));
+    await user.type(screen.getByLabelText('ttlMs'), '60000');
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(patch).toHaveBeenCalledExactlyOnceWith({
+      protocol: { eras: 'modern', cache: { ttlMs: 60_000 } },
+    });
+    expect(onSaved).toHaveBeenCalledExactlyOnceWith(updated, 'weather');
+  });
+
+  it('sends the cache scope', async () => {
+    patch.mockReturnValueOnce(json(200, SERVER));
+    renderDialog();
+    const user = userEvent.setup();
+
+    await user.selectOptions(screen.getByLabelText('cacheScope'), 'public');
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(patch).toHaveBeenCalledExactlyOnceWith({
+      protocol: { cache: { scope: 'public' } },
+    });
+  });
+
+  it('refuses a cache lifetime that is not a whole number of milliseconds', async () => {
+    renderDialog();
+    const user = userEvent.setup();
+
+    await user.clear(screen.getByLabelText('ttlMs'));
+    await user.type(screen.getByLabelText('ttlMs'), '-5');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'whole number of milliseconds',
+    );
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
   });
 
   it('closes on Cancel without calling the API', async () => {

@@ -133,23 +133,61 @@ this command with your MCP host and port, and a button that copies it.
 
 ### Check the connection
 
-Each client connection is a session. The server assigns the session an ID, and
-the client sends it in the `Mcp-Session-Id` header. To check that your client
-connected, take the following steps:
+MCP Decoy serves two generations of the protocol on the same URL. A client that
+speaks 2025-11-25 opens a session: the server assigns it an ID, and the client
+sends it in the `Mcp-Session-Id` header. A client that speaks 2026-07-28 has no
+session, because each of its requests carries its own context. MCP Decoy
+identifies such a client by the OAuth client that its token was issued to when
+the server uses OAuth, and otherwise by the name and version in the request's
+`_meta`. See [Choose the protocol generation](#choose-the-protocol-generation).
+
+To check that your client connected, take the following steps:
 
 1. In the UI, open the **Servers** page. After the client connects, the
-   **Sessions** column of its server shows `1 live`.
-2. Select the server, and then select the **Connections** tab. The **Sessions**
-   section lists each session with the client name, the client version, and the
-   session ID.
-3. Select the **Logs** tab. It shows the `initialize` request and its response,
-   followed by the requests that your client sends next, such as `tools/list`.
+   **Clients** column of its server shows `1 live`.
+2. Select the server, and then select the **Connections** tab. The **Clients**
+   section lists each client with its name, version, protocol generation (the
+   era), protocol version, OAuth client, and open streams. A 2026-07-28 client
+   stays listed while it has an open `subscriptions/listen` stream or sent a
+   request in the last 5 minutes.
+3. Select the **Logs** tab. It shows the `initialize` request (or
+   `server/discover`) and its response, followed by the requests that your
+   client sends next, such as `tools/list`. Click **View logs** on a client's
+   row to see only its entries.
 4. Call the `echo` tool from your client. The **Logs** tab shows the
    `tools/call` request and its response.
 5. Optional: To test how your client recovers from a closed session, go to the
-   **Connections** tab and click **Close** on the session's row. You can also
-   close a session with the `DELETE /servers/{server}/sessions/{session}`
-   endpoint of the [REST API](#rest-api).
+   **Connections** tab and click **Close** on the session's row. For a
+   2026-07-28 client, **Forget** removes it from the list and ends its
+   `subscriptions/listen` streams. You can do the same with the
+   `DELETE /servers/{server}/clients/{client}` endpoint of the
+   [REST API](#rest-api). Percent-encode the client ID, which can contain `:`
+   and `/`.
+
+### Choose the protocol generation
+
+By default, a server accepts both generations and answers each request in the
+generation that it uses. To force one, open the server's edit dialog, or send
+`protocol` to the [REST API](#rest-api). The `eras` field has the following
+values:
+
+- `both`: the default.
+- `legacy`: 2025-11-25 only. A client that probes `server/discover` gets an
+  error and falls back to `initialize`. Use it to test that fallback.
+- `modern`: 2026-07-28 only. `initialize` gets error `-32022`, with the
+  supported versions. Use it to check how your client reacts when a server
+  rejects 2025-11-25. Switching to `modern` closes the live sessions.
+
+On 2026-07-28, results of `tools/list` and `server/discover` carry a cache hint.
+`protocol.cache.ttlMs` (default `0`) and `protocol.cache.scope` (`private` or
+`public`) set it. Switching a server to `legacy` ends its open
+`subscriptions/listen` streams.
+
+```sh
+curl -X PATCH http://localhost:6281/api/v1/servers/weather \
+  -H 'Content-Type: application/json' \
+  -d '{"protocol": {"eras": "modern", "cache": {"ttlMs": 60000, "scope": "public"}}}'
+```
 
 ## Define a tool
 
@@ -175,7 +213,8 @@ it, and **Publish tool** makes it visible. On a published tool, **Save changes**
 updates it and **Unpublish** hides it again.
 
 MCP Decoy sends `notifications/tools/list_changed` to every connected session of
-the server in the following cases:
+the server, and to every open `subscriptions/listen` stream that asked for it,
+in the following cases:
 
 - You publish a tool.
 - You edit, rename, unpublish, or delete a published tool.
@@ -265,7 +304,9 @@ server, on two layers:
   entry.
 
 Each entry shows the time, the layer, the kind, the name, the status, a short
-summary, the session, and how long the exchange took.
+summary, the client, and how long the exchange took. The client is the first
+characters of the session ID for a 2025-11-25 client, and the client name, or
+the OAuth client ID, for a 2026-07-28 client.
 
 In the **Logs** tab, you can do the following:
 
@@ -453,32 +494,31 @@ and a browser request must come from the UI's own origin. Otherwise, the API
 answers `415` or `403`.
 
 The paths in the following table are relative to `/api/v1`. Replace `{server}`,
-`{tool}`, `{session}`, `{token}`, and `{id}` with the name or ID of the
-resource.
+`{tool}`, `{client}`, `{token}`, and `{id}` with the name or ID of the resource.
 
-| Method and path                                           | Description                                                                 |
-| --------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `GET /`                                                   | Get the version, listener ports, MCP URL template, and config file path.    |
-| `GET /servers`                                            | List servers.                                                               |
-| `POST /servers`                                           | Create a server.                                                            |
-| `GET /servers/{server}`                                   | Get a server.                                                               |
-| `PATCH /servers/{server}`                                 | Update a server. A new `name` moves the server and closes its sessions.     |
-| `DELETE /servers/{server}`                                | Delete a server and close its sessions.                                     |
-| `GET /servers/{server}/tools`                             | List tools, drafts included.                                                |
-| `POST /servers/{server}/tools`                            | Create a tool.                                                              |
-| `GET /servers/{server}/tools/{tool}`                      | Get a tool.                                                                 |
-| `PATCH /servers/{server}/tools/{tool}`                    | Update a tool. Set `published` to publish or unpublish it.                  |
-| `DELETE /servers/{server}/tools/{tool}`                   | Delete a tool.                                                              |
-| `GET /servers/{server}/sessions`                          | List live sessions.                                                         |
-| `DELETE /servers/{server}/sessions/{session}`             | Close a session.                                                            |
-| `GET /servers/{server}/oauth/tokens`                      | List the live access and refresh tokens of a server that uses OAuth.        |
-| `DELETE /servers/{server}/oauth/tokens`                   | Revoke every access and refresh token of a server that uses OAuth.          |
-| `DELETE /servers/{server}/oauth/tokens/{token}`           | Revoke one token, by the `id` that the list returns.                        |
-| `GET /servers/{server}/logs?q=&carriedBy=&cursor=&limit=` | List log entries, newest first, with cursor pagination.                     |
-| `GET /servers/{server}/logs/{id}`                         | Get one log entry by its numeric `id`.                                      |
-| `DELETE /servers/{server}/logs`                           | Clear the logs of a server.                                                 |
-| `GET /servers/{server}/logs/stream?after=&q=`             | Stream log events as server-sent events. Pass `after` to replay from an ID. |
-| `GET /servers/{server}/logs/export`                       | Download all entries as newline-delimited JSON.                             |
+| Method and path                                                   | Description                                                                                                                      |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /`                                                           | Get the version, listener ports, MCP URL template, and config file path.                                                         |
+| `GET /servers`                                                    | List servers.                                                                                                                    |
+| `POST /servers`                                                   | Create a server.                                                                                                                 |
+| `GET /servers/{server}`                                           | Get a server.                                                                                                                    |
+| `PATCH /servers/{server}`                                         | Update a server. A new `name` moves the server and closes its sessions. `protocol` sets the accepted generations and cache hint. |
+| `DELETE /servers/{server}`                                        | Delete a server and close its sessions.                                                                                          |
+| `GET /servers/{server}/tools`                                     | List tools, drafts included.                                                                                                     |
+| `POST /servers/{server}/tools`                                    | Create a tool.                                                                                                                   |
+| `GET /servers/{server}/tools/{tool}`                              | Get a tool.                                                                                                                      |
+| `PATCH /servers/{server}/tools/{tool}`                            | Update a tool. Set `published` to publish or unpublish it.                                                                       |
+| `DELETE /servers/{server}/tools/{tool}`                           | Delete a tool.                                                                                                                   |
+| `GET /servers/{server}/clients`                                   | List clients: live 2025-11-25 sessions and recent 2026-07-28 clients.                                                            |
+| `DELETE /servers/{server}/clients/{client}`                       | Close a session, or forget a 2026-07-28 client and end its streams.                                                              |
+| `GET /servers/{server}/oauth/tokens`                              | List the live access and refresh tokens of a server that uses OAuth.                                                             |
+| `DELETE /servers/{server}/oauth/tokens`                           | Revoke every access and refresh token of a server that uses OAuth.                                                               |
+| `DELETE /servers/{server}/oauth/tokens/{token}`                   | Revoke one token, by the `id` that the list returns.                                                                             |
+| `GET /servers/{server}/logs?q=&carriedBy=&client=&cursor=&limit=` | List log entries, newest first, with cursor pagination.                                                                          |
+| `GET /servers/{server}/logs/{id}`                                 | Get one log entry by its numeric `id`.                                                                                           |
+| `DELETE /servers/{server}/logs`                                   | Clear the logs of a server.                                                                                                      |
+| `GET /servers/{server}/logs/stream?after=&q=&client=`             | Stream log events as server-sent events. Pass `after` to replay from an ID.                                                      |
+| `GET /servers/{server}/logs/export`                               | Download all entries as newline-delimited JSON.                                                                                  |
 
 The following command publishes a draft tool named `get_forecast` on the
 `weather` server:
@@ -490,7 +530,7 @@ curl -X PATCH http://localhost:6281/api/v1/servers/weather/tools/get_forecast \
 ```
 
 MCP Decoy sends `notifications/tools/list_changed` to every live session of the
-`weather` server.
+`weather` server, and to its open `subscriptions/listen` streams.
 
 The Zod schemas in [src/shared/api/](src/shared/api/) define the request and
 response bodies.

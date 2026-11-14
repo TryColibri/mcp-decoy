@@ -11,7 +11,7 @@ import {
   type EventBus,
   type MCPDecoyEvents,
 } from '@/server/events';
-import { type ServerConfig } from '@/shared/api';
+import { DEFAULT_PROTOCOL, type ServerConfig } from '@/shared/api';
 
 import { createOAuthStore, type OAuthStore } from './store';
 
@@ -26,6 +26,7 @@ const OAUTH_SERVER: ServerConfig = {
     redirectUris: ['http://localhost/cb'],
     clientScopes: ['mcp'],
   },
+  protocol: structuredClone(DEFAULT_PROTOCOL),
   createdAt: '2026-10-21T12:00:00.000Z',
 };
 
@@ -33,6 +34,7 @@ const OPEN_SERVER: ServerConfig = {
   name: 'echo',
   serverInfo: { name: 'mcp-decoy/echo', version: '0.1.0' },
   tools: [],
+  protocol: structuredClone(DEFAULT_PROTOCOL),
   createdAt: '2026-10-21T12:00:00.000Z',
 };
 

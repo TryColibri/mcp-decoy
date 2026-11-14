@@ -16,6 +16,8 @@ export type LogAnchorFilter = {
   text?: string;
   /** Only entries with a fact carried by this `http` fact id. */
   carriedBy?: number;
+  /** Only entries attributed to this client; an entry matches when its anchor or its attachment does. */
+  client?: string;
 };
 
 /** Filters for `LogStore.anchors`. */
@@ -114,7 +116,7 @@ export function createRingBufferLogStore(limit: number): LogStore {
 
   const matchesFilter = (
     record: LogRecord,
-    { server, carriedBy }: LogAnchorFilter,
+    { server, carriedBy, client }: LogAnchorFilter,
     needle: string,
   ): boolean => {
     if (record.fact.server !== server || anchorIdOf(record.fact) !== null) {
@@ -128,6 +130,13 @@ export function createRingBufferLogStore(limit: number): LogStore {
       if (!found) {
         return false;
       }
+    }
+    if (
+      client !== undefined &&
+      record.fact.client !== client &&
+      attachment?.fact.client !== client
+    ) {
+      return false;
     }
     return (
       carriedBy === undefined ||

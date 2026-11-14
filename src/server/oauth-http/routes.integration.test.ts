@@ -1,6 +1,11 @@
 import { createHash, randomBytes } from 'node:crypto';
 
-import { auth, type OAuthClientProvider } from '@modelcontextprotocol/client';
+import {
+  auth,
+  Client,
+  type OAuthClientProvider,
+  StreamableHTTPClientTransport,
+} from '@modelcontextprotocol/client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createMCPApp } from '@/server/mcp-app';
@@ -39,7 +44,7 @@ const createHarness = (): Harness => {
     },
   });
   const app = createMCPApp({
-    sessions: services.sessions,
+    mcp: services.mcp,
     oauth: services.oauth,
     findServer: (name) => services.servers.findConfig(name),
     listServers: services.listServerConfigs,
@@ -95,6 +100,48 @@ const approveOrDeny = async (
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: `decision=${decision}`,
   });
+};
+
+/** Runs DCR, authorize, consent and the token exchange, and returns the client and its access token. */
+const obtainAccessToken = async (harness: Harness) => {
+  const client = await registerDCRClient(
+    harness.app,
+    'http://localhost:9999/cb',
+  );
+  const { verifier, challenge } = pkcePair();
+  const resource = 'http://localhost:6280/s/weather/mcp';
+  const authorizeURL = new URL('http://localhost:6280/authorize');
+  authorizeURL.searchParams.set('client_id', client.client_id);
+  authorizeURL.searchParams.set('redirect_uri', 'http://localhost:9999/cb');
+  authorizeURL.searchParams.set('response_type', 'code');
+  authorizeURL.searchParams.set('code_challenge', challenge);
+  authorizeURL.searchParams.set('code_challenge_method', 'S256');
+  authorizeURL.searchParams.set('resource', resource);
+  const consent = await approveOrDeny(
+    harness.app,
+    await harness.app.request(authorizeURL.toString()),
+    'approve',
+  );
+  const code = new URL(consent.headers.get('location') ?? '').searchParams.get(
+    'code',
+  );
+  const tokenResponse = await harness.app.request(
+    'http://localhost:6280/token',
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: code ?? '',
+        redirect_uri: 'http://localhost:9999/cb',
+        client_id: client.client_id,
+        code_verifier: verifier,
+        resource,
+      }).toString(),
+    },
+  );
+  const tokens = (await tokenResponse.json()) as { access_token: string };
+  return { clientId: client.client_id, accessToken: tokens.access_token };
 };
 
 describe('OAuth routes', () => {
@@ -905,6 +952,62 @@ describe('OAuth routes', () => {
       );
 
       expect(response.status).toBe(200);
+    });
+  });
+
+  describe('a 2026-07-28 client with a token', () => {
+    it('is keyed by the OAuth client the token was issued to', async () => {
+      const { clientId, accessToken } = await obtainAccessToken(harness);
+      const client = new Client(
+        { name: 'modern-client', version: '3.0.0' },
+        { versionNegotiation: { mode: 'auto' } },
+      );
+      await client.connect(
+        new StreamableHTTPClientTransport(
+          new URL('http://localhost:6280/s/weather/mcp'),
+          {
+            fetch: async (url, init) => {
+              const headers = new Headers(init?.headers);
+              headers.set('authorization', `Bearer ${accessToken}`);
+              return harness.app.request(url, { ...init, headers });
+            },
+          },
+        ),
+      );
+
+      await client.listTools();
+
+      expect(harness.services.mcp.listClients('weather')).toEqual([
+        expect.objectContaining({
+          id: `oauth:${clientId}`,
+          era: 'modern',
+          oauthClientId: clientId,
+          clientInfo: { name: 'modern-client', version: '3.0.0' },
+        }),
+      ]);
+      await harness.services.mcp.closeAll();
+    });
+
+    it('lists a 2025-11-25 session with the OAuth client of its token', async () => {
+      const { clientId, accessToken } = await obtainAccessToken(harness);
+      const client = new Client({ name: 'legacy-client', version: '1.0.0' });
+      await client.connect(
+        new StreamableHTTPClientTransport(
+          new URL('http://localhost:6280/s/weather/mcp'),
+          {
+            fetch: async (url, init) => {
+              const headers = new Headers(init?.headers);
+              headers.set('authorization', `Bearer ${accessToken}`);
+              return harness.app.request(url, { ...init, headers });
+            },
+          },
+        ),
+      );
+
+      expect(harness.services.mcp.listClients('weather')).toEqual([
+        expect.objectContaining({ era: 'legacy', oauthClientId: clientId }),
+      ]);
+      await harness.services.mcp.closeAll();
     });
   });
 });

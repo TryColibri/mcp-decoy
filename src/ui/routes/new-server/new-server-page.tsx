@@ -15,6 +15,9 @@ import { serverEndpoint } from '@/ui/components/endpoint';
 import {
   authInputOf,
   checkServerName,
+  checkTTL,
+  DEFAULT_PROTOCOL_VALUES,
+  protocolInputOf,
   ServerFields,
   type ServerFormValues,
 } from '@/ui/components/server-fields';
@@ -32,6 +35,7 @@ export function NewServerPage() {
     version: '',
     instructions: '',
     authMode: 'none',
+    ...DEFAULT_PROTOCOL_VALUES,
   });
   const [submitting, setSubmitting] = useState(false);
   const [serverErrors, setServerErrors] = useState<
@@ -40,10 +44,12 @@ export function NewServerPage() {
   const [formError, setFormError] = useState<string | null>(null);
 
   const { name, infoName, version, instructions } = values;
-  const { valid, error: nameError } = checkServerName(
+  const { valid: nameValid, error: nameError } = checkServerName(
     name,
     servers?.map((server) => server.name) ?? [],
   );
+  const valid = nameValid && checkTTL(values.ttlMs) === null;
+  const protocol = protocolInputOf(values);
   const endpoint = serverEndpoint(
     instance?.mcp.urlTemplate,
     name === '' ? 'my-server' : name,
@@ -70,6 +76,7 @@ export function NewServerPage() {
             ...(values.authMode === 'none'
               ? {}
               : { auth: authInputOf(values) }),
+            ...(protocol === undefined ? {} : { protocol }),
           },
         }),
       );
