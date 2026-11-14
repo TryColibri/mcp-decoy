@@ -15,8 +15,8 @@ export type ClientsSectionProps = {
   server: ServerSummary;
 };
 
-const th = tw`border-b border-paper-200 px-4 py-2.5 text-left text-xs font-semibold tracking-wide whitespace-nowrap text-ink-500 uppercase dark:border-paper-800 dark:text-ink-400`;
-const td = tw`border-b border-paper-100 px-4 py-3 align-middle text-sm whitespace-nowrap dark:border-paper-800`;
+const th = tw`border-b border-paper-200 px-3 py-2.5 text-left text-xs font-semibold tracking-wide whitespace-nowrap text-ink-500 uppercase dark:border-paper-800 dark:text-ink-400`;
+const td = tw`border-b border-paper-100 p-3 align-middle text-sm whitespace-nowrap dark:border-paper-800`;
 
 /**
  * Clients of a server, whichever protocol generation they speak: 2025-11-25
@@ -62,9 +62,6 @@ function ClientTable({ server, clients }: ClientTableProps) {
               Era
             </th>
             <th className={th} scope="col">
-              Protocol
-            </th>
-            <th className={th} scope="col">
               OAuth client
             </th>
             <th className={th} scope="col">
@@ -97,19 +94,23 @@ function ClientTable({ server, clients }: ClientTableProps) {
 
 type EraBadgeProps = {
   era: MCPClient['era'];
+  /** Protocol version in use, shown when it isn't the era's own. */
+  protocolVersion: string | null;
 };
 
-/** Which protocol generation a client speaks. */
-function EraBadge({ era }: EraBadgeProps) {
+/** Which protocol generation a client speaks, and the version it negotiated if that differs. */
+function EraBadge({ era, protocolVersion }: EraBadgeProps) {
   const legacy = era === 'legacy';
+  const eraVersion = legacy ? '2025-11-25' : '2026-07-28';
+  const kind = legacy ? 'session' : 'stateless';
+  const detail =
+    protocolVersion === null || protocolVersion === eraVersion
+      ? kind
+      : `${kind} · ${protocolVersion}`;
   return (
     <span className="inline-flex flex-col">
-      <span className="font-mono text-[13px] font-medium">
-        {legacy ? '2025-11-25' : '2026-07-28'}
-      </span>
-      <span className="text-xs text-ink-500 dark:text-ink-400">
-        {legacy ? 'session' : 'stateless'}
-      </span>
+      <span className="font-mono text-[13px] font-medium">{eraVersion}</span>
+      <span className="text-xs text-ink-500 dark:text-ink-400">{detail}</span>
     </span>
   );
 }
@@ -158,14 +159,12 @@ function ClientRow({ server, mcpClient }: ClientRowProps) {
         </span>
       </td>
       <td className={td}>
-        <EraBadge era={mcpClient.era} />
-      </td>
-      <td className={td}>
-        <span className="font-mono text-[13px]">
-          {mcpClient.protocolVersion ??
-            mcpClient.requestedProtocolVersion ??
-            '—'}
-        </span>
+        <EraBadge
+          era={mcpClient.era}
+          protocolVersion={
+            mcpClient.protocolVersion ?? mcpClient.requestedProtocolVersion
+          }
+        />
       </td>
       <td className={td}>
         {mcpClient.oauthClientId === null ? (

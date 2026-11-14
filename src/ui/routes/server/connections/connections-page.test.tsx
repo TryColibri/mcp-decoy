@@ -235,7 +235,7 @@ describe('ConnectionsPage', () => {
 
       expect(screen.getByText('inspector 1.0.0')).toBeVisible();
       expect(screen.getByText('2025-11-25')).toBeVisible();
-      expect(screen.getByText('session')).toBeVisible();
+      expect(screen.getByText('session · 2025-06-18')).toBeVisible();
       await userEvent.click(
         screen.getByRole('button', { name: 'Close session session-1' }),
       );
@@ -252,7 +252,7 @@ describe('ConnectionsPage', () => {
       expect(screen.getByText('modern-app 2.0.0')).toBeVisible();
       const row = screen.getByRole('row', { name: /modern-app/ });
       expect(within(row).getByText('stateless')).toBeVisible();
-      expect(within(row).getAllByText('2026-07-28')).toHaveLength(2);
+      expect(within(row).getByText('2026-07-28')).toBeVisible();
       expect(within(row).getByText('client-1')).toBeVisible();
       expect(within(row).getByText('1')).toBeVisible();
       await userEvent.click(

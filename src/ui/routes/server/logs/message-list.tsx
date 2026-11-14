@@ -44,7 +44,7 @@ export type MessageListProps = {
 };
 
 const grids: Record<MessageListLayout, string> = {
-  full: tw`grid w-full grid-cols-[104px_44px_104px_minmax(0,1.4fr)_92px_minmax(0,1fr)_56px_84px] items-center gap-2 px-4`,
+  full: tw`grid w-full grid-cols-[104px_44px_104px_minmax(200px,1fr)_92px_minmax(0,120px)_minmax(48px,72px)_84px] items-center gap-2 px-4 xl:grid-cols-[104px_44px_104px_minmax(200px,1fr)_92px_minmax(0,240px)_minmax(48px,160px)_84px] xl:gap-6`,
   compact: tw`grid w-full grid-cols-[104px_minmax(0,1fr)] items-center gap-2 px-4`,
 };
 
@@ -250,7 +250,7 @@ function FullColumns({ entry }: FullColumnsProps) {
         {noteOf(entry)}
       </span>
       <span
-        className="font-mono text-ink-600 dark:text-ink-300"
+        className="truncate font-mono text-ink-600 dark:text-ink-300"
         title={client ?? undefined}
       >
         {clientLabel(client)}
