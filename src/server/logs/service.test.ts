@@ -33,6 +33,7 @@ const request = (id: number, raw = '{"method":"tools/call"}'): MCPFact => ({
   at: '2026-10-21T12:00:00.000Z',
   server: 'weather',
   sessionId: 's1',
+  client: 's1',
   from: 'client',
   kind: 'request',
   method: 'tools/call',
@@ -59,6 +60,7 @@ const noReply = (id: number, replyTo: number): NoReplyFact => ({
   at: '2026-10-21T12:00:00.000Z',
   server: 'weather',
   sessionId: 's1',
+  client: 's1',
   replyTo,
   reason: 'exchange-ended',
 });
@@ -69,6 +71,7 @@ const httpEnd = (id: number, exchange: number): HTTPEndFact => ({
   at: '2026-10-21T12:00:00.000Z',
   server: 'weather',
   sessionId: 's1',
+  client: 's1',
   exchange,
   state: 'complete',
   durationMs: 1,
@@ -85,6 +88,7 @@ const entryFor = (anchor: LogFact): LogEntry => {
       at: anchor.at,
       server: anchor.server,
       sessionId: anchor.sessionId,
+      client: anchor.client,
       endpoint: 'mcp',
       request: {
         method: 'GET',

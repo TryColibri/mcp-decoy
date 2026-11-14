@@ -16,6 +16,8 @@ import { serverEndpoint } from '@/ui/components/endpoint';
 import {
   authInputOf,
   checkServerName,
+  checkTTL,
+  protocolInputOf,
   ServerFields,
   type ServerFormValues,
 } from '@/ui/components/server-fields';
@@ -41,6 +43,9 @@ const valuesOf = (server: ServerSummary): ServerFormValues => ({
   version: server.serverInfo.version,
   instructions: server.instructions ?? '',
   authMode: server.auth.mode,
+  eras: server.protocol.eras,
+  ttlMs: String(server.protocol.cache.ttlMs),
+  cacheScope: server.protocol.cache.scope,
 });
 
 /** The fields that differ from `server`, as an update request. */
@@ -54,6 +59,7 @@ const changesOf = (
     ...(values.version === before.version ? {} : { version: values.version }),
   };
   const authChanged = values.authMode !== before.authMode;
+  const protocol = protocolInputOf(values, before);
   return {
     ...(values.name === before.name ? {} : { name: values.name }),
     ...(Object.keys(serverInfo).length === 0 ? {} : { serverInfo }),
@@ -61,6 +67,7 @@ const changesOf = (
       ? {}
       : { instructions: values.instructions }),
     ...(authChanged ? { auth: authInputOf(values) } : {}),
+    ...(protocol === undefined ? {} : { protocol }),
   };
 };
 
@@ -89,12 +96,14 @@ export function EditServerDialog({
   const changed = Object.keys(changes).length > 0;
   const renaming = changes.name !== undefined;
   const authChanging = changes.auth !== undefined;
-  const { valid, error: nameError } = checkServerName(
+  const { valid: nameValid, error: nameError } = checkServerName(
     values.name,
     servers
       ?.map((other) => other.name)
       .filter((other) => other !== server.name) ?? [],
   );
+  const valid = nameValid && checkTTL(values.ttlMs) === null;
+  const erasChanging = changes.protocol?.eras;
   const endpoint = serverEndpoint(instance?.mcp.urlTemplate, values.name);
 
   const submit = async (event: SubmitEvent<HTMLFormElement>) => {
@@ -162,6 +171,19 @@ export function EditServerDialog({
               <p className="m-0 text-[13px]/relaxed text-ink-600 dark:text-ink-300">
                 Changing authentication closes live sessions. Clients must
                 reconnect and, for OAuth, re-authorize.
+              </p>
+            )}
+            {erasChanging === 'modern' && (
+              <p className="m-0 text-[13px]/relaxed text-ink-600 dark:text-ink-300">
+                Accepting only 2026-07-28 closes live sessions. Their clients
+                must reconnect in that generation.
+              </p>
+            )}
+            {erasChanging === 'legacy' && (
+              <p className="m-0 text-[13px]/relaxed text-ink-600 dark:text-ink-300">
+                Accepting only 2025-11-25 ends open{' '}
+                <span className="font-mono">subscriptions/listen</span> streams.
+                Their clients must fall back to a session.
               </p>
             )}
             {formError !== null && (

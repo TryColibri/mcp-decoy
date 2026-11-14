@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { type ServerConfig } from '@/shared/api';
+import { DEFAULT_PROTOCOL, type ServerConfig } from '@/shared/api';
 
 import {
   createServersFileWriter,
@@ -28,6 +28,7 @@ const SERVER: ServerConfig = {
       updatedAt: '2026-10-21T12:00:00.000Z',
     },
   ],
+  protocol: structuredClone(DEFAULT_PROTOCOL),
   createdAt: '2026-10-21T12:00:00.000Z',
 };
 
@@ -106,6 +107,60 @@ describe('servers file', () => {
         clientScopes: ['mcp'],
       });
     });
+
+    it('defaults the protocol of a server written before it existed', async () => {
+      const { protocol: _, ...withoutProtocol } = SERVER;
+      await writeFile(
+        path,
+        JSON.stringify({ version: 1, servers: [withoutProtocol] }),
+      );
+
+      const [server] = await loadServersFile(path);
+
+      expect(server.protocol).toEqual({
+        eras: 'both',
+        cache: { ttlMs: 0, scope: 'private' },
+      });
+    });
+
+    it('fills the protocol fields a partial block leaves out', async () => {
+      await writeFile(
+        path,
+        JSON.stringify({
+          version: 1,
+          servers: [{ ...SERVER, protocol: { eras: 'modern' } }],
+        }),
+      );
+
+      const [server] = await loadServersFile(path);
+
+      expect(server.protocol).toEqual({
+        eras: 'modern',
+        cache: { ttlMs: 0, scope: 'private' },
+      });
+    });
+
+    it.each([-1, 1.5, Number.MAX_SAFE_INTEGER + 1])(
+      'rejects a cache lifetime of %s',
+      async (ttlMs) => {
+        await writeFile(
+          path,
+          JSON.stringify({
+            version: 1,
+            servers: [
+              {
+                ...SERVER,
+                protocol: { eras: 'both', cache: { ttlMs, scope: 'private' } },
+              },
+            ],
+          }),
+        );
+
+        await expect(loadServersFile(path)).rejects.toThrow(
+          /protocol\.cache\.ttlMs/,
+        );
+      },
+    );
 
     it('rejects duplicate server names', async () => {
       await writeFile(

@@ -1,17 +1,17 @@
 import { Hono } from 'hono';
 
 import { type LogsService } from '@/server/logs';
-import { type SessionManager } from '@/server/mcp';
+import { type MCPEndpoint } from '@/server/mcp';
 import { type OAuthStore } from '@/server/oauth';
 import { type ServersService } from '@/server/servers';
 import { type ToolsService } from '@/server/tools';
 import { type InstanceInfo, instanceInfoSchema } from '@/shared/api';
 
+import { createClientsRoutes } from './clients';
 import { createLogsRoutes } from './logs';
 import { createOAuthRoutes } from './oauth';
 import { createErrorHandler, notFoundHandler } from './problems';
 import { createServersRoutes } from './servers';
-import { createSessionsRoutes } from './sessions';
 import { createToolsRoutes } from './tools';
 
 export { problemResponse } from './problems';
@@ -24,8 +24,8 @@ export type ApiDeps = {
   servers: ServersService;
   /** The tools service. */
   tools: ToolsService;
-  /** The MCP session manager. */
-  sessions: SessionManager;
+  /** The MCP endpoint, which knows every client. */
+  mcp: MCPEndpoint;
   /** The logs service. */
   logs: LogsService;
   /** The OAuth store. */
@@ -44,7 +44,7 @@ export function createApiV1({
   instance,
   servers,
   tools,
-  sessions,
+  mcp,
   logs,
   oauth,
   onUnexpectedError,
@@ -53,7 +53,7 @@ export function createApiV1({
     .get('/', (c) => c.json(instanceInfoSchema.parse(instance()), 200))
     .route('/servers', createServersRoutes(servers))
     .route('/servers', createToolsRoutes(tools))
-    .route('/servers', createSessionsRoutes(sessions))
+    .route('/servers', createClientsRoutes(mcp))
     .route('/servers', createLogsRoutes(logs))
     .route('/servers', createOAuthRoutes({ servers, oauth }));
   app.onError(createErrorHandler(onUnexpectedError));

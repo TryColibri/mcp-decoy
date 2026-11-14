@@ -5,16 +5,16 @@ import useSWR, { SWRConfig } from 'swr';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  type MCPClient,
   type OAuthToken,
   type ServerSummary,
-  type Session,
 } from '@/shared/api';
-import { useSessions } from '@/ui/api';
+import { useClients } from '@/ui/api';
 
 import { ConnectionsPage } from './connections-page';
 
 const mocks = vi.hoisted(() => ({
-  closeSession: vi.fn(),
+  closeClient: vi.fn(),
   revokeToken: vi.fn(),
   revokeTokens: vi.fn(),
   patchServer: vi.fn(),
@@ -25,13 +25,13 @@ vi.mock('@/ui/api', () => ({
   keys: {
     servers: 'servers',
     server: (server: string) => `servers/${server}`,
-    sessions: (server: string) => `servers/${server}/sessions`,
+    clients: (server: string) => `servers/${server}/clients`,
     oauthTokens: (server: string) => `servers/${server}/oauth/tokens`,
   },
   unwrapEmpty: async (request: Promise<unknown>) => {
     await request;
   },
-  useSessions: vi.fn(),
+  useClients: vi.fn(),
   // A real SWR hook over a controllable fetcher, so revalidation is visible.
   useOAuthTokens: (server: string, enabled: boolean) =>
     useSWR(enabled ? `servers/${server}/oauth/tokens` : null, async () =>
@@ -45,7 +45,7 @@ vi.mock('@/ui/api', () => ({
     servers: {
       ':server': {
         $patch: mocks.patchServer,
-        sessions: { ':session': { $delete: mocks.closeSession } },
+        clients: { ':client': { $delete: mocks.closeClient } },
         oauth: {
           tokens: {
             $delete: mocks.revokeTokens,
@@ -57,7 +57,7 @@ vi.mock('@/ui/api', () => ({
   },
 }));
 
-const mockUseSessions = vi.mocked(useSessions);
+const mockUseClients = vi.mocked(useClients);
 
 const OPEN_SERVER: ServerSummary = {
   name: 'weather',
@@ -66,8 +66,9 @@ const OPEN_SERVER: ServerSummary = {
   mcpUrl: 'http://localhost:6280/s/weather/mcp',
   toolCount: 0,
   publishedToolCount: 0,
-  sessionCount: 0,
+  clientCount: 0,
   auth: { mode: 'none' },
+  protocol: { eras: 'both', cache: { ttlMs: 0, scope: 'private' } },
 };
 
 const OAUTH_SERVER: ServerSummary = {
@@ -101,18 +102,34 @@ const REFRESH_TOKEN: OAuthToken = {
   expiresAt: null,
 };
 
-const SESSION: Session = {
+const SESSION: MCPClient = {
   id: 'session-1',
+  era: 'legacy',
   clientInfo: { name: 'inspector', version: '1.0.0' },
   requestedProtocolVersion: '2025-06-18',
   protocolVersion: '2025-06-18',
   capabilities: {},
+  oauthClientId: null,
   connectedAt: '2026-10-24T12:00:00.000Z',
   lastSeenAt: '2026-10-24T12:00:00.000Z',
+  openStreams: 0,
 };
 
-const sessionsResult = (data: Session[]) =>
-  ({ data, error: undefined }) as ReturnType<typeof useSessions>;
+const STATELESS: MCPClient = {
+  id: 'oauth:client-1',
+  era: 'modern',
+  clientInfo: { name: 'modern-app', version: '2.0.0' },
+  requestedProtocolVersion: '2026-07-28',
+  protocolVersion: '2026-07-28',
+  capabilities: {},
+  oauthClientId: 'client-1',
+  connectedAt: '2026-10-24T12:00:00.000Z',
+  lastSeenAt: '2026-10-24T12:00:00.000Z',
+  openStreams: 1,
+};
+
+const clientsResult = (data: MCPClient[]) =>
+  ({ data, error: undefined }) as ReturnType<typeof useClients>;
 
 const renderPage = (server: ServerSummary) =>
   render(
@@ -130,10 +147,10 @@ const renderPage = (server: ServerSummary) =>
 describe('ConnectionsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseSessions.mockReturnValue(sessionsResult([]));
+    mockUseClients.mockReturnValue(clientsResult([]));
     mocks.fetchTokens.mockResolvedValue([ACCESS_TOKEN, REFRESH_TOKEN]);
     mocks.revokeToken.mockResolvedValue(new Response(null, { status: 204 }));
-    mocks.closeSession.mockResolvedValue(new Response(null, { status: 204 }));
+    mocks.closeClient.mockResolvedValue(new Response(null, { status: 204 }));
   });
 
   describe('on an open server', () => {
@@ -147,10 +164,10 @@ describe('ConnectionsPage', () => {
       expect(mocks.fetchTokens).not.toHaveBeenCalled();
     });
 
-    it('explains how to open a session when there is none', () => {
+    it('explains how to see a client when there is none', () => {
       renderPage(OPEN_SERVER);
 
-      expect(screen.getByText(/No live sessions/)).toBeVisible();
+      expect(screen.getByText(/No clients/)).toBeVisible();
     });
   });
 
@@ -211,19 +228,49 @@ describe('ConnectionsPage', () => {
     });
   });
 
-  describe('sessions', () => {
-    it('lists a session and closes it', async () => {
-      mockUseSessions.mockReturnValue(sessionsResult([SESSION]));
+  describe('clients', () => {
+    it('lists a session with its era and closes it', async () => {
+      mockUseClients.mockReturnValue(clientsResult([SESSION]));
       renderPage(OPEN_SERVER);
 
       expect(screen.getByText('inspector 1.0.0')).toBeVisible();
+      expect(screen.getByText('2025-11-25')).toBeVisible();
+      expect(screen.getByText('session')).toBeVisible();
       await userEvent.click(
         screen.getByRole('button', { name: 'Close session session-1' }),
       );
 
-      expect(mocks.closeSession).toHaveBeenCalledExactlyOnceWith({
-        param: { server: 'weather', session: 'session-1' },
+      expect(mocks.closeClient).toHaveBeenCalledExactlyOnceWith({
+        param: { server: 'weather', client: 'session-1' },
       });
+    });
+
+    it('lists a stateless client with its OAuth client and open streams, and forgets it', async () => {
+      mockUseClients.mockReturnValue(clientsResult([STATELESS]));
+      renderPage(OPEN_SERVER);
+
+      expect(screen.getByText('modern-app 2.0.0')).toBeVisible();
+      const row = screen.getByRole('row', { name: /modern-app/ });
+      expect(within(row).getByText('stateless')).toBeVisible();
+      expect(within(row).getAllByText('2026-07-28')).toHaveLength(2);
+      expect(within(row).getByText('client-1')).toBeVisible();
+      expect(within(row).getByText('1')).toBeVisible();
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Forget client oauth:client-1' }),
+      );
+
+      expect(mocks.closeClient).toHaveBeenCalledExactlyOnceWith({
+        param: { server: 'weather', client: 'oauth:client-1' },
+      });
+    });
+
+    it('links to the logs of the client', () => {
+      mockUseClients.mockReturnValue(clientsResult([STATELESS]));
+      renderPage(OPEN_SERVER);
+
+      expect(
+        screen.getByRole('link', { name: 'View logs of oauth:client-1' }),
+      ).toHaveAttribute('href', '/logs?client=oauth%3Aclient-1');
     });
   });
 

@@ -167,7 +167,7 @@ export function ToolEditor({
     }
   };
 
-  const sessions = server.sessionCount;
+  const clients = server.clientCount;
   const actions = tool.published ? (
     <>
       <Button
@@ -365,7 +365,7 @@ export function ToolEditor({
           <span className="text-[13px] text-ink-600 dark:text-ink-300">
             Live, no restart · notifies{' '}
             <strong>
-              {sessions} {sessions === 1 ? 'session' : 'sessions'}
+              {clients} {clients === 1 ? 'client' : 'clients'}
             </strong>{' '}
             on <span className="font-mono">{server.name}</span>
           </span>

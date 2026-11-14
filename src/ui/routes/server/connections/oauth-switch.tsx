@@ -38,7 +38,7 @@ export function OAuthSwitch({ server }: OAuthSwitchProps) {
       );
       await mutate(keys.server(server.name), updated, { revalidate: false });
       void mutate(keys.servers);
-      void mutate(keys.sessions(server.name));
+      void mutate(keys.clients(server.name));
       void mutate(keys.oauthTokens(server.name));
       setConfirming(false);
     } catch (caught) {

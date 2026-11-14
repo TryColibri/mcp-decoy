@@ -8,7 +8,7 @@ import {
   type Problem,
   problemSchema,
   type ServerSummary,
-  type Session,
+  type MCPClient,
   type Tool,
 } from '@/shared/api';
 import { createMCPDecoyClient } from '@/shared/client';
@@ -107,13 +107,13 @@ export const keys = {
   servers: 'servers',
   server: (server: string) => `servers/${server}`,
   tools: (server: string) => `servers/${server}/tools`,
-  sessions: (server: string) => `servers/${server}/sessions`,
+  clients: (server: string) => `servers/${server}/clients`,
   logs: (server: string) => `servers/${server}/logs`,
   logEntry: (server: string, id: number) => `servers/${server}/logs/${id}`,
   oauthTokens: (server: string) => `servers/${server}/oauth/tokens`,
 } as const;
 
-/** Live session counts refresh this often. */
+/** Live client counts refresh this often. */
 const POLL_MS = 2000;
 
 /** `GET /api/v1`. */
@@ -123,7 +123,7 @@ export function useInstance() {
   );
 }
 
-/** `GET /api/v1/servers`, polled for live session counts. */
+/** `GET /api/v1/servers`, polled for live client counts. */
 export function useServers() {
   return useSWR<ServerSummary[], ApiError>(
     keys.servers,
@@ -132,7 +132,7 @@ export function useServers() {
   );
 }
 
-/** `GET /api/v1/servers/{server}`, polled for live session counts. */
+/** `GET /api/v1/servers/{server}`, polled for live client counts. */
 export function useServer(server: string) {
   return useSWR<ServerSummary, ApiError>(
     keys.server(server),
@@ -154,14 +154,14 @@ export function useTools(server: string) {
   );
 }
 
-/** `GET /api/v1/servers/{server}/sessions`. */
-export function useSessions(server: string, config?: SWRConfiguration) {
-  return useSWR<Session[], ApiError>(
-    keys.sessions(server),
+/** `GET /api/v1/servers/{server}/clients`. */
+export function useClients(server: string, config?: SWRConfiguration) {
+  return useSWR<MCPClient[], ApiError>(
+    keys.clients(server),
     async () =>
       (
         await unwrap(
-          client.servers[':server'].sessions.$get({ param: { server } }),
+          client.servers[':server'].clients.$get({ param: { server } }),
         )
       ).items,
     { refreshInterval: POLL_MS, ...config },

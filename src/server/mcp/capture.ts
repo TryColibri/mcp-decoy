@@ -15,6 +15,8 @@ export type CaptureOrigin = {
   server: string;
   /** MCP session, or `null` when the message belongs to none. */
   sessionId: string | null;
+  /** The client the message is attributed to: the session ID, or a modern client key. `null` when unknown. */
+  client: string | null;
 };
 
 /** Parameters of `Capture.begin`. */
@@ -39,6 +41,21 @@ export type Exchange = {
    * @param response - The response the handler produced.
    */
   respond(response: Response): Promise<Response>;
+  /**
+   * Attributes the exchange to a client that has no session (2026-07-28).
+   * Applies to the facts written from then on, so call it before `respond`.
+   * An exchange with a session is attributed to the session, unless this says otherwise.
+   *
+   * @param attribution - The client key.
+   */
+  attribute(attribution: { client: string }): void;
+  /**
+   * Calls `callback` once when the exchange is over: its event stream closed,
+   * the client left, or it had none. Calls it at once if it already is.
+   *
+   * @param callback - What to run.
+   */
+  onEnd(callback: () => void): void;
   /** `false` once the exchange is over: its event stream has closed, or it had none. `true` before `respond`. */
   readonly open: boolean;
 };
@@ -77,7 +94,7 @@ type Pending = {
 };
 
 /** What an exchange keeps of the `http` fact it wrote. */
-type Carrier = Pick<LogFact, 'id' | 'server' | 'sessionId'>;
+type Carrier = Pick<LogFact, 'id' | 'server' | 'sessionId' | 'client'>;
 
 /** What a recorded exchange remembers of its own request body. */
 type ExchangeState = {
@@ -120,11 +137,21 @@ export function createCapture(
   // `http` fact ids of exchanges whose event stream is open.
   const streaming = new Set<number>();
 
+  // Without a session (2026-07-28), replies always come on the request's own
+  // exchange, so the exchange scopes the id: two clients may both use id `1`.
   const pendingKey = (
     origin: CaptureOrigin,
     from: 'client' | 'server',
     id: string | number,
-  ) => JSON.stringify([origin.server, origin.sessionId, from, typeof id, id]);
+    carriedBy: number | null,
+  ) =>
+    JSON.stringify([
+      origin.server,
+      origin.sessionId ?? `exchange:${carriedBy}`,
+      from,
+      typeof id,
+      id,
+    ]);
 
   const elapsed = (since: number) =>
     Math.round((clock.monotonic() - since) * 10) / 10;
@@ -162,6 +189,7 @@ export function createCapture(
       at: clock.now().toISOString(),
       server: request.server,
       sessionId: request.sessionId,
+      client: request.client,
       replyTo: factId,
       reason,
     });
@@ -189,7 +217,7 @@ export function createCapture(
       const requestFrom = from === 'client' ? 'server' : 'client';
       let key: string | undefined;
       if (jsonrpcId !== null) {
-        key = pendingKey(origin, requestFrom, jsonrpcId);
+        key = pendingKey(origin, requestFrom, jsonrpcId, carriedBy);
       } else if (from === 'server') {
         key = onlyUnanswered(exchange);
       }
@@ -206,6 +234,7 @@ export function createCapture(
       at,
       server: origin.server,
       sessionId: origin.sessionId,
+      client: origin.client,
       from,
       kind,
       method,
@@ -224,7 +253,7 @@ export function createCapture(
       method !== null &&
       carriedBy !== null
     ) {
-      const key = pendingKey(origin, from, jsonrpcId);
+      const key = pendingKey(origin, from, jsonrpcId, carriedBy);
       remember(key, {
         factId: fact.id,
         from,
@@ -273,6 +302,18 @@ export function createCapture(
       let ended = false;
       let events = 0;
       let httpFacts: Carrier[] = [];
+      // The client `attribute` named, which wins over the session.
+      let attributed: string | null = null;
+      const endCallbacks: Array<() => void> = [];
+
+      const clientOf = (sessionId: string | null) => attributed ?? sessionId;
+
+      // Runs the `onEnd` callbacks once the exchange is over.
+      const runEndCallbacks = () => {
+        for (const callback of endCallbacks.splice(0)) {
+          callback();
+        }
+      };
 
       const requestRecord = (): HTTPFact['request'] => {
         const cut = truncate(body ?? '');
@@ -301,6 +342,7 @@ export function createCapture(
             at: arrivedAt.toISOString(),
             server,
             sessionId,
+            client: clientOf(sessionId),
             endpoint,
             request: requestRecord(),
             response,
@@ -311,7 +353,11 @@ export function createCapture(
         if (endpoint !== 'mcp' || carrier === undefined) {
           return;
         }
-        const origin = { server: carrier.server, sessionId };
+        const origin = {
+          server: carrier.server,
+          sessionId,
+          client: carrier.client,
+        };
         for (const message of clientMessages) {
           record(
             origin,
@@ -349,6 +395,7 @@ export function createCapture(
             at: clock.now().toISOString(),
             server: fact.server,
             sessionId: fact.sessionId,
+            client: fact.client,
             exchange: id,
             state: endState,
             durationMs: elapsed(startedAt),
@@ -356,6 +403,7 @@ export function createCapture(
           });
         }
         decideOwnRequests(state, 'exchange-ended');
+        runEndCallbacks();
       };
 
       // The client left. Before the response head, the exchange is recorded
@@ -372,6 +420,7 @@ export function createCapture(
         open = false;
         writeHead(null, request.headers.get('mcp-session-id'));
         decideOwnRequests(state, 'exchange-ended');
+        runEndCallbacks();
       };
       request.signal.addEventListener('abort', onAbort, { once: true });
 
@@ -434,6 +483,18 @@ export function createCapture(
           return open;
         },
 
+        attribute({ client }) {
+          attributed = client;
+        },
+
+        onEnd(callback) {
+          if (ended) {
+            callback();
+          } else {
+            endCallbacks.push(callback);
+          }
+        },
+
         async respond(response) {
           if (request.signal.aborted) {
             onAbort();
@@ -472,7 +533,11 @@ export function createCapture(
           const carrier = httpFacts.at(0);
           if (!stream || response.body === null || carrier === undefined) {
             if (endpoint === 'mcp' && carrier !== undefined) {
-              const origin = { server: carrier.server, sessionId };
+              const origin = {
+                server: carrier.server,
+                sessionId,
+                client: carrier.client,
+              };
               for (const message of jsonRPCMessages(text)) {
                 record(
                   origin,
@@ -491,6 +556,7 @@ export function createCapture(
             open = false;
             request.signal.removeEventListener('abort', onAbort);
             decideOwnRequests(state, 'exchange-ended');
+            runEndCallbacks();
             return response;
           }
 
@@ -499,7 +565,14 @@ export function createCapture(
           }
           return new Response(
             response.body.pipeThrough(
-              recorder({ server: carrier.server, sessionId }, carrier.id),
+              recorder(
+                {
+                  server: carrier.server,
+                  sessionId,
+                  client: carrier.client,
+                },
+                carrier.id,
+              ),
             ),
             {
               status: response.status,

@@ -13,6 +13,12 @@ type LogFactBase = {
   server: string;
   /** MCP session, or `null` when the fact belongs to none. */
   sessionId: string | null;
+  /**
+   * The MCP client the fact is attributed to: the session ID for 2025-11-25
+   * traffic, the client key (`oauth:<client_id>` or `info:<name>/<version>`)
+   * for 2026-07-28 traffic. `null` when the fact belongs to none.
+   */
+  client: string | null;
 };
 
 /** The request side of an HTTP exchange. */
@@ -170,6 +176,12 @@ const factBaseShape = {
     .string()
     .nullable()
     .describe('MCP session, or `null` when the fact belongs to none.'),
+  client: z
+    .string()
+    .nullable()
+    .describe(
+      'The MCP client the fact is attributed to: the session ID for 2025-11-25 traffic, the client key (`oauth:<client_id>` or `info:<name>/<version>`) for 2026-07-28 traffic. `null` when the fact belongs to none.',
+    ),
 };
 
 const httpFactSchema = z.strictObject({
@@ -397,6 +409,8 @@ export type LogPageQuery = {
   q?: string;
   /** Only entries with a fact carried by this `http` fact id. */
   carriedBy?: number;
+  /** Only entries attributed to this client (a session ID or a client key). */
+  client?: string;
   /** Opaque cursor from a previous page's `nextCursor`. */
   cursor?: string;
   /** Page size, 1–1000. Default: 100. */
@@ -419,6 +433,12 @@ export const logPageQuerySchema: z.ZodType<
     .min(0)
     .optional()
     .describe('Only entries with a fact carried by this `http` fact id.'),
+  client: z
+    .string()
+    .optional()
+    .describe(
+      'Only entries attributed to this client (a session ID or a client key).',
+    ),
   cursor: z
     .string()
     .optional()
@@ -436,6 +456,8 @@ export const logPageQuerySchema: z.ZodType<
 export type LogStreamQuery = {
   /** Case-insensitive substring over method, URL, headers, bodies and raw JSON. */
   q?: string;
+  /** Only entries attributed to this client (a session ID or a client key). */
+  client?: string;
   /** Replay facts with an id greater than this one first. `Last-Event-ID` takes precedence. */
   after?: number;
 };
@@ -449,6 +471,12 @@ export const logStreamQuerySchema: z.ZodType<
     .optional()
     .describe(
       'Case-insensitive substring over method, URL, headers, bodies and raw JSON.',
+    ),
+  client: z
+    .string()
+    .optional()
+    .describe(
+      'Only entries attributed to this client (a session ID or a client key).',
     ),
   after: z.coerce
     .number<string>()

@@ -12,10 +12,11 @@ import {
 } from './log-fixtures';
 import {
   atOf,
+  clientLabel,
   nameOf,
   noteOf,
   prettyBody,
-  sessionOf,
+  clientOf,
   splitURL,
   statusOf,
   tookOf,
@@ -226,12 +227,25 @@ describe('tookOf', () => {
   });
 });
 
-describe('atOf and sessionOf', () => {
+describe('atOf and clientOf', () => {
   it('read the anchor fact', () => {
-    const entry = httpEntry(httpFact({ sessionId: 'abc' }));
+    const entry = httpEntry(httpFact({ client: 'abc' }));
 
     expect(atOf(entry)).toBe('2026-10-21T12:00:00.000Z');
-    expect(sessionOf(entry)).toBe('abc');
+    expect(clientOf(entry)).toBe('abc');
+  });
+});
+
+describe('clientLabel', () => {
+  it.each([
+    [null, '—'],
+    ['0123456789abcdef', '0123'],
+    ['info:demo/1.0.0', 'demo'],
+    ['info:@scope/demo/1.0.0', '@scope/demo'],
+    ['info:unknown', 'unknown'],
+    ['oauth:client-1', 'client-1'],
+  ])('shortens %s to %s', (client, label) => {
+    expect(clientLabel(client)).toBe(label);
   });
 });
 

@@ -10,6 +10,8 @@ export type LogPageParams = {
   text?: string;
   /** Only entries with a fact carried by this `http` fact id. */
   carriedBy?: number;
+  /** Only entries attributed to this client (a session ID or a client key). */
+  client?: string;
   /** Only entries older than this id. */
   beforeId?: number;
   /** Page size. */
@@ -32,6 +34,8 @@ export type LogPageResult = {
 export type LogStreamParams = {
   /** Only follow entries matching this case-insensitive substring. */
   text?: string;
+  /** Only follow entries attributed to this client (a session ID or a client key). */
+  client?: string;
   /** Replay facts with an id greater than this one first. */
   afterId: number;
 };
@@ -110,12 +114,17 @@ export type LogsService = {
  * @param fact - The fact appended or replayed.
  * @param anchor - For an attachment, its anchor, or `undefined` when gone.
  * @param text - The stream's search.
+ * @param client - The stream's client: facts attributed to another one are dropped.
  */
 export function streamItemsFor(
   fact: LogFact,
   anchor: LogFact | undefined,
   text?: string,
+  client?: string,
 ): LogStreamItem[] {
+  if (client !== undefined && fact.client !== client) {
+    return [];
+  }
   if (anchorIdOf(fact) === null) {
     return matches(fact, text) ? [{ fact, late: false }] : [];
   }
@@ -149,19 +158,20 @@ export function createLogsService({
   };
 
   return {
-    page(server, { text, carriedBy, beforeId, limit }) {
+    page(server, { text, carriedBy, client, beforeId, limit }) {
       assertServerExists(server);
       const anchors = store.anchors({
         server,
         text,
         carriedBy,
+        client,
         beforeId,
         limit: limit + 1,
       });
       return {
         items: anchors.slice(0, limit).map(entryOf),
         more: anchors.length > limit,
-        total: store.countAnchors({ server, text, carriedBy }),
+        total: store.countAnchors({ server, text, carriedBy, client }),
         after: store.lastId(),
       };
     },
@@ -192,13 +202,13 @@ export function createLogsService({
       store.clear(server);
     },
 
-    stream(server, { text, afterId }, listener) {
+    stream(server, { text, client, afterId }, listener) {
       assertServerExists(server);
 
       const forwardFact = (fact: LogFact) => {
         const anchorId = anchorIdOf(fact);
         const anchor = anchorId === null ? undefined : store.get(anchorId);
-        for (const item of streamItemsFor(fact, anchor, text)) {
+        for (const item of streamItemsFor(fact, anchor, text, client)) {
           listener({ type: 'fact', ...item });
         }
       };
@@ -211,7 +221,13 @@ export function createLogsService({
           const entryMatches =
             matches(event.fact, text) ||
             (event.attachment !== undefined && matches(event.attachment, text));
-          if (anchorIdOf(event.fact) === null && entryMatches) {
+          const entryOfClient =
+            client === undefined || event.fact.client === client;
+          if (
+            anchorIdOf(event.fact) === null &&
+            entryMatches &&
+            entryOfClient
+          ) {
             listener({ type: 'evicted', id: event.fact.id });
           }
         } else {

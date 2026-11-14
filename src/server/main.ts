@@ -113,7 +113,7 @@ export async function start({
 
   // Ports are only known once listening (they may be 0).
   const ready: { info?: InstanceInfo } = {};
-  const { servers, sessions, listServerConfigs, capture, oauth, api, events } =
+  const { servers, mcp, listServerConfigs, capture, oauth, api, events } =
     createServices({
       initial,
       persist,
@@ -129,7 +129,7 @@ export async function start({
 
   const mcpListener = await listen({
     fetch: createMCPApp({
-      sessions,
+      mcp,
       oauth,
       findServer: (name) => servers.findConfig(name),
       listServers: listServerConfigs,
@@ -191,7 +191,7 @@ export async function start({
     events,
     close() {
       closing ??= (async () => {
-        await sessions.closeAll();
+        await mcp.closeAll();
         await Promise.all([closeListener(mcpListener), closeListener(ui)]);
         await removeRuntimeFile(paths.runtimeFile);
       })();

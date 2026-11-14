@@ -45,7 +45,7 @@ const createHarness = (): Harness => {
   return {
     services,
     app: createMCPApp({
-      sessions: services.sessions,
+      mcp: services.mcp,
       oauth: services.oauth,
       findServer: (name) => services.servers.findConfig(name),
       listServers: services.listServerConfigs,
@@ -155,7 +155,7 @@ describe('mcpApp', () => {
   });
 
   afterEach(async () => {
-    await harness.services.sessions.closeAll();
+    await harness.services.mcp.closeAll();
   });
 
   describe('a full client session', () => {
@@ -262,9 +262,10 @@ describe('mcpApp', () => {
       const ids = entries.map((entry) => entry.id);
       expect(ids).toEqual([...ids].sort((a, b) => a - b));
 
-      expect(services.sessions.list('weather')).toEqual([
+      expect(services.mcp.listClients('weather')).toEqual([
         expect.objectContaining({
           id: sessionId,
+          era: 'legacy',
           clientInfo: { name: 'test-client', version: '1.2.3' },
           protocolVersion: expect.any(String),
         }),
@@ -601,9 +602,9 @@ describe('mcpApp', () => {
       const { client, transport } = await connect(harness, 'weather');
       const sessionId = transport.sessionId ?? '';
 
-      await harness.services.sessions.close('weather', sessionId);
+      await harness.services.mcp.closeClient('weather', sessionId);
 
-      expect(harness.services.sessions.count('weather')).toBe(0);
+      expect(harness.services.mcp.clientCount('weather')).toBe(0);
       await expect(client.listTools()).rejects.toThrow(/404|Session not found/);
     });
   });
@@ -617,8 +618,8 @@ describe('mcpApp', () => {
 
       await services.servers.update('weather', { auth: { mode: 'oauth' } });
 
-      expect(services.sessions.count('weather')).toBe(0);
-      expect(services.sessions.count('echo')).toBe(1);
+      expect(services.mcp.clientCount('weather')).toBe(0);
+      expect(services.mcp.clientCount('echo')).toBe(1);
       // The OAuth gate now answers before the session lookup would.
       await expect(weather.client.listTools()).rejects.toThrow(/invalid_token/);
       await expect(echo.client.listTools()).resolves.toBeDefined();
@@ -633,7 +634,7 @@ describe('mcpApp', () => {
 
       await services.servers.update('weather', { name: 'forecast' });
 
-      expect(services.sessions.count('weather')).toBe(0);
+      expect(services.mcp.clientCount('weather')).toBe(0);
       await expect(client.listTools()).rejects.toThrow(/Unknown server/);
       expect(services.logs.all('forecast').length).toBeGreaterThanOrEqual(
         logged,
@@ -648,18 +649,102 @@ describe('mcpApp', () => {
     });
   });
 
-  describe('version negotiation', () => {
-    it('falls back to initialize for clients that probe the 2026 era', async () => {
+  describe('protocol generations', () => {
+    const connectAuto = async (
+      { app }: Harness,
+      options: { onListChanged?: () => void } = {},
+    ) => {
       const client = new Client(
         { name: 'auto-client', version: '1.0.0' },
         { versionNegotiation: { mode: 'auto' } },
       );
-      const transport = new StreamableHTTPClientTransport(
-        new URL('http://localhost:6280/s/weather/mcp'),
-        { fetch: async (url, init) => harness.app.request(url, init) },
+      if (options.onListChanged !== undefined) {
+        client.setNotificationHandler(
+          'notifications/tools/list_changed',
+          options.onListChanged,
+        );
+      }
+      await client.connect(
+        new StreamableHTTPClientTransport(
+          new URL('http://localhost:6280/s/weather/mcp'),
+          { fetch: async (url, init) => app.request(url, init) },
+        ),
       );
+      return client;
+    };
 
-      await client.connect(transport);
+    /** The `result` of the reply to the first request of `method`. */
+    const resultOf = (entries: LogEntry[], method: string): unknown => {
+      const entry = mcpEntriesOf(entries).find(
+        (candidate) => candidate.message.method === method,
+      );
+      if (entry?.reply?.type !== 'mcp') {
+        throw new Error(`No reply to ${method}`);
+      }
+      return (JSON.parse(entry.reply.raw) as { result: unknown }).result;
+    };
+
+    it('serves a client that probes server/discover in the 2026 era, with no session', async () => {
+      const client = await connectAuto(harness);
+
+      await expect(client.listTools()).resolves.toMatchObject({ tools: [] });
+
+      const entries = harness.services.logs.all('weather');
+      expect(summarize(entries).map(({ method }) => method)).toEqual([
+        'server/discover',
+        'tools/list',
+      ]);
+      expect(resultOf(entries, 'server/discover')).toMatchObject({
+        resultType: 'complete',
+        ttlMs: 0,
+        cacheScope: 'private',
+      });
+      expect(resultOf(entries, 'tools/list')).toMatchObject({
+        resultType: 'complete',
+        tools: [],
+        ttlMs: 0,
+        cacheScope: 'private',
+      });
+      for (const entry of entries) {
+        for (const fact of factsOf(entry)) {
+          expect(fact.sessionId).toBeNull();
+          expect(fact.client).toBe('info:auto-client/1.0.0');
+        }
+      }
+      expect(harness.services.mcp.listClients('weather')).toEqual([
+        expect.objectContaining({
+          id: 'info:auto-client/1.0.0',
+          era: 'modern',
+          clientInfo: { name: 'auto-client', version: '1.0.0' },
+        }),
+      ]);
+    });
+
+    it('keeps a client pinned to 2025-11-25 on a session', async () => {
+      const { transport } = await connect(harness, 'weather');
+
+      expect(harness.services.mcp.listClients('weather')).toEqual([
+        expect.objectContaining({ id: transport.sessionId, era: 'legacy' }),
+      ]);
+    });
+
+    it('serves both kinds of client on one server', async () => {
+      await connectAuto(harness);
+      await connect(harness, 'weather');
+
+      expect(
+        harness.services.mcp
+          .listClients('weather')
+          .map((client) => client.era)
+          .sort(),
+      ).toEqual(['legacy', 'modern']);
+    });
+
+    it('answers server/discover with an error when the server is 2025-11-25 only, so clients fall back', async () => {
+      await harness.services.servers.update('weather', {
+        protocol: { eras: 'legacy' },
+      });
+      const client = await connectAuto(harness);
 
       await expect(client.listTools()).resolves.toEqual({ tools: [] });
       expect(
@@ -680,6 +765,129 @@ describe('mcpApp', () => {
           state: 'complete',
         },
       ]);
+    });
+
+    it('rejects initialize with -32022 when the server is 2026-07-28 only', async () => {
+      await harness.services.servers.update('weather', {
+        protocol: { eras: 'modern' },
+      });
+
+      const response = await postTo(harness, INITIALIZE);
+
+      const body = (await response.json()) as {
+        error: { code: number; data?: unknown };
+      };
+      expect(body.error.code).toBe(-32022);
+      expect(JSON.stringify(body.error.data)).toContain('2026-07-28');
+      // No session was opened. The request has no `_meta` identity, so the
+      // log attributes it to the unknown client.
+      expect(
+        harness.services.mcp
+          .listClients('weather')
+          .map((client) => ({ id: client.id, era: client.era })),
+      ).toEqual([{ id: 'info:unknown', era: 'modern' }]);
+      const [entry] = mcpEntriesOf(harness.services.logs.all('weather'));
+      expect(entry.message.client).toBe('info:unknown');
+      expect(entry.message.sessionId).toBeNull();
+    });
+
+    it('closes the sessions of a server switched to 2026-07-28 only', async () => {
+      await connect(harness, 'weather');
+
+      await harness.services.servers.update('weather', {
+        protocol: { eras: 'modern' },
+      });
+
+      expect(harness.services.mcp.clientCount('weather')).toBe(0);
+    });
+
+    it('stamps the configured cache hint on tools/list and server/discover', async () => {
+      await harness.services.servers.update('weather', {
+        protocol: { cache: { ttlMs: 60_000, scope: 'public' } },
+      });
+      const client = await connectAuto(harness);
+      await client.listTools();
+
+      const entries = harness.services.logs.all('weather');
+      for (const method of ['server/discover', 'tools/list']) {
+        expect(resultOf(entries, method)).toMatchObject({
+          ttlMs: 60_000,
+          cacheScope: 'public',
+        });
+      }
+    });
+
+    it('delivers list_changed on a subscriptions/listen stream and ends it when the server goes 2025-11-25 only', async () => {
+      const onListChanged = vi.fn();
+      const client = await connectAuto(harness, { onListChanged });
+      const subscription = await client.listen({ toolsListChanged: true });
+      await waitFor(
+        () => harness.services.mcp.listClients('weather')[0]?.openStreams === 1,
+      );
+
+      await harness.services.tools.create('weather', {
+        name: 'ping',
+        published: true,
+      });
+      await vi.waitFor(() => {
+        expect(onListChanged).toHaveBeenCalled();
+      });
+
+      await harness.services.servers.update('weather', {
+        protocol: { eras: 'legacy' },
+      });
+      await expect(subscription.closed).resolves.not.toBe('local');
+    });
+
+    it('forgets a stateless client and ends its stream', async () => {
+      const client = await connectAuto(harness);
+      const subscription = await client.listen({ toolsListChanged: true });
+      await waitFor(
+        () => harness.services.mcp.listClients('weather')[0]?.openStreams === 1,
+      );
+
+      await harness.services.mcp.closeClient(
+        'weather',
+        'info:auto-client/1.0.0',
+      );
+
+      await expect(subscription.closed).resolves.not.toBe('local');
+      expect(harness.services.mcp.clientCount('weather')).toBe(0);
+      await vi.waitFor(() => {
+        const entry = httpEntriesOf(harness.services.logs.all('weather')).find(
+          (candidate) => candidate.exchange.response?.stream === true,
+        );
+        expect(entry?.state).not.toBe('streaming');
+      });
+    });
+
+    it('pairs concurrent requests that reuse a JSON-RPC id', async () => {
+      const first = await connectAuto(harness);
+      const second = new Client(
+        { name: 'second-client', version: '1.0.0' },
+        { versionNegotiation: { mode: 'auto' } },
+      );
+      await second.connect(
+        new StreamableHTTPClientTransport(
+          new URL('http://localhost:6280/s/weather/mcp'),
+          { fetch: async (url, init) => harness.app.request(url, init) },
+        ),
+      );
+
+      await Promise.all([first.listTools(), second.listTools()]);
+
+      const entries = mcpEntriesOf(harness.services.logs.all('weather')).filter(
+        (entry) => entry.message.method === 'tools/list',
+      );
+      expect(entries).toHaveLength(2);
+      for (const entry of entries) {
+        expect(entry.state).toBe('complete');
+        expect(entry.reply).toMatchObject({ type: 'mcp', kind: 'response' });
+        expect(entry.reply?.client).toBe(entry.message.client);
+      }
+      expect(new Set(entries.map((entry) => entry.message.client)).size).toBe(
+        2,
+      );
     });
   });
 });

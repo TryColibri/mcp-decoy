@@ -167,12 +167,13 @@ export function tookOf(entry: LogEntry): string {
 export const atOf = (entry: LogEntry): string => anchorOf(entry).at;
 
 /**
- * MCP session the entry belongs to, or `null`.
+ * MCP client the entry is attributed to, or `null`: a session ID, or a
+ * client key (`oauth:<client_id>`, `info:<name>/<version>`).
  *
  * @param entry - A log entry.
  */
-export const sessionOf = (entry: LogEntry): string | null =>
-  anchorOf(entry).sessionId;
+export const clientOf = (entry: LogEntry): string | null =>
+  anchorOf(entry).client;
 
 /**
  * Local wall-clock time with milliseconds, e.g. `12:04:31.204`.
@@ -187,12 +188,25 @@ export function formatTime(at: string): string {
 }
 
 /**
- * Short form of a session ID for dense tables.
+ * Short form of a client for dense tables: the first 4 characters of a
+ * session ID, the client name of an `info:` key, the client_id of an `oauth:`
+ * key.
  *
- * @param sessionId - A session ID, or `null`.
+ * @param client - A session ID or client key, or `null`.
  */
-export function shortSession(sessionId: string | null): string {
-  return sessionId === null ? '—' : sessionId.slice(0, 4);
+export function clientLabel(client: string | null): string {
+  if (client === null) {
+    return '—';
+  }
+  if (client.startsWith('info:')) {
+    const identity = client.slice('info:'.length);
+    const slash = identity.lastIndexOf('/');
+    return slash === -1 ? identity : identity.slice(0, slash);
+  }
+  if (client.startsWith('oauth:')) {
+    return client.slice('oauth:'.length);
+  }
+  return client.slice(0, 4);
 }
 
 const cache = new WeakMap<MCPFact, unknown>();
@@ -350,13 +364,24 @@ const resultOf = (fact: MCPFact): Record<string, unknown> | undefined => {
     : undefined;
 };
 
-const errorText = (error: Record<string, unknown> | undefined): string =>
-  [
-    typeof error?.code === 'number' ? error.code : '',
+// Error codes the 2026-07-28 revision added.
+const ERROR_NAMES: Record<number, string> = {
+  [-32020]: 'header mismatch',
+  [-32021]: 'missing client capability',
+  [-32022]: 'unsupported protocol version',
+};
+
+const errorText = (error: Record<string, unknown> | undefined): string => {
+  const code = typeof error?.code === 'number' ? error.code : undefined;
+  const name = code === undefined ? undefined : ERROR_NAMES[code];
+  return [
+    code ?? '',
+    name === undefined ? '' : `(${name})`,
     typeof error?.message === 'string' ? error.message : '',
   ]
-    .join(' ')
-    .trim();
+    .filter((part) => part !== '')
+    .join(' ');
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);

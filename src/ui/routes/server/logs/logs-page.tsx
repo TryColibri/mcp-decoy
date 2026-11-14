@@ -1,13 +1,18 @@
-import { PauseIcon, PlayIcon } from '@phosphor-icons/react';
+import { PauseIcon, PlayIcon, XIcon } from '@phosphor-icons/react';
 import { useEffect, useId, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router';
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router';
 
 import { client, unwrapEmpty, useLogEntry } from '@/ui/api';
 import { Button, buttonClasses } from '@/ui/components/button';
 import { tw } from '@/ui/tw';
 
 import { useServerContext } from '../server-layout';
-import { logsPath } from './log-format';
+import { clientLabel, logsPath } from './log-format';
 import { MessageDetail } from './message-detail';
 import { MessageList } from './message-list';
 import { useDebouncedValue } from './use-debounced-value';
@@ -37,17 +42,35 @@ export function LogsPage() {
   const searchId = useId();
   const [search, setSearch] = useState('');
   const query = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
-  const stream = useLogStream(server.name, query);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const clientFilter = searchParams.get('client') ?? '';
+  const stream = useLogStream(server.name, query, clientFilter);
   const navigate = useNavigate();
-  const { hash } = useLocation();
+  const { hash, search: locationSearch } = useLocation();
   const { entry: entryParam } = useParams();
   const selectedId = parseEntryId(entryParam);
   const [clearError, setClearError] = useState<string | null>(null);
 
   const listPath = logsPath(server.name);
+  // The client filter lives in the query string, so it survives selecting a row.
+  const listLocation = { pathname: listPath, search: locationSearch };
   // Picking a row keeps the detail tab, which is the URL fragment.
   const select = (id: number) => {
-    void navigate({ pathname: logsPath(server.name, id), hash });
+    void navigate({
+      pathname: logsPath(server.name, id),
+      search: locationSearch,
+      hash,
+    });
+  };
+  const clearClientFilter = () => {
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.delete('client');
+        return next;
+      },
+      { replace: true },
+    );
   };
 
   // A link can point at an entry the list hasn't loaded, or that the search
@@ -71,14 +94,14 @@ export function LogsPage() {
     }
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !event.defaultPrevented) {
-        void navigate(listPath);
+        void navigate({ pathname: listPath, search: locationSearch });
       }
     };
     document.addEventListener('keydown', closeOnEscape);
     return () => {
       document.removeEventListener('keydown', closeOnEscape);
     };
-  }, [open, navigate, listPath]);
+  }, [open, navigate, listPath, locationSearch]);
 
   const clear = async () => {
     setClearError(null);
@@ -88,7 +111,7 @@ export function LogsPage() {
           param: { server: server.name },
         }),
       );
-      void navigate(listPath, { replace: true });
+      void navigate(listLocation, { replace: true });
       stream.reset();
     } catch (caught) {
       setClearError(caught instanceof Error ? caught.message : String(caught));
@@ -130,7 +153,12 @@ export function LogsPage() {
       </p>
     );
   } else if (stream.entries.length === 0) {
-    list = <EmptyMessages server={server.mcpUrl} searching={query !== ''} />;
+    list = (
+      <EmptyMessages
+        server={server.mcpUrl}
+        searching={query !== '' || clientFilter !== ''}
+      />
+    );
   } else {
     list = (
       <MessageList
@@ -161,6 +189,9 @@ export function LogsPage() {
           placeholder="Search method, URL or any text"
           className="box-border min-h-9 min-w-0 flex-[1_1_280px] rounded-lg border border-paper-300 bg-white px-3 font-mono text-[13px] text-ink-900 dark:border-paper-700 dark:bg-paper-900 dark:text-ink-100"
         />
+        {clientFilter !== '' && (
+          <ClientFilterChip client={clientFilter} onClear={clearClientFilter} />
+        )}
         <div className="ml-auto flex flex-wrap gap-2">
           {stream.paused ? (
             <Button size="small" onClick={stream.resume}>
@@ -214,12 +245,39 @@ export function LogsPage() {
             entries={stream.entries}
             server={server.name}
             onClose={() => {
-              void navigate(listPath);
+              void navigate(listLocation);
             }}
           />
         )}
       </div>
     </>
+  );
+}
+
+type ClientFilterChipProps = {
+  client: string;
+  onClear: () => void;
+};
+
+/** Shows which client the list is filtered to, with a button to drop the filter. */
+function ClientFilterChip({ client, onClear }: ClientFilterChipProps) {
+  return (
+    <span
+      title={client}
+      className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-paper-300 bg-paper-100 pr-1 pl-3 text-[13px] text-ink-900 dark:border-paper-700 dark:bg-paper-800 dark:text-ink-100"
+    >
+      <span>
+        Client <span className="font-mono">{clientLabel(client)}</span>
+      </span>
+      <button
+        type="button"
+        onClick={onClear}
+        aria-label="Clear client filter"
+        className="inline-flex size-7 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-ink-600 hover:bg-paper-200 dark:text-ink-300 dark:hover:bg-paper-700"
+      >
+        <XIcon className="size-3.5" aria-hidden="true" />
+      </button>
+    </span>
   );
 }
 

@@ -10,8 +10,8 @@ import {
   nameOf,
   noteOf,
   type EntryStatus,
-  sessionOf,
-  shortSession,
+  clientLabel,
+  clientOf,
   statusOf,
   type StatusTone,
   tookOf,
@@ -148,7 +148,7 @@ export function MessageList({
             <>
               <span>Status</span>
               <span>Summary</span>
-              <span>Session</span>
+              <span>Client</span>
               <span className="text-right">Took</span>
             </>
           )}
@@ -229,7 +229,7 @@ type FullColumnsProps = {
 // Every column after Time in the full layout: Layer, Kind (the HTTP method or
 // the MCP message type), then Name onwards.
 function FullColumns({ entry }: FullColumnsProps) {
-  const sessionId = sessionOf(entry);
+  const client = clientOf(entry);
   return (
     <>
       <span>
@@ -251,9 +251,9 @@ function FullColumns({ entry }: FullColumnsProps) {
       </span>
       <span
         className="font-mono text-ink-600 dark:text-ink-300"
-        title={sessionId ?? undefined}
+        title={client ?? undefined}
       >
-        {shortSession(sessionId)}
+        {clientLabel(client)}
       </span>
       <span className="text-right font-mono text-ink-600 dark:text-ink-300">
         {tookOf(entry)}

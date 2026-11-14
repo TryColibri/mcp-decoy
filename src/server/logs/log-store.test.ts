@@ -18,6 +18,7 @@ const base = (server: string) => ({
   at: '2026-10-21T12:00:00.000Z',
   server,
   sessionId: 's1',
+  client: 's1',
 });
 
 const http = (

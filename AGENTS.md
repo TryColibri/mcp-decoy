@@ -17,7 +17,7 @@ decisions are settled.
 | Shape           | **One** Node.js process running **two Hono apps** with `@hono/node-server`, plus a **Vite + React 19 + TypeScript SPA**                                                             |
 | Ports           | MCP listener on `6280` (`--host`, default `127.0.0.1`). UI listener on `6281`, always bound to `127.0.0.1` (API + built SPA)                                                        |
 | MCP library     | Official TypeScript SDK v2 (`@modelcontextprotocol/server`), **low-level `Server`**, `WebStandardStreamableHTTPServerTransport`                                                     |
-| Transport       | Streamable HTTP only, stateful (`Mcp-Session-Id`), one SDK `Server` + one transport per session                                                                                     |
+| Transport       | Streamable HTTP only. 2025-11-25: stateful (`Mcp-Session-Id`), one SDK `Server` + one transport per session. 2026-07-28: stateless, `createMcpHandler` per server                   |
 | OAuth AS        | `@hono/mcp` `mcpAuthRouter` + a Decoy `OAuthServerProvider`, mounted at the MCP listener's root, one per origin. SDK v1 (`@modelcontextprotocol/sdk`) is a dependency only for this |
 | Capabilities    | Every mock server advertises only `tools: { listChanged: true }`                                                                                                                    |
 | Persistence     | `servers.json` in the config directory (XDG: `~/.config/mcp-decoy`, `--config-dir`). Logs and OAuth state (DCR clients, codes, tokens) in memory only                               |
@@ -94,7 +94,7 @@ npx @hodor-ai/mcp-decoy
                                  /assets/*   → dist/ui/assets
                                  /*          → dist/ui/index.html (SPA fallback)
 
-       both apps ──▶ services (servers, tools, logs, mcp sessions, oauth)
+       both apps ──▶ services (servers, tools, logs, mcp clients, oauth)
                        │            │
                   event bus    <config dir>/servers.json
 ```
@@ -110,12 +110,23 @@ npx @hodor-ai/mcp-decoy
 - The CSRF check requires `Content-Type: application/json` on POST, PUT and
   PATCH. DELETE has no body and always needs a CORS preflight cross-origin, so
   only its `Origin` is checked; `curl -X DELETE` works without headers.
-- Sessions are stateful 2025-era Streamable HTTP (`initialize`,
-  `Mcp-Session-Id`). The MCP SDK v2 also implements the stateless 2026-07-28
-  revision; clients that probe it with `server/discover` get a 400 and fall back
-  to `initialize` (covered by `mcp-app.integration.test.ts`). The session ID is
-  generated before the `initialize` request is handed to the transport, so that
-  request is logged under the session it opens.
+- Two protocol generations share `/s/:server/mcp`. `mcp/endpoint.ts` routes each
+  request by the server's `protocol.eras` (`both`, `legacy`, `modern`); with
+  `both`, SDK v2's `isLegacyRequest` decides. 2025-11-25 is stateful
+  (`initialize`, `Mcp-Session-Id`) and handled by `session-manager.ts`.
+  2026-07-28 is stateless, with a `_meta` envelope on every request, and handled
+  by `modern.ts` (one `createMcpHandler(…, { legacy: 'reject' })` per server,
+  which also serves `subscriptions/listen`). A `legacy` server answers
+  `server/discover` with a 400, so clients fall back to `initialize`; a `modern`
+  one answers `initialize` with -32022. Covered by
+  `mcp-app.integration.test.ts`.
+- A client is a session ID (2025-11-25) or a key derived from the request
+  (2026-07-28): `oauth:<client_id>` when the request carries a verified token,
+  else `info:<name>/<version>` from `_meta`. `mcp/clients.ts` lists the modern
+  ones in memory while they have an open stream or were active in the last 5
+  minutes. Every log fact has `client` (equal to `sessionId` for 2025-11-25).
+- The session ID is generated before the `initialize` request is handed to the
+  transport, so that request is logged under the session it opens.
 - `<config dir>/runtime.json` advertises a running instance to future CLI
   subcommands and the TUI, and prevents two instances from sharing a config
   directory.
@@ -182,7 +193,7 @@ business logic, and no HTTP concerns** — making them safe to import from
 anywhere, including the SPA.
 
 **Grouping rule:** organise by the **resource** a schema affects (`servers`,
-`tools`, `sessions`, `logs`, `problems`), not by route path.
+`tools`, `clients`, `logs`, `problems`), not by route path.
 
 **Import rule:** the SPA **never** imports from `src/server/`; it imports
 wire-format types from `src/shared/api/`.
@@ -207,13 +218,13 @@ Example:
 export type ServerSummary = {
   /** URL slug of the server. */
   name: string;
-  /** Number of live MCP sessions. */
-  sessionCount: number;
+  /** Number of listed MCP clients. */
+  clientCount: number;
 };
 
 export const serverSummarySchema: z.ZodType<ServerSummary> = z.strictObject({
   name: z.string().describe('URL slug of the server.'),
-  sessionCount: z.number().int().describe('Number of live MCP sessions.'),
+  clientCount: z.number().int().describe('Number of listed MCP clients.'),
 });
 
 // src/server/api/servers.ts (handler)

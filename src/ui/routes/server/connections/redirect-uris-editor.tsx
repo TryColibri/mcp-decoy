@@ -51,7 +51,7 @@ export function RedirectURIsEditor({ server, uris }: RedirectURIsEditorProps) {
       );
       await mutate(keys.server(server));
       void mutate(keys.servers);
-      void mutate(keys.sessions(server));
+      void mutate(keys.clients(server));
       void mutate(keys.oauthTokens(server));
     } catch (caught) {
       const fieldErrors =

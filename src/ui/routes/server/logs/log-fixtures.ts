@@ -18,6 +18,7 @@ const base = {
   at: '2026-10-21T12:00:00.000Z',
   server: 'weather',
   sessionId: 's1',
+  client: 's1',
 };
 
 /** An `mcp` fact: a client request unless `fields` say otherwise. */

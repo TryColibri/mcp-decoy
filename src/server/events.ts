@@ -1,3 +1,5 @@
+import { type ServerEras } from '@/shared/api';
+
 /** Events emitted by services after a successful mutation. */
 export type MCPDecoyEvents = {
   /** `server` was created. */
@@ -10,6 +12,8 @@ export type MCPDecoyEvents = {
   serverRenamed: { from: string; to: string };
   /** `server`'s authentication state changed. */
   serverAuthChanged: { server: string };
+  /** `server` now accepts other protocol generations than before (`eras` changed). */
+  serverProtocolChanged: { server: string; eras: ServerEras };
 };
 
 type Listener<T> = (payload: T) => void;

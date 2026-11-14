@@ -1,7 +1,8 @@
+import { type AuthInfo } from '@modelcontextprotocol/server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 
-import { type Capture, type SessionManager } from '@/server/mcp';
+import { type Capture, type MCPEndpoint } from '@/server/mcp';
 import { type OAuthStore } from '@/server/oauth';
 import { createOAuthGate, createOAuthRoutes } from '@/server/oauth-http';
 import { type ServerConfig } from '@/shared/api';
@@ -10,8 +11,8 @@ import { createExchangeLog, type ExchangeLogEnv } from './exchange-log';
 
 /** Dependencies of the MCP listener's app. */
 export type CreateMCPAppOptions = {
-  /** The session manager that handles MCP requests. */
-  sessions: SessionManager;
+  /** The endpoint that handles MCP requests. */
+  mcp: MCPEndpoint;
   /** The OAuth store, shared by every mock server on this instance. */
   oauth: OAuthStore;
   /** The definition of a server, or `undefined` when it doesn't exist. */
@@ -29,10 +30,10 @@ export type CreateMCPAppOptions = {
  * only serves mock data and the client under test may run in a browser.
  * Every exchange is recorded from the wire, CORS headers included.
  *
- * @param options - Sessions, OAuth store, server lookups and capture.
+ * @param options - MCP endpoint, OAuth store, server lookups and capture.
  */
 export function createMCPApp({
-  sessions,
+  mcp,
   oauth,
   findServer,
   listServers,
@@ -52,6 +53,8 @@ export function createMCPApp({
           'mcp-protocol-version',
           'last-event-id',
           'authorization',
+          'mcp-method',
+          'mcp-name',
         ],
         exposeHeaders: ['mcp-session-id', 'www-authenticate'],
       }),
@@ -59,13 +62,15 @@ export function createMCPApp({
     .on(['GET', 'POST', 'DELETE'], '/s/:server/mcp', async (c) => {
       const server = c.req.param('server');
       const config = findServer(server);
+      let authInfo: AuthInfo | undefined;
       if (config?.auth !== undefined) {
-        const challenge = await gate(server, c.req.raw);
-        if (challenge !== null) {
-          return challenge;
+        const gated = await gate(server, c.req.raw);
+        if ('challenge' in gated) {
+          return gated.challenge;
         }
+        authInfo = gated.authInfo;
       }
-      return sessions.handle(server, c.req.raw, c.get('exchange') ?? null);
+      return mcp.handle(server, c.req.raw, c.get('exchange') ?? null, authInfo);
     })
     .route('/', createOAuthRoutes({ store: oauth, findServer }));
 }

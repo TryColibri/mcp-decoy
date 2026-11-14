@@ -1,4 +1,5 @@
 import {
+  type AuthInfo,
   bearerAuthChallengeResponse,
   getOAuthProtectedResourceMetadataUrl,
   OAuthError,
@@ -10,16 +11,27 @@ import { type OAuthStore } from '@/server/oauth';
 
 import { publicOriginOf } from './public-origin';
 
+/** What the gate decided about a request. */
+export type OAuthGateResult =
+  | {
+      /** The request has no valid access token: answer with this. */
+      challenge: Response;
+    }
+  | {
+      /** The request carries a valid access token: who it was issued to. */
+      authInfo: AuthInfo;
+    };
+
 /** Checks a request's Bearer token against a server's OAuth protection. */
 export type OAuthGate = (
   server: string,
   request: Request,
-) => Promise<Response | null>;
+) => Promise<OAuthGateResult>;
 
 /**
- * Creates the resource-server gate for `/s/:server/mcp`: `null` when the
- * request carries a valid access token for `server`, otherwise the
- * challenge response to answer with.
+ * Creates the resource-server gate for `/s/:server/mcp`: the verified token's
+ * `authInfo` when the request carries a valid access token for `server`,
+ * otherwise the challenge response to answer with.
  *
  * @param store - The OAuth store, used to verify tokens.
  */
@@ -30,28 +42,33 @@ export function createOAuthGate(store: OAuthStore): OAuthGate {
     const resourceMetadataUrl =
       getOAuthProtectedResourceMetadataUrl(resourceUrl);
     try {
-      await verifyBearerToken(request.headers.get('authorization'), {
-        // `store.verify` throws the MCP SDK v1 (`@modelcontextprotocol/sdk`)
-        // error classes; `bearerAuthChallengeResponse` below only recognizes
-        // SDK v2's own `OAuthError`, so failures are translated here.
-        verifier: {
-          verifyAccessToken: async (token) => {
-            try {
-              return store.verify(token);
-            } catch {
-              throw new OAuthError(
-                OAuthErrorCode.InvalidToken,
-                'Invalid or expired access token',
-              );
-            }
+      const authInfo = await verifyBearerToken(
+        request.headers.get('authorization'),
+        {
+          // `store.verify` throws the MCP SDK v1 (`@modelcontextprotocol/sdk`)
+          // error classes; `bearerAuthChallengeResponse` below only recognizes
+          // SDK v2's own `OAuthError`, so failures are translated here.
+          verifier: {
+            verifyAccessToken: async (token) => {
+              try {
+                return store.verify(token);
+              } catch {
+                throw new OAuthError(
+                  OAuthErrorCode.InvalidToken,
+                  'Invalid or expired access token',
+                );
+              }
+            },
           },
+          expectedResource: resourceUrl,
+          resourceMetadataUrl,
         },
-        expectedResource: resourceUrl,
-        resourceMetadataUrl,
-      });
-      return null;
+      );
+      return { authInfo };
     } catch (error) {
-      return bearerAuthChallengeResponse(error, { resourceMetadataUrl });
+      return {
+        challenge: bearerAuthChallengeResponse(error, { resourceMetadataUrl }),
+      };
     }
   };
 }

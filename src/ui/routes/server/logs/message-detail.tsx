@@ -344,6 +344,7 @@ function HTTPOverviewPanel({ entry }: HTTPOverviewPanelProps) {
         ['State', entry.state],
         ['Duration', took === '' ? '—' : took],
         ['Session ID', exchange.sessionId ?? '—'],
+        ['Client', exchange.client ?? '—'],
         ['Endpoint', exchange.endpoint],
       ]}
     />
@@ -450,6 +451,7 @@ function MCPOverviewPanel({ entry, entries, server }: MCPOverviewPanelProps) {
           ['From', message.from === 'client' ? 'Client' : 'Server'],
           ['Duration', took === '' ? '—' : took],
           ['Session ID', message.sessionId ?? '—'],
+          ['Client', message.client ?? '—'],
         ]}
       />
       <Section title="Carried by">

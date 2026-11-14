@@ -37,6 +37,7 @@ export function createLogsRoutes(logs: LogsService) {
         const {
           q,
           carriedBy,
+          client,
           cursor,
           limit = LOG_PAGE_DEFAULT_LIMIT,
         } = c.req.valid('query');
@@ -53,6 +54,7 @@ export function createLogsRoutes(logs: LogsService) {
         const page = logs.page(c.req.param('server'), {
           text: q,
           carriedBy,
+          client,
           beforeId,
           limit,
         });
@@ -78,7 +80,7 @@ export function createLogsRoutes(logs: LogsService) {
       zValidator('query', logStreamQuerySchema, validationHook),
       (c) => {
         const server = c.req.param('server');
-        const { q, after } = c.req.valid('query');
+        const { q, client, after } = c.req.valid('query');
         const lastEventID = Number.parseInt(
           c.req.header('last-event-id') ?? '',
           10,
@@ -91,7 +93,7 @@ export function createLogsRoutes(logs: LogsService) {
         let wake: (() => void) | undefined;
         const unsubscribe = logs.stream(
           server,
-          { text: q, afterId },
+          { text: q, client, afterId },
           (event) => {
             queue.push(event);
             wake?.();

@@ -13,8 +13,11 @@ import {
 import {
   type Capture,
   createCapture,
+  createClientRegistry,
+  createMCPEndpoint,
+  createModernHandler,
   createSessionManager,
-  type SessionManager,
+  type MCPEndpoint,
 } from '@/server/mcp';
 import { createOAuthStore, type OAuthStore } from '@/server/oauth';
 import {
@@ -47,8 +50,8 @@ export type Services = {
   servers: ServersService;
   /** The tools service. */
   tools: ToolsService;
-  /** MCP sessions and the Streamable HTTP entry point. */
-  sessions: SessionManager;
+  /** The MCP entry point: routes requests by protocol generation and tracks clients. */
+  mcp: MCPEndpoint;
   /** Every server's persisted definition, in creation order. */
   listServerConfigs: () => readonly ServerConfig[];
   /** Records JSON-RPC messages and OAuth HTTP exchanges. */
@@ -82,13 +85,28 @@ export function createServices({
 
   const tools = createToolsService({ repository, events });
   const capture = createCapture(store);
+  const findServer = (name: string) => repository.find(name);
+  const clients = createClientRegistry();
   const sessions = createSessionManager({
-    findServer: (name) => repository.find(name),
-    serverNames: () => repository.list().map((server) => server.name),
+    findServer,
     listPublishedTools: (server) => tools.listPublished(server),
     capture,
     events,
     onError,
+  });
+  const modern = createModernHandler({
+    findServer,
+    listPublishedTools: (server) => tools.listPublished(server),
+    clients,
+    events,
+    onError,
+  });
+  const mcp = createMCPEndpoint({
+    findServer,
+    serverNames: () => repository.list().map((server) => server.name),
+    sessions,
+    modern,
+    clients,
   });
   const oauth = createOAuthStore({
     findServer: (server) => repository.find(server),
@@ -98,7 +116,7 @@ export function createServices({
   const servers = createServersService({
     repository,
     events,
-    sessionCount: (server) => sessions.count(server),
+    clientCount: (server) => mcp.clientCount(server),
     mcpUrl: (server) => instance().mcp.urlTemplate.replace('{server}', server),
     tokenCount: (server) => oauth.tokenCount(server),
   });
@@ -115,7 +133,7 @@ export function createServices({
     instance,
     servers,
     tools,
-    sessions,
+    mcp,
     logs,
     oauth,
     onUnexpectedError: onError,
@@ -125,7 +143,7 @@ export function createServices({
     events,
     servers,
     tools,
-    sessions,
+    mcp,
     listServerConfigs: () => repository.list(),
     capture,
     store,
